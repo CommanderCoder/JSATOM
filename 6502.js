@@ -439,9 +439,13 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
             this.memStatOffsetByIFetchBank = new Uint32Array(16);  // helps in master map of LYNNE for non-opcode read/writes
             this.memStatOffset = 0;
             this.memStat = new Uint8Array(512);
+            //: 6502 can only address 64K at a time so the rest has to be paged in.
             this.memLook = new Int32Array(512);  // Cannot be unsigned as we use negative offsets
+            // assume 128k + 16 x 16k x 17   : MASTER has 128K RAM and 128K ROM + the 128K ROM SLOTS and an extra slot?
             this.ramRomOs = new Uint8Array(128 * 1024 + 17 * 16 * 16384);
+            // assume 128k
             this.romOffset = 128 * 1024;
+            // assume 16 x 16k
             this.osOffset = this.romOffset + 16 * 16 * 1024;
             this.romsel = 0;
             this.acccon = 0;
@@ -584,7 +588,62 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 return (addr >= 0xfc00 && addr < 0xff00 && (addr < 0xfe00 || this.FEslowdown[(addr >>> 5) & 7]));
             };
 
+            /*
+            http://mdfs.net/Docs/Comp/Acorn/Atom/atap25.htm
+
+            25.5 Input/Output Port Allocations
+            The 8255 Programmable Peripheral Interface Adapter contains three 8-bit ports, and all but one of these lines is used by the ATOM.
+
+            Port A - #B000
+                   Output bits:      Function:
+                        0 - 3      Keyboard row
+                        4 - 7      Graphics mode
+
+            Port B - #B001
+                   Input bits:       Function:
+                        0 - 5      Keyboard column
+                          6        CTRL key (low when pressed)
+                          7        SHIFT keys {low when pressed)
+
+            Port C - #B002
+                   Output bits:      Function:
+                        0          Tape output
+                        1          Enable 2.4 kHz to cassette output
+                        2          Loudspeaker
+                        3          Not used
+
+                   Input bits:       Function:
+                        4          2.4 kHz input
+                        5          Cassette input
+                        6          REPT key (low when pressed)
+                        7          60 Hz sync signal (low during flyback)
+            The port C output lines, bits 0 to 3, may be used for user applications when the cassette interface is not being used.
+             */
+            this.readDeviceAtom = function(addr) {
+                // only set up a single VIA - reclaiming USERVIA from BBC
+                addr &= 0xffff;
+                switch (addr & ~0x0003) {
+                    case 0xb000:
+                    case 0xb004:
+                        return this.crtc.read(addr); // on atom is 6847
+                    case 0xb008:
+                    case 0xb00c:
+                        return 0x00;  //TODO: PPI
+                    case 0xb800:
+                    case 0xb804:
+                    case 0xb808:
+                    case 0xb80c:
+                        return this.uservia.read(addr);
+                }
+                return addr >>> 8;
+            };
+
             this.readDevice = function (addr) {
+                if (model.isAtom)
+                {
+                    return this.readDeviceAtom(addr);
+                }
+
                 if (model.isMaster && (this.acccon & 0x40)) {
                     // TST bit of ACCCON
                     return this.ramRomOs[this.osOffset + (addr & 0x3fff)];
@@ -710,8 +769,18 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     var offset = this.memLook[this.memStatOffset + (addr >>> 8)];
                     return this.ramRomOs[offset + addr];
                 } else {
-                    return 0xff;// TODO; peekDevice -- this.peekDevice(addr);
+                    return this.peekDevice(addr);
                 }
+            };
+
+            this.peekDevice = function (addr) {
+                // TODO: just show the memory - should really do a form of readDevice
+                if (model.isAtom) {
+                    var offset = this.memLook[this.memStatOffset + (addr >>> 8)];
+                    return this.ramRomOs[offset + addr];
+                }
+
+                return 0xff;
             };
 
             this.writemem = function (addr, b) {
@@ -723,9 +792,65 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     this.ramRomOs[offset + addr] = b;
                     return;
                 }
+              if (!model.isAtom) {  // NOT ATOM
                 if (addr < 0xfc00 || addr >= 0xff00) return;
                 this.writeDevice(addr, b);
+              }
+              else {
+                if (addr < 0xb000 || addr >= 0xc000) return; // not an ATOM device outside this range
+                  return this.writeDeviceAtom(addr,b);
+              }
             };
+
+            // http://mdfs.net/Docs/Comp/Acorn/Atom/MemoryMap
+            /*
+            B000    PPIA I/O Device
+                  &B000 b7-b4: 6847 video mode
+                  &B000 b3-b0: keyboard matix row, defaults to 0 so &B001 reads
+                          Escape. Setting &B000 to 10 (or anything larger than 9)
+                          "disables" background escape checking.
+
+                  &B001 - keyboard matrix column:
+                       ~b0 : SPC  [   \   ]   ^  LCK <-> ^-v Lft Rgt
+                       ~b1 : Dwn Up  CLR ENT CPY DEL  0   1   2   3
+                       ~b2 :  4   5   6   7   8   9   :   ;   <   =
+                       ~b3 :  >   ?   @   A   B   C   D   E   F   G
+                       ~b4 :  H   I   J   K   L   M   N   O   P   Q
+                       ~b5 :  R   S   T   U   V   W   X   Y   Z  ESC
+                       ~b6 :                                          Ctrl
+                       ~b7 :                                          Shift
+                              9   8   7   6   5   4   3   2   1   0
+
+                  &B002 - various I/O
+                       ~b0 -> CASOUT
+                       ~b1 -> CASOUT
+                       ~b2 -> Speaker
+                       ~b3 -> VDU CSS
+                       ~b4 <- CAS
+                       ~b5 <- CASIN
+                       ~b6 <- REPEAT key
+                       ~b7 <- VSync
+             */
+            this.writeDeviceAtom = function (addr, b) {
+                // only set up a single VIA - reclaiming USERVIA from BBC
+                b |= 0;
+                switch (addr & ~0x0003) {
+
+
+                    case 0xb000:
+                    case 0xb004:
+                        return this.crtc.write(addr,b); // on atom is 6847
+                    case 0xb008:
+                    case 0xb00c:
+                        break; // TODO: PPI
+                    case 0xb800:
+                    case 0xb804:
+                    case 0xb808:
+                    case 0xb80c:
+                        return this.uservia.write(addr, b);
+                }
+            };
+
             this.writeDevice = function (addr, b) {
                 b |= 0;
                 switch (addr & ~0x0003) {
@@ -865,9 +990,24 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 var capturedThis = this;
                 return utils.loadData(os).then(function (data) {
                     var len = data.length;
+
+                    if (!model.isAtom) //NOT Atom
+                    {
                     if (len < 0x4000 || (len & 0x3fff)) throw new Error("Broken ROM file (length=" + len + ")");
                     for (i = 0; i < 0x4000; ++i) {
                         ramRomOs[capturedThis.osOffset + i] = data[i];
+                    }
+                    }
+                    else
+                    {
+                        //Load 4K ATOM OS into 0xc000 + 0x3000 (i.e 0xf000)
+                        if (len < 0x1000 || (len & 0x0fff)) throw new Error("Broken ROM file (length=" + len + ")");
+                        for (i = 0; i < 0x4000; ++i) {
+                            ramRomOs[capturedThis.osOffset + i] = 0x00;
+                        }
+                        for (i = 0; i < 0x1000; ++i) {
+                            ramRomOs[capturedThis.osOffset + i + 0x3000] = data[i];
+                        }
                     }
                     var numExtraBanks = (len - 0x4000) / 0x4000;
                     var romIndex = 16 - numExtraBanks;
@@ -904,13 +1044,36 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                         this.memStatOffsetByIFetchBank[0xd] = 256;
                     }
                     if (!model.isTest) {
+
+                        // up 0x7fff : 1 means RAM
                         for (i = 0; i < 128; ++i) this.memStat[i] = this.memStat[256 + i] = 1;
+                        // 0x8000 onwards : 2 means ROM
                         for (i = 128; i < 256; ++i) this.memStat[i] = this.memStat[256 + i] = 2;
+
+                        // MemLook is for shadow memory and rom/os offsets since these are 'paged in' (I think)
                         for (i = 0; i < 128; ++i) this.memLook[i] = this.memLook[256 + i] = 0;
                         for (i = 128; i < 192; ++i) this.memLook[i] = this.memLook[256 + i] = this.romOffset - 0x8000;
                         for (i = 192; i < 256; ++i) this.memLook[i] = this.memLook[256 + i] = this.osOffset - 0xc000;
 
+                        if (!model.isAtom) //NOT Atom
+                        {
+                        //0xfc00 to 0xfeff
                         for (i = 0xfc; i < 0xff; ++i) this.memStat[i] = this.memStat[256 + i] = 0;
+                        }
+                        else
+                        {
+                            // ROMS are different on ATOM - using 0x8000 onwards for video memory
+                            //0x8000 -> 0xbfff
+                            for (i = 128; i < 192; ++i) this.memLook[i] = this.memLook[256 + i] = 0;
+                            //0xc000 -> 0xffff
+                            // ??
+
+
+                            for (i = 0; i < 0xa0; ++i) this.memStat[i] = this.memStat[256 + i] = 1; // up 0x9fff : 1 means RAM
+                            for (i = 0xa0; i < 0x100; ++i) this.memStat[i] = this.memStat[256 + i] = 2; // 0xA000 onwards : 2 means ROM
+
+                            for (i = 0xb0; i < 0xc0; ++i) this.memStat[i] = this.memStat[256 + i] = 0;  //0xb000 to 0xbfff  : 0 means DEVICE/PERIPHERAL/IO
+                        }
                     } else {
                         // Test sets everything as RAM.
                         for (i = 0; i < 256; ++i) {

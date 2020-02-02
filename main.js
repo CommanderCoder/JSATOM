@@ -187,7 +187,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         }
         var $screen = $('#screen');
         var canvas = tryGl ? canvasLib.bestCanvas($screen[0]) : new canvasLib.Canvas($screen[0]);
-        video = new Video.Video(model.isMaster, canvas.fb32, function paint(minx, miny, maxx, maxy) {
+        video = new Video.Video(model, canvas.fb32, function paint(minx, miny, maxx, maxy) {
             frames++;
             if (frames < frameSkip) return;
             frames = 0;
@@ -1104,9 +1104,10 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         });
 
         function guessModelFromUrl() {
+            if (window.location.hostname.indexOf("atom") === 0) return "ATOM";
             if (window.location.hostname.indexOf("bbc") === 0) return "B";
             if (window.location.hostname.indexOf("master") === 0) return "Master";
-            return "B";
+            return "ATOM";
         }
 
         $('#tape-menu a').on("click", function (e) {
