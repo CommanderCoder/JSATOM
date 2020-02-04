@@ -618,18 +618,30 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                         6          REPT key (low when pressed)
                         7          60 Hz sync signal (low during flyback)
             The port C output lines, bits 0 to 3, may be used for user applications when the cassette interface is not being used.
-             */
+
+
+Hardware:   PPIA 8255
+
+    output  b000    0 - 3 keyboard row, 4 - 7 graphics mode
+            b002    0 cas output, 1 enable 2.4kHz, 2 buzzer, 3 colour set
+
+    input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
+            b002    4 2.4kHz input, 5 cas input, 6 REPT key, 7 60 Hz input
+
+ */
+
+
             this.readDeviceAtom = function(addr) {
                 // only set up a single VIA - reclaiming USERVIA from BBC
                 addr &= 0xffff;
                 switch (addr & ~0x0003) {
-                    case 0xb000:
+                    case 0xb000:  // mirror 0x3fc
                     case 0xb004:
                         return this.crtc.read(addr); // on atom is 6847
                     case 0xb008:
                     case 0xb00c:
                         return 0x00;  //TODO: PPI
-                    case 0xb800:
+                    case 0xb800:  // mirror 0x3f0
                     case 0xb804:
                     case 0xb808:
                     case 0xb80c:
@@ -972,7 +984,7 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 var ramRomOs = this.ramRomOs;
                 return utils.loadData(name).then(function (data) {
                     var len = data.length;
-                    if (len !== 16384 && len !== 8192) {
+                    if (len !== 16384 && len !== 8192 && len !== 4096) {
                         throw new Error("Broken rom file");
                     }
                     for (var i = 0; i < len; ++i) {
@@ -993,36 +1005,48 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
 
                     if (!model.isAtom) //NOT Atom
                     {
-                    if (len < 0x4000 || (len & 0x3fff)) throw new Error("Broken ROM file (length=" + len + ")");
-                    for (i = 0; i < 0x4000; ++i) {
-                        ramRomOs[capturedThis.osOffset + i] = data[i];
+                        if (len < 0x4000 || (len & 0x3fff)) throw new Error("Broken ROM file (length=" + len + ")");
+                        for (i = 0; i < 0x4000; ++i) {
+                            ramRomOs[capturedThis.osOffset + i] = data[i];
+                        }
+
+                        var numExtraBanks = (len - 0x4000) / 0x4000;
+                        var romIndex = 16 - numExtraBanks;
+                        for (i = 0; i < numExtraBanks; ++i) {
+                            var srcBase = 0x4000 + 0x4000 * i;
+                            var destBase = capturedThis.romOffset + (romIndex + i) * 0x4000;
+                            for (var j = 0; j < 0x4000; ++j) {
+                                ramRomOs[destBase + j] = data[srcBase + j];
+                            }
+                        }
+
+                        var awaiting = [];
+
+                        for (i = 0; i < extraRoms.length; ++i) {
+                            romIndex--;
+                            awaiting.push(capturedThis.loadRom(extraRoms[i], capturedThis.romOffset + romIndex * 0x4000));
+                        }
                     }
-                    }
-                    else
-                    {
+                    else {
                         //Load 4K ATOM OS into 0xc000 + 0x3000 (i.e 0xf000)
                         if (len < 0x1000 || (len & 0x0fff)) throw new Error("Broken ROM file (length=" + len + ")");
                         for (i = 0; i < 0x4000; ++i) {
                             ramRomOs[capturedThis.osOffset + i] = 0x00;
                         }
                         for (i = 0; i < 0x1000; ++i) {
-                            ramRomOs[capturedThis.osOffset + i + 0x3000] = data[i];
+                            ramRomOs[capturedThis.osOffset + i] = data[i];
                         }
-                    }
-                    var numExtraBanks = (len - 0x4000) / 0x4000;
-                    var romIndex = 16 - numExtraBanks;
-                    for (i = 0; i < numExtraBanks; ++i) {
-                        var srcBase = 0x4000 + 0x4000 * i;
-                        var destBase = capturedThis.romOffset + (romIndex + i) * 0x4000;
-                        for (var j = 0; j < 0x4000; ++j) {
-                            ramRomOs[destBase + j] = data[srcBase + j];
-                        }
-                    }
-                    var awaiting = [];
 
-                    for (i = 0; i < extraRoms.length; ++i) {
-                        romIndex--;
-                        awaiting.push(capturedThis.loadRom(extraRoms[i], capturedThis.romOffset + romIndex * 0x4000));
+                        var awaiting = [];
+
+                        var romIndex = 1;
+
+                        for (i = 0; i < extraRoms.length; ++i) {
+                            romIndex--;
+                            //0x1000 - 4kb rom
+                            awaiting.push(capturedThis.loadRom(extraRoms[i], capturedThis.romOffset + romIndex * 0x1000));
+                        }
+
                     }
                     return Promise.all(awaiting);
                 });
@@ -1057,22 +1081,24 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
 
                         if (!model.isAtom) //NOT Atom
                         {
-                        //0xfc00 to 0xfeff
-                        for (i = 0xfc; i < 0xff; ++i) this.memStat[i] = this.memStat[256 + i] = 0;
+                            //0xfc00 to 0xfeff
+                            for (i = 0xfc; i < 0xff; ++i) this.memStat[i] = this.memStat[256 + i] = 0;
                         }
                         else
                         {
                             // ROMS are different on ATOM - using 0x8000 onwards for video memory
                             //0x8000 -> 0xbfff
-                            for (i = 128; i < 192; ++i) this.memLook[i] = this.memLook[256 + i] = 0;
-                            //0xc000 -> 0xffff
-                            // ??
+                            for (i = 128; i < 192; ++i) this.memLook[i] = this.memLook[256 + i] = 0; // just usual address
+                            //0xc000 -> 0xefff
+                            for (i = 192; i < 240; ++i) this.memLook[i] = this.memLook[256 + i] = this.romOffset - 0xc000 ;
+                            //0xf000 -> 0xffff
+                            for (i = 240; i < 256; ++i) this.memLook[i] = this.memLook[256 + i] = this.osOffset - 0xf000;
 
 
                             for (i = 0; i < 0xa0; ++i) this.memStat[i] = this.memStat[256 + i] = 1; // up 0x9fff : 1 means RAM
-                            for (i = 0xa0; i < 0x100; ++i) this.memStat[i] = this.memStat[256 + i] = 2; // 0xA000 onwards : 2 means ROM
-
+                            for (i = 0xa0; i < 0xb0; ++i) this.memStat[i] = this.memStat[256 + i] = 2; // 0xA000 onwards : 2 means ROM
                             for (i = 0xb0; i < 0xc0; ++i) this.memStat[i] = this.memStat[256 + i] = 0;  //0xb000 to 0xbfff  : 0 means DEVICE/PERIPHERAL/IO
+                            for (i = 0xc0; i < 0x100; ++i) this.memStat[i] = this.memStat[256 + i] = 2; // 0xC000 onwards : 2 means ROM
                         }
                     } else {
                         // Test sets everything as RAM.
