@@ -78,9 +78,10 @@ define(['./teletext', './utils'], function (Teletext, utils) {
 
         this.paint_ext = paint_ext_param;
 
-        this.reset = function (cpu, via, hard) {
+        this.reset = function (cpu, via, ppia, hard) {
             this.cpu = cpu;
             this.sysvia = via;
+            this.ppia = ppia;
             if (via) via.cb2changecallback = this.cb2changed.bind(this);
         };
 
@@ -683,6 +684,7 @@ define(['./teletext', './utils'], function (Teletext, utils) {
                 }
 
                 if (vSyncStarting || vSyncEnding) {
+                    this.ppia.setVBlankInt(this.inVSync);
                     // this.sysvia.setVBlankInt(this.inVSync);
                     // this.teletext.setDEW(this.inVSync);
                 }
@@ -760,7 +762,6 @@ define(['./teletext', './utils'], function (Teletext, utils) {
                 // blink and interlace cease if R6 > R4.
                 this.frameCount++;
             }
-            var r7Hit = (this.vertCounter === regs7); //0x1c - regs[7]
             var r7Hit = (this.vertCounter === regs7); //0x1c - regs[7]
             if (r6Hit || r7Hit) {
                 this.doEvenFrameLogic = !!(this.frameCount & 1);

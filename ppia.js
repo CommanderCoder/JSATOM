@@ -89,26 +89,66 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
             },
 
+            setVBlankInt: function (level) {
+                //60 Hz sync signal
+                !!level ? self.portcpins |= 0x80 : self.portcpins &= 0x7f;
+                console.log("xvblank "+level+"; portc "+self.portcpins);
+            },
+
             polltime: function (cycles) {
                 cycles |= 0;
             },
+/*
+// a is 0,1,2  for b000, b001, b002
+// v is not used
+        function fPIAR(a, v) {
+            return a - 1 ? aPPIA[a] : aKeys[aPPIA[0] & 15]
+        }
 
+// a is 0,1,2,3,... 15  for b000, b001, b002, b00n...
+// v is value to store
+        function fPIAW(a, v) {
+
+        // 0,1,2 : sent to PPIA
+        : a < 2 : store v in [a]
+        : otherwise (i.e. a == 2) change only bits 2 & 3
+
+           if (a < 3)
+                aPPIA[a] =
+                    a - 2 ? v :
+                    (aPPIA[a] & 243) | (v & 12);
+         : a >= 2 then 0
+         : a == 1 then fmode&8
+         : a == 0 then fmode>>4
+
+          then set the fMode
+            a ?
+                a - 2 ?
+                    0 :
+                    fMode(nMode, v & 8 ? 1 : 0) :
+                fMode(v >> 4, nPal)
+        }
+
+ */
             write: function (addr, val) {
 
                 val |= 0;
                 switch (addr & 0xf) {
                     case PORTA:
-                        self.latcha = val
+                        self.latcha = val;
+                        // console.log("write porta "+self.latcha);
                         self.recalculatePortAPins();
                         break;
 
                     case PORTB:
-                        self.latcha = val
+                        self.latchb = val;
+                        // console.log("write portb "+self.latchb);
                         self.recalculatePortBPins();
                         break;
 
                     case PORTC:
-                        self.latcha = val
+                        self.latchc = (self.portcpins & 243) | (val & 12);
+                        // console.log("write portc "+self.latchc);
                         self.recalculatePortCPins();
                         break;
 
@@ -120,12 +160,16 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                 switch (addr & 0xf) {
                     case PORTA:
                         self.recalculatePortAPins();
+                        // console.log("read porta "+self.portapins);
                         return self.portapins;
                     case PORTB:
                         self.recalculatePortBPins();
-                        return self.portbpins;
+                        // return the keys based on values in porta
+                        // console.log("read portb "+self.portbpins);
+                        return self.aKeys[self.portapins & 15];
                     case PORTC:
                         self.recalculatePortCPins();
+                        // console.log("read portc "+self.portcpins);
                         return self.portcpins;
                     default:
                         throw "Unknown PPIA read";
@@ -250,9 +294,14 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
         };
 
         self.portBUpdated = function () {
+            // v = self.latchb
+            // fMode(nMode, v & 8 ? 1 : 0) :
         };
 
         self.portCUpdated = function () {
+            // v = self.latchc;
+        //    fMode(v >> 4, nPal)
+
         };
 
         self.drivePortA = function () {

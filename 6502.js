@@ -1153,7 +1153,7 @@ Hardware:   PPIA 8255
                 this.p.i = true;
                 this.nmi = false;
                 this.halted = false;
-                this.video.reset(this, this.sysvia, hard);
+                this.video.reset(this, this.sysvia, this.atomppia, hard);
                 if (hard) this.soundChip.reset(hard);
             };
 
