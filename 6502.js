@@ -1,5 +1,5 @@
-define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', './adc', './scheduler', './touchscreen'],
-    function (utils, opcodesAll, via, Acia, Serial, Tube, Adc, scheduler, TouchScreen) {
+define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', './adc', './scheduler', './touchscreen','./ppia'],
+    function (utils, opcodesAll, via, Acia, Serial, Tube, Adc, scheduler, TouchScreen, ppia) {
         "use strict";
         var hexword = utils.hexword;
         var signExtend = utils.signExtend;
@@ -637,7 +637,7 @@ Hardware:   PPIA 8255
                 switch (addr & ~0x0003) {
                     case 0xb000:  // mirror 0x3fc
                     case 0xb004:
-                        return this.crtc.read(addr); // on atom is 6847
+                        return this.atomppia.read(addr); // on atom is 6847
                     case 0xb008:
                     case 0xb00c:
                         return 0x00;  //TODO: PPI
@@ -851,7 +851,7 @@ Hardware:   PPIA 8255
 
                     case 0xb000:
                     case 0xb004:
-                        return this.crtc.write(addr,b); // on atom is 6847
+                        return this.atomppia.write(addr,b); // on atom is 6847
                     case 0xb008:
                     case 0xb00c:
                         break; // TODO: PPI
@@ -1124,6 +1124,9 @@ Hardware:   PPIA 8255
                     this.soundChip.setScheduler(this.scheduler);
                     this.sysvia = via.SysVia(this, this.video, this.soundChip, cmos, model.isMaster, config.keyLayout);
                     this.uservia = via.UserVia(this, model.isMaster, config.userPort);
+                    if (model.isAtom)
+                        this.atomppia = ppia.AtomPPIA(this, this.video, config.keyLayout);
+
                     if (config.printerPort)
                         this.uservia.ca2changecallback = config.printerPort.outputStrobe;
                     this.touchScreen = new TouchScreen(this.scheduler);
@@ -1136,6 +1139,8 @@ Hardware:   PPIA 8255
                     this.adconverter = new Adc(this.sysvia, this.scheduler);
                     this.sysvia.reset(hard);
                     this.uservia.reset(hard);
+                    if (model.isAtom)
+                        this.atomppia.reset(hard);
                 }
                 this.tube.reset(hard);
                 if (hard) {
@@ -1154,6 +1159,8 @@ Hardware:   PPIA 8255
 
             this.updateKeyLayout = function () {
                 this.sysvia.setKeyLayout(config.keyLayout);
+                if (isAtom)
+                    this.atomppia.setKeyLayout(config.keyLayout);
             };
 
             this.polltimeAddr = function (cycles, addr) {
@@ -1185,6 +1192,8 @@ Hardware:   PPIA 8255
                 this.uservia.polltime(cycles);
                 this.scheduler.polltime(cycles);
                 this.tube.execute(cycles);
+                if(model.isAtom)
+                 this.atomppia.polltime(cycles);
             };
 
             // Faster, but more limited version
@@ -1196,6 +1205,8 @@ Hardware:   PPIA 8255
                 this.uservia.polltime(cycles);
                 this.scheduler.polltime(cycles);
                 this.tube.execute(cycles);
+                if(model.isAtom)
+                  this.atomppia.polltime(cycles);
             };
 
             if (this.cpuMultiplier === 1 && this.videoCyclesBatch === 0) {

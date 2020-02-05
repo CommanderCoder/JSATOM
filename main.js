@@ -403,7 +403,14 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 evt.preventDefault();
                 checkPrinterWindow();
             } else {
-                processor.sysvia.keyDown(keyCode(evt), evt.shiftKey);
+                if (!model.isAtom)
+                {
+                    processor.sysvia.keyDown(keyCode(evt), evt.shiftKey);
+                }
+                else
+                {
+                    processor.atomppia.keyDown(keyCode(evt), evt.shiftKey);
+                }
                 evt.preventDefault();
             }
         }
@@ -413,7 +420,16 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             // Always let the key ups come through. That way we don't cause sticky keys in the debugger.
             var code = keyCode(evt);
             if (processor && processor.sysvia)
-                processor.sysvia.keyUp(code);
+            {
+                if (!model.isAtom)
+                {
+                    processor.sysvia.keyUp(code);
+                }
+                else
+                {
+                    processor.atomppia.keyUp(code);
+                }
+            }
             if (!running) return;
             if (evt.altKey) {
                 var handler = emuKeyHandlers[code];

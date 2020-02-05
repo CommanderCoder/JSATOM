@@ -18,6 +18,11 @@ define(['jsunzip', 'promise'], function (jsunzip) {
 
     exports.userKeymap = [];
 
+    exports.ATOM = {
+        RETURN: [6, 1],
+        ESCAPE: [0, 5],
+    };
+
     exports.BBC = {
         SEMICOLON_PLUS: [7, 5],
         MINUS: [7, 1],
@@ -459,6 +464,8 @@ define(['jsunzip', 'promise'], function (jsunzip) {
             }
         }
 
+        var ATOM = exports.ATOM;
+
         var BBC = exports.BBC;
 
         map(keyCodes.Q, BBC.Q);
@@ -509,7 +516,9 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         map(keyCodes.SLASH, BBC.SLASH);
         map(keyCodes.SPACE, BBC.SPACE);
         map(keyCodes.TAB, BBC.TAB);
-        map(keyCodes.ENTER, BBC.RETURN);
+
+        //map(keyCodes.ENTER, BBC.RETURN);
+        map(keyCodes.ENTER, ATOM.RETURN);
 
         map(keyCodes.SHIFT, BBC.SHIFT);
         // see later map(keyCodes.SHIFT_LEFT, BBC.SHIFT_LEFT);
@@ -670,13 +679,16 @@ define(['jsunzip', 'promise'], function (jsunzip) {
             map(keyCodes.SLASH, BBC.SLASH); // '/' / '?'
             map(keyCodes.WINDOWS, BBC.SHIFTLOCK); // shift lock mapped to "windows" key
             map(keyCodes.TAB, BBC.TAB); // tab
-            map(keyCodes.ENTER, BBC.RETURN); // return
+//            map(keyCodes.ENTER, BBC.RETURN); // return
+            map(keyCodes.ENTER, ATOM.RETURN); // return
             map(keyCodes.DELETE, BBC.DELETE); // delete
             map(keyCodes.BACKSPACE, BBC.DELETE); // delete
             map(keyCodes.END, BBC.COPY); // copy key is end
             map(keyCodes.F11, BBC.COPY); // copy key is end for Apple
             map(keyCodes.SHIFT, BBC.SHIFT); // shift
-            map(keyCodes.ESCAPE, BBC.ESCAPE); // escape
+            //map(keyCodes.ESCAPE, BBC.ESCAPE); // escape
+            map(keyCodes.ESCAPE, ATOM.ESCAPE);
+
             map(keyCodes.CTRL, BBC.CTRL);
             map(keyCodes.CTRL_LEFT, BBC.CTRL);
             map(keyCodes.CTRL_RIGHT, BBC.CTRL);
