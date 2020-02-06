@@ -98,16 +98,14 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                 //60 Hz sync signal - normally 1, but goes zero at start of  flyback.
                if (level )
                {
-                if (!(self.portcpins | 0x80))
-	               console.log("xvblank "+level+"; portc "+self.portcpins);
-                 self.portcpins |= 0x80;
+                 self.latchc |= 0x80;
                }
                else
                {
-                if ((self.portcpins | 0x80))
-                   console.log("xvblank "+level+"; portc "+self.portcpins);
-                self.portcpins &= 0x7f;
+                self.latchc &= 0x7f;
                }
+               self.recalculatePortCPins();
+                //console.log("xvblank "+level+"; portc "+self.portcpins);
             },
 
             polltime: function (cycles) {
@@ -181,7 +179,13 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         self.recalculatePortBPins();
                         // return the keys based on values in porta
                         // console.log("read portb "+self.portbpins);
-                        return self.aKeys[self.portapins & 15];
+                        // expecting 1 means unpressed, 0 means pressed
+                        var n = self.keys[self.portapins & 15];
+                        var r = 0;
+                        for (var b =0;b<16;b++)
+                            r+=!(n[b])<<b;
+                        // console.log("reading "+(self.portapins & 15)+" and pressed "+n.toString(2)+" -> "+r.toString(2));
+                        return r;
                     case PORTC:
                         self.recalculatePortCPins();
                         // console.log("read portc "+self.portcpins);
