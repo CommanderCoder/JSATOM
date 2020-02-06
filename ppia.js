@@ -90,9 +90,24 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
             },
 
             setVBlankInt: function (level) {
-                //60 Hz sync signal
-                !!level ? self.portcpins |= 0x80 : self.portcpins &= 0x7f;
-                console.log("xvblank "+level+"; portc "+self.portcpins);
+//means - in VSync if true
+                // FE66_wait_for_flyback_start will loop until bit 7 of B002 is 0
+                //then
+                // FE6B_wait_for_flyback will loop until bit 7 of B002 is 1
+
+                //60 Hz sync signal - normally 1, but goes zero at start of  flyback.
+               if (level )
+               {
+                if (!(self.portcpins | 0x80))
+	               console.log("xvblank "+level+"; portc "+self.portcpins);
+                 self.portcpins |= 0x80;
+               }
+               else
+               {
+                if ((self.portcpins | 0x80))
+                   console.log("xvblank "+level+"; portc "+self.portcpins);
+                self.portcpins &= 0x7f;
+               }
             },
 
             polltime: function (cycles) {
@@ -286,6 +301,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
         };
 
         self.updateKeys = function () {
+
 
         };
 

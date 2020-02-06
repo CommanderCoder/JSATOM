@@ -1,4 +1,4 @@
-define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', './adc', './scheduler', './touchscreen','./ppia'],
+define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', './adc', './scheduler', './touchscreen', './ppia'],
     function (utils, opcodesAll, via, Acia, Serial, Tube, Adc, scheduler, TouchScreen, ppia) {
         "use strict";
         var hexword = utils.hexword;
@@ -514,14 +514,14 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     // For special Master opcode access at 0xc000 - 0xdfff,
                     // it's more involved.
                     if (bitY) {
-                       // If 0xc000 is mapped as RAM, the Master opcode access
-                       // is disabled; follow what normal access does.
-                       this.memLook[i + 256] = this.memLook[i];
+                        // If 0xc000 is mapped as RAM, the Master opcode access
+                        // is disabled; follow what normal access does.
+                        this.memLook[i + 256] = this.memLook[i];
                     } else {
-                       // Master opcode access enabled; bit E determines whether
-                       // it hits shadow RAM or normal RAM. This is independent
-                       // of bit X.
-                       this.memLook[i + 256] = bitE ? 0x8000 : 0;
+                        // Master opcode access enabled; bit E determines whether
+                        // it hits shadow RAM or normal RAM. This is independent
+                        // of bit X.
+                        this.memLook[i + 256] = bitE ? 0x8000 : 0;
                     }
                 }
                 // The "Y" bit pages in HAZEL at c000->dfff. HAZEL is mapped in our RAM
@@ -631,7 +631,7 @@ Hardware:   PPIA 8255
  */
 
 
-            this.readDeviceAtom = function(addr) {
+            this.readDeviceAtom = function (addr) {
                 // only set up a single VIA - reclaiming USERVIA from BBC
                 addr &= 0xffff;
                 switch (addr & ~0x0003) {
@@ -651,8 +651,7 @@ Hardware:   PPIA 8255
             };
 
             this.readDevice = function (addr) {
-                if (model.isAtom)
-                {
+                if (model.isAtom) {
                     return this.readDeviceAtom(addr);
                 }
 
@@ -804,14 +803,13 @@ Hardware:   PPIA 8255
                     this.ramRomOs[offset + addr] = b;
                     return;
                 }
-              if (!model.isAtom) {  // NOT ATOM
-                if (addr < 0xfc00 || addr >= 0xff00) return;
-                this.writeDevice(addr, b);
-              }
-              else {
-                if (addr < 0xb000 || addr >= 0xc000) return; // not an ATOM device outside this range
-                  return this.writeDeviceAtom(addr,b);
-              }
+                if (!model.isAtom) {  // NOT ATOM
+                    if (addr < 0xfc00 || addr >= 0xff00) return;
+                    this.writeDevice(addr, b);
+                } else {
+                    if (addr < 0xb000 || addr >= 0xc000) return; // not an ATOM device outside this range
+                    return this.writeDeviceAtom(addr, b);
+                }
             };
 
             // http://mdfs.net/Docs/Comp/Acorn/Atom/MemoryMap
@@ -851,7 +849,7 @@ Hardware:   PPIA 8255
 
                     case 0xb000:
                     case 0xb004:
-                        return this.atomppia.write(addr,b); // on atom is 6847
+                        return this.atomppia.write(addr, b); // on atom is 6847
                     case 0xb008:
                     case 0xb00c:
                         break; // TODO: PPI
@@ -1026,8 +1024,7 @@ Hardware:   PPIA 8255
                             romIndex--;
                             awaiting.push(capturedThis.loadRom(extraRoms[i], capturedThis.romOffset + romIndex * 0x4000));
                         }
-                    }
-                    else {
+                    } else {
                         //Load 4K ATOM OS into 0xc000 + 0x3000 (i.e 0xf000)
                         if (len < 0x1000 || (len & 0x0fff)) throw new Error("Broken ROM file (length=" + len + ")");
                         for (i = 0; i < 0x4000; ++i) {
@@ -1083,14 +1080,12 @@ Hardware:   PPIA 8255
                         {
                             //0xfc00 to 0xfeff
                             for (i = 0xfc; i < 0xff; ++i) this.memStat[i] = this.memStat[256 + i] = 0;
-                        }
-                        else
-                        {
+                        } else {
                             // ROMS are different on ATOM - using 0x8000 onwards for video memory
                             //0x8000 -> 0xbfff
                             for (i = 128; i < 192; ++i) this.memLook[i] = this.memLook[256 + i] = 0; // just usual address
                             //0xc000 -> 0xefff
-                            for (i = 192; i < 240; ++i) this.memLook[i] = this.memLook[256 + i] = this.romOffset - 0xc000 ;
+                            for (i = 192; i < 240; ++i) this.memLook[i] = this.memLook[256 + i] = this.romOffset - 0xc000;
                             //0xf000 -> 0xffff
                             for (i = 240; i < 256; ++i) this.memLook[i] = this.memLook[256 + i] = this.osOffset - 0xf000;
 
@@ -1192,8 +1187,8 @@ Hardware:   PPIA 8255
                 this.uservia.polltime(cycles);
                 this.scheduler.polltime(cycles);
                 this.tube.execute(cycles);
-                if(model.isAtom)
-                 this.atomppia.polltime(cycles);
+                if (model.isAtom)
+                    this.atomppia.polltime(cycles);
             };
 
             // Faster, but more limited version
@@ -1205,8 +1200,8 @@ Hardware:   PPIA 8255
                 this.uservia.polltime(cycles);
                 this.scheduler.polltime(cycles);
                 this.tube.execute(cycles);
-                if(model.isAtom)
-                  this.atomppia.polltime(cycles);
+                if (model.isAtom)
+                    this.atomppia.polltime(cycles);
             };
 
             if (this.cpuMultiplier === 1 && this.videoCyclesBatch === 0) {
