@@ -18,9 +18,89 @@ define(['jsunzip', 'promise'], function (jsunzip) {
 
     exports.userKeymap = [];
 
+    /*
+
+                  &B001 - keyboard matrix column:
+                       ~b0 : SPC  [   \   ]   ^  LCK <-> ^-v Lft Rgt
+                       ~b1 : Dwn Up  CLR ENT CPY DEL  0   1   2   3
+                       ~b2 :  4   5   6   7   8   9   :   ;   <   =
+                       ~b3 :  >   ?   @   A   B   C   D   E   F   G
+                       ~b4 :  H   I   J   K   L   M   N   O   P   Q
+                       ~b5 :  R   S   T   U   V   W   X   Y   Z  ESC
+                       ~b6 :                                          Ctrl
+                       ~b7 :                                          Shift
+                              9   8   7   6   5   4   3   2   1   0
+
+     */
     exports.ATOM = {
-        RETURN: [6, 1],
-        ESCAPE: [0, 5],
+
+
+        RIGHT: [0, 0],
+        LEFT: [1, 0],
+        UP_DOWN: [2, 0],
+        LEFT_RIGHT: [3, 0],
+        LOCK: [4,0],
+
+        UP_ARROW: [5,0],
+        RIGHT_SQUARE_BRACKET: [6,0],
+        BACKSLASH: [7,0],
+        LEFT_SQUARE_BRACKET: [8,0],
+        SPACE: [9,0],
+        
+        K3: [0,1],
+        K2: [1,1],
+        K1: [2,1],
+        K0: [3,1],
+        DELETE: [4,1],
+        COPY: [5,1],
+        RETURN: [6,1],
+        CLEAR: [7,1],
+        UP: [8,1],
+        DOWN: [9,1],
+
+        EQUALS: [0,2], // AND MINUS
+        COMMA: [1,2], // AND LESS
+        SEMICOLON_PLUS: [2,2],
+        COLON_STAR: [3,2],
+        K9: [4,2],
+        K8: [5,2],
+        K7: [6,2],
+        K6: [7,2],
+        K5: [8,2],
+        K4: [9,2],
+
+        G: [0,3],
+        F: [1,3],
+        E: [2,3],
+        D: [3,3],
+        C: [4,3],
+        B: [5,3],
+        A: [6,3],
+        AT: [7,3],
+        SLASH: [8,3], // AND QUESTION MARK
+        PERIOD: [9,3],  // AND GREATER
+
+        Q: [0,4],
+        P: [1,4],
+        O: [2,4],
+        N: [3,4],
+        M: [4,4],
+        L: [5,4],
+        K: [6,4],
+        J: [7,4],
+        I: [8,4],
+        H: [9,4],
+
+        ESCAPE: [0,5],
+        Z: [1,5],
+        Y: [2,5],
+        X: [3,5],
+        W: [4,5],
+        V: [5,5],
+        U: [6,5],
+        T: [7,5],
+        S: [8,5],
+        R: [9,5],
     };
 
     exports.BBC = {
@@ -429,7 +509,288 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         keyCodes.HASH = 223;
     }
 
+
+    exports.getKeyMapAtom = function(keyLayout)
+    {
+        var keys2 = [];
+
+        // shift pressed
+        keys2[true] = {};
+
+        // shift not pressed
+        keys2[false] = {};
+
+        // shiftDown MUST be true or false (not undefined)
+        function doMap(s, colRow, shiftDown) {
+            if (keys2[shiftDown][s] && keys2[shiftDown][s] !== colRow) {
+                console.log("Warning: duplicate binding for key", (shiftDown ? "<SHIFT>" : "") + s, colRow, keys2[shiftDown][s]);
+            }
+            keys2[shiftDown][s] = colRow;
+        }
+
+        // shiftDown undefined -> map both
+        function map(s, colRow, shiftDown) {
+
+            if ((!s && s !== 0) || !colRow) {
+                console.log("error binding key", s, colRow);
+            }
+            if (typeof s === "string") {
+                s = s.charCodeAt(0);
+            }
+
+            if (shiftDown === undefined) {
+                doMap(s, colRow, true);
+                doMap(s, colRow, false);
+            } else {
+                doMap(s, colRow, shiftDown);
+            }
+        }
+
+        var ATOM = exports.ATOM;
+
+        map(keyCodes.Q, ATOM.Q);
+        map(keyCodes.W, ATOM.W);
+        map(keyCodes.E, ATOM.E);
+        map(keyCodes.R, ATOM.R);
+        map(keyCodes.T, ATOM.T);
+        map(keyCodes.Y, ATOM.Y);
+        map(keyCodes.U, ATOM.U);
+        map(keyCodes.I, ATOM.I);
+        map(keyCodes.O, ATOM.O);
+        map(keyCodes.P, ATOM.P);
+
+        map(keyCodes.A, ATOM.A);
+        map(keyCodes.S, ATOM.S);
+        map(keyCodes.D, ATOM.D);
+        map(keyCodes.F, ATOM.F);
+        map(keyCodes.G, ATOM.G);
+        map(keyCodes.H, ATOM.H);
+        map(keyCodes.J, ATOM.J);
+        map(keyCodes.K, ATOM.K);
+        map(keyCodes.L, ATOM.L);
+
+        map(keyCodes.Z, ATOM.Z);
+        map(keyCodes.X, ATOM.X);
+        map(keyCodes.C, ATOM.C);
+        map(keyCodes.V, ATOM.V);
+        map(keyCodes.B, ATOM.B);
+        map(keyCodes.N, ATOM.N);
+        map(keyCodes.M, ATOM.M);
+
+
+        // these keys are in the same place on PC and BBC keyboards
+        // including shifted characters
+        // so can be the same for "natural" and "gaming"
+        map(keyCodes.COMMA, ATOM.COMMA);
+        map(keyCodes.PERIOD, ATOM.PERIOD);
+        map(keyCodes.SLASH, ATOM.SLASH);
+        map(keyCodes.SPACE, ATOM.SPACE);
+
+        map(keyCodes.ENTER, ATOM.RETURN);
+
+        map(keyCodes.SHIFT, ATOM.SHIFT);
+        // see later map(keyCodes.SHIFT_LEFT, ATOM.SHIFT_LEFT);
+        map(keyCodes.SHIFT_RIGHT, ATOM.SHIFT);
+
+        // other keys to map to these in "game" layout too
+        map(keyCodes.LEFT, ATOM.LEFT);
+        map(keyCodes.UP, ATOM.UP);
+        map(keyCodes.RIGHT, ATOM.RIGHT);
+        map(keyCodes.DOWN, ATOM.DOWN);
+
+        if (keyLayout === "natural") {
+
+            // "natural" keyboard
+
+            map(keyCodes.SHIFT_LEFT, ATOM.SHIFT);
+
+            // US Keyboard: has Tilde on <Shift>BACK_QUOTE
+            map(keyCodes.BACK_QUOTE, isUKlayout ? ATOM.UNDERSCORE_POUND : ATOM.HAT_TILDE);
+            map(keyCodes.APOSTROPHE, isUKlayout ? ATOM.AT : ATOM.K2, true);
+            map(keyCodes.K2, isUKlayout ? ATOM.K2 : ATOM.AT, true);
+
+            // 1st row
+            map(keyCodes.K3, ATOM.UNDERSCORE_POUND, true);
+            map(keyCodes.K7, ATOM.K6, true);
+            map(keyCodes.K8, ATOM.COLON_STAR, true);
+            map(keyCodes.K9, ATOM.K8, true);
+            map(keyCodes.K0, ATOM.K9, true);
+
+            map(keyCodes.K2, ATOM.K2, false);
+            map(keyCodes.K3, ATOM.K3, false);
+            map(keyCodes.K7, ATOM.K7, false);
+            map(keyCodes.K8, ATOM.K8, false);
+            map(keyCodes.K9, ATOM.K9, false);
+            map(keyCodes.K0, ATOM.K0, false);
+
+            map(keyCodes.K1, ATOM.K1);
+            map(keyCodes.K4, ATOM.K4);
+            map(keyCodes.K5, ATOM.K5);
+            map(keyCodes.K6, ATOM.K6);
+
+            map(keyCodes.MINUS, ATOM.MINUS);
+
+            // 2nd row
+            map(keyCodes.LEFT_SQUARE_BRACKET, ATOM.LEFT_SQUARE_BRACKET);
+
+            map(keyCodes.RIGHT_SQUARE_BRACKET, ATOM.RIGHT_SQUARE_BRACKET);
+
+            // 3rd row
+
+            map(keyCodes.SEMICOLON, ATOM.SEMICOLON_PLUS);
+
+            map(keyCodes.APOSTROPHE, ATOM.COLON_STAR, false);
+
+            map(keyCodes.HASH, ATOM.HAT_TILDE); // OK for <Shift> at least
+
+            map(keyCodes.EQUALS, ATOM.SEMICOLON_PLUS); // OK for <Shift> at least
+
+            map(keyCodes.WINDOWS, ATOM.SHIFTLOCK);
+
+            map(keyCodes.END, ATOM.COPY);
+
+            map(keyCodes.F11, ATOM.COPY);
+
+            map(keyCodes.ESCAPE, ATOM.ESCAPE);
+
+            map(keyCodes.CTRL, ATOM.CTRL);
+            map(keyCodes.CTRL_LEFT, ATOM.CTRL);
+            map(keyCodes.CTRL_RIGHT, ATOM.CTRL);
+
+            map(keyCodes.CAPSLOCK, ATOM.CAPSLOCK);
+
+            map(keyCodes.DELETE, ATOM.DELETE);
+
+            map(keyCodes.BACKSPACE, ATOM.DELETE);
+
+            map(keyCodes.BACKSLASH, ATOM.PIPE_BACKSLASH);
+
+        } else if (keyLayout === "gaming") {
+            // gaming keyboard
+
+            // 1st row
+            map(keyCodes.ESCAPE, ATOM.F0);
+
+            // 2nd row
+            map(keyCodes.BACK_QUOTE, ATOM.ESCAPE);
+            map(keyCodes.K1, ATOM.K1);
+            map(keyCodes.K2, ATOM.K2);
+            map(keyCodes.K3, ATOM.K3);
+            map(keyCodes.K4, ATOM.K4);
+            map(keyCodes.K5, ATOM.K5);
+            map(keyCodes.K6, ATOM.K6);
+            map(keyCodes.K7, ATOM.K7);
+            map(keyCodes.K8, ATOM.K8);
+            map(keyCodes.K9, ATOM.K9);
+            map(keyCodes.K0, ATOM.K0);
+            map(keyCodes.MINUS, ATOM.MINUS);
+            map(keyCodes.EQUALS, ATOM.HAT_TILDE);
+            map(keyCodes.BACKSPACE, ATOM.PIPE_BACKSLASH);
+            map(keyCodes.INSERT, ATOM.LEFT);
+            map(keyCodes.HOME, ATOM.RIGHT);
+
+            // 3rd row
+            map(keyCodes.LEFT_SQUARE_BRACKET, ATOM.AT);
+            map(keyCodes.RIGHT_SQUARE_BRACKET, ATOM.LEFT_SQUARE_BRACKET);
+            // no key for ATOM.UNDERSCORE_POUND in UK
+            // see 4th row for US mapping keyCodes.BACKSLASH
+            map(keyCodes.DELETE, ATOM.UP);
+            map(keyCodes.END, ATOM.DOWN);
+
+            // 4th row
+            // no key for ATOM.CAPSLOCK (mapped to CTRL_LEFT below)
+            map(keyCodes.CAPSLOCK, ATOM.CTRL);
+            map(keyCodes.SEMICOLON, ATOM.SEMICOLON_PLUS);
+            map(keyCodes.APOSTROPHE, ATOM.COLON_STAR);
+            // UK keyboard (key missing on US)
+            map(keyCodes.HASH, ATOM.RIGHT_SQUARE_BRACKET);
+
+            // UK has extra key \| for SHIFT
+            map(keyCodes.SHIFT_LEFT, isUKlayout ? ATOM.SHIFTLOCK : ATOM.SHIFT);
+            // UK: key is between SHIFT and Z
+            // US: key is above ENTER
+            map(keyCodes.BACKSLASH, isUKlayout ? ATOM.SHIFT : ATOM.UNDERSCORE_POUND);
+
+            // 5th row
+
+            // for Zalaga
+            map(keyCodes.CTRL_LEFT, ATOM.CAPSLOCK);
+            map(keyCodes.ALT_LEFT, ATOM.CTRL);
+
+            // should be 4th row, not enough keys
+            map(keyCodes.MENU, ATOM.DELETE);
+            map(keyCodes.CTRL_RIGHT, ATOM.COPY);
+
+            // not in correct location
+            map(keyCodes.ALT_RIGHT, ATOM.SHIFTLOCK);
+            map(keyCodes.WINDOWS, ATOM.SHIFTLOCK);
+        } else {
+            // Physical, and default
+            map(keyCodes.K1, ATOM.K1);
+            map(keyCodes.K2, ATOM.K2);
+            map(keyCodes.K3, ATOM.K3);
+            map(keyCodes.K4, ATOM.K4);
+            map(keyCodes.K5, ATOM.K5);
+            map(keyCodes.K6, ATOM.K6);
+            map(keyCodes.K7, ATOM.K7);
+            map(keyCodes.K8, ATOM.K8);
+            map(keyCodes.K9, ATOM.K9);
+            map(keyCodes.K0, ATOM.K0);
+            map(keyCodes.SHIFT_LEFT, ATOM.SHIFT);
+            map(keyCodes.EQUALS, ATOM.HAT_TILDE); // ^~ on +/=
+            map(keyCodes.SEMICOLON, ATOM.SEMICOLON_PLUS); // ';' / '+'
+            map(keyCodes.MINUS, ATOM.MINUS); // '-' / '=' mapped to underscore
+            map(keyCodes.LEFT_SQUARE_BRACKET, ATOM.AT); // maps to [{
+            map(keyCodes.RIGHT_SQUARE_BRACKET, ATOM.BACKSLASH); // maps to ]}
+            map(keyCodes.COMMA, ATOM.COMMA); // ',' / '<'
+            map(keyCodes.PERIOD, ATOM.PERIOD); // '.' / '>'
+            map(keyCodes.SLASH, ATOM.SLASH); // '/' / '?'
+            map(keyCodes.WINDOWS, ATOM.SHIFTLOCK); // shift lock mapped to "windows" key
+            map(keyCodes.TAB, ATOM.TAB); // tab
+            map(keyCodes.ENTER, ATOM.RETURN); // return
+            map(keyCodes.DELETE, ATOM.DELETE); // delete
+            map(keyCodes.BACKSPACE, ATOM.DELETE); // delete
+            map(keyCodes.END, ATOM.COPY); // copy key is end
+            map(keyCodes.F11, ATOM.COPY); // copy key is end for Apple
+            map(keyCodes.SHIFT, ATOM.SHIFT); // shift
+            map(keyCodes.ESCAPE, ATOM.ESCAPE);
+            map(keyCodes.INSERT, ATOM.UP_ARROW);
+
+            map(keyCodes.CTRL, ATOM.CTRL);
+            map(keyCodes.CTRL_LEFT, ATOM.CTRL);
+            map(keyCodes.CTRL_RIGHT, ATOM.CTRL);
+            map(keyCodes.TAB, ATOM.LEFT_RIGHT);
+            map(keyCodes.CAPSLOCK, ATOM.UP_DOWN);
+            map(keyCodes.LEFT, ATOM.LEFT); // arrow left
+            map(keyCodes.UP, ATOM.UP); // arrow up
+            map(keyCodes.RIGHT, ATOM.RIGHT); // arrow right
+            map(keyCodes.DOWN, ATOM.DOWN); // arrow down
+            map(keyCodes.APOSTROPHE, ATOM.LEFT_SQUARE_BRACKET);
+            map(keyCodes.HASH, ATOM.RIGHT_SQUARE_BRACKET);
+
+            // None of this last group in great locations.
+            // But better to have them mapped at least somewhere.
+            map(keyCodes.BACK_QUOTE, ATOM.AT);
+            map(keyCodes.BACKSLASH, ATOM.PIPE_BACKSLASH);
+            map(keyCodes.PAGEUP, ATOM.UNDERSCORE_POUND);
+        }
+
+        // TODO: "game" mapping
+        // eg Master Dunjunz needs # Del 3 , * Enter
+        // https://web.archive.org/web/20080305042238/http://ATOM.nvg.org/doc/games/Dunjunz-docs.txt
+
+        // user keymapping
+        // do last (to override defaults)
+        while (exports.userKeymap.length > 0) {
+            var mapping = exports.userKeymap.pop();
+            map(keyCodes[mapping.native], ATOM[mapping.atom]);
+        }
+
+        return keys2;
+    }
+
     exports.getKeyMap = function (keyLayout) {
+
         var keys2 = [];
 
         // shift pressed
@@ -517,8 +878,7 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         map(keyCodes.SPACE, BBC.SPACE);
         map(keyCodes.TAB, BBC.TAB);
 
-        //map(keyCodes.ENTER, BBC.RETURN);
-        map(keyCodes.ENTER, ATOM.RETURN);
+        map(keyCodes.ENTER, BBC.RETURN);
 
         map(keyCodes.SHIFT, BBC.SHIFT);
         // see later map(keyCodes.SHIFT_LEFT, BBC.SHIFT_LEFT);
@@ -679,15 +1039,14 @@ define(['jsunzip', 'promise'], function (jsunzip) {
             map(keyCodes.SLASH, BBC.SLASH); // '/' / '?'
             map(keyCodes.WINDOWS, BBC.SHIFTLOCK); // shift lock mapped to "windows" key
             map(keyCodes.TAB, BBC.TAB); // tab
-//            map(keyCodes.ENTER, BBC.RETURN); // return
-            map(keyCodes.ENTER, ATOM.RETURN); // return
+            map(keyCodes.ENTER, BBC.RETURN); // return
             map(keyCodes.DELETE, BBC.DELETE); // delete
             map(keyCodes.BACKSPACE, BBC.DELETE); // delete
             map(keyCodes.END, BBC.COPY); // copy key is end
             map(keyCodes.F11, BBC.COPY); // copy key is end for Apple
             map(keyCodes.SHIFT, BBC.SHIFT); // shift
             //map(keyCodes.ESCAPE, BBC.ESCAPE); // escape
-            map(keyCodes.ESCAPE, ATOM.ESCAPE);
+            map(keyCodes.ESCAPE, BBC.ESCAPE);
 
             map(keyCodes.CTRL, BBC.CTRL);
             map(keyCodes.CTRL_LEFT, BBC.CTRL);

@@ -184,7 +184,8 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         var r = 0;
                         for (var b =0;b<16;b++)
                             r+=!(n[b])<<b;
-                        // console.log("reading "+(self.portapins & 15)+" and pressed "+n.toString(2)+" -> "+r.toString(2));
+                        // if (self.portapins & 15 == 9)
+                        //     console.log("reading "+(self.portapins & 15)+" and pressed "+n.toString(2)+" -> "+r.toString(2));
                         return r;
                     case PORTC:
                         self.recalculatePortCPins();
@@ -224,11 +225,11 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
             self.keys[i] = new Uint8Array(16);
         }
 
-        self.setKeyLayout = function (map) {
-            self.keycodeToRowCol = utils.getKeyMap(map);
+        self.setKeyLayoutA = function (map) {
+            self.keycodeToRowCol = utils.getKeyMapAtom(map);
         };
 
-        self.setKeyLayout(initialLayout);
+        self.setKeyLayoutA(initialLayout);
 
         self.keyboardEnabled = true;
 
@@ -265,6 +266,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                 return;
             }
 
+            // console.log(" keycode: " + colrow[0] +","+colrow[1]+":"+val);
             self.keys[colrow[0]][colrow[1]] = val;
             self.updateKeys();
         };
