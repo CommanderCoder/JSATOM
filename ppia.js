@@ -209,6 +209,9 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
             },
 
             recalculatePortCPins: function () {
+                // make sure REPT key is HIGH (low means pressed)
+                self.latchc |= 1<<6;
+
                 self.portcpins = self.latchc;
                 self.drivePortC();
                 self.portCUpdated();
