@@ -1,4 +1,4 @@
-define(['./teletext', './utils'], function (Teletext, utils) {
+define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils) {
     "use strict";
     const VDISPENABLE = 1 << 0,
         HDISPENABLE = 1 << 1,
@@ -62,6 +62,7 @@ define(['./teletext', './utils'], function (Teletext, utils) {
         this.ulaPal = utils.makeFast32(new Uint32Array(16));
         this.actualPal = new Uint8Array(16);
         this.teletext = new Teletext();
+        this.video6847 = new Video6847();
         this.cursorOn = false;
         this.cursorOff = false;
         this.cursorOnThisFrame = false;
@@ -580,6 +581,7 @@ define(['./teletext', './utils'], function (Teletext, utils) {
             var mask = (HDISPENABLE | VDISPENABLE | USERDISPENABLE);
             var disptmg = ((this.dispEnabled & mask) === mask);
             this.teletext.setDISPTMG(disptmg);
+            this.video6847.setDISPTMG(disptmg);
         };
 
         this.dispEnableSet = function (flag) {
@@ -687,6 +689,8 @@ define(['./teletext', './utils'], function (Teletext, utils) {
                     this.ppia.setVBlankInt(this.inVSync);
                     // this.sysvia.setVBlankInt(this.inVSync);
                     // this.teletext.setDEW(this.inVSync);
+                    this.video6847.setDEW(this.inVSync);
+
                 }
 
                 // once the whole of the Vertical and Horizontal is complete then do this
@@ -704,7 +708,14 @@ define(['./teletext', './utils'], function (Teletext, utils) {
                         offset = (offset * 1024) + this.bitmapX;
 
                        if ((this.dispEnabled & EVERYTHINGENABLED) === EVERYTHINGENABLED) {
-                            this.blitFbAtom(dat, offset, this.pixelsPerChar, doubledLines);
+
+                           if (true)
+                           {
+                               this.video6847.blitChar(this.fb32, dat, offset, this.pixelsPerChar);
+                           }
+                           else {
+                               this.blitFbAtom(dat, offset, this.pixelsPerChar, doubledLines);
+                           }
                        }
                     }
                 }
