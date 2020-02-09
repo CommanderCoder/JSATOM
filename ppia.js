@@ -179,13 +179,20 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         self.recalculatePortBPins();
                         // return the keys based on values in porta
                         // console.log("read portb "+self.portbpins);
-                        // expecting 1 means unpressed, 0 means pressed
+                        // expecting 1 means unpressed, 0 means pressed: but keymap has 1 if pressed and 0 if unpressed
                         var n = self.keys[self.portapins & 15];
                         var r = 0;
                         for (var b =0;b<16;b++)
                             r+=!(n[b])<<b;
                         // if (self.portapins & 15 == 9)
                         //     console.log("reading "+(self.portapins & 15)+" and pressed "+n.toString(2)+" -> "+r.toString(2));
+
+                        // for CTRL and SHIFT which doesn't use porta - they just set bit 6 and bit 7
+                        // the keymap assumes CTRL and SHIFT read from row0
+                        // fixup CTRL and SHIFT regardless of the row being read
+                        var ctrl_shift = !self.keys[0][7]<<7 + !self.keys[0][6]<<6 ;
+                        r |= (ctrl_shift&0xc);
+
                         return r;
                     case PORTC:
                         self.recalculatePortCPins();

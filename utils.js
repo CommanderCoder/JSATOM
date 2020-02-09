@@ -101,6 +101,11 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         T: [7,5],
         S: [8,5],
         R: [9,5],
+
+
+        // special codes
+        CTRL: [0,6],
+        SHIFT: [0,7],
     };
 
     exports.BBC = {
