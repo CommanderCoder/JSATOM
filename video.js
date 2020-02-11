@@ -230,17 +230,6 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
             }
         };
 
-        // plot a row of white pixels for now
-        this.blitFbAtom = function (dat, destOffset, numPixels, doubledY) {
-            destOffset |= 0;
-            numPixels |= 0;
-            var fb32 = this.fb32;
-            var i = 0;
-            for (i = 0; i < numPixels; ++i) {
-                fb32[destOffset + i] = ((dat>>>i)&0x1)?0xffffffff:0x0; //white  - see 'collook'
-            }
-        };
-
         this.handleCursor = function (offset) {
             if (this.cursorOnThisFrame && (this.ulactrl & this.cursorTable[this.cursorDrawIndex])) {
                 var i;
@@ -708,14 +697,8 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
                         offset = (offset * 1024) + this.bitmapX;
 
                        if ((this.dispEnabled & EVERYTHINGENABLED) === EVERYTHINGENABLED) {
-
-                           if (true)
-                           {
-                               this.video6847.blitChar(this.fb32, dat, offset, this.pixelsPerChar);
-                           }
-                           else {
-                               this.blitFbAtom(dat, offset, this.pixelsPerChar, doubledLines);
-                           }
+                           var mode = (this.ppia.portapins & 0xf0) >>> 4;
+                           this.video6847.blitChar(this.fb32, dat, offset, this.pixelsPerChar, mode);
                        }
                     }
                 }
