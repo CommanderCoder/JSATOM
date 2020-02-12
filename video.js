@@ -606,15 +606,68 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
         // 17	Light Pen Address (High)
         //
 
+
+
+        // TELETEXT
+        // this.regs[0] = 0x3f;
+        // this.regs[1] = 0x28;
+        // this.regs[2] = 0x33; // horizontals
+        // this.regs[3] = 0x24; //
+        // this.regs[4] = 0x1e; // vertical position
+        // this.regs[5] = 0x02; // offset from top of each scanline
+        // this.regs[6] = 0x19;
+        // this.regs[7] = 0x1c;
+        // this.regs[8] = 0x93;
+        // this.regs[9] = 0x12;
+        // this.regs[10] = 0x72;
+        // this.regs[11] = 0x13;
+        // this.regs[12] = 0x80;
+        // this.regs[13] = 0x00;
+        // this.regs[14] = 0x29;
+        // this.regs[15] = 0x19;
+        // this.hpulseWidth = this.regs[3]&0xf;
+        // this.vpulseWidth = (this.regs[3]&0xf0)>>>4;
+        // this.teletextMode = true;
+
+        //MODE5
+        // this.regs[0] = 0x3f;
+        // this.regs[1] = 0x28;
+        // this.regs[2] = 0x31; // horizontals
+        // this.regs[3] = 0x24; //
+        // this.regs[4] = 0x26;  // vertical position
+        // this.regs[5] = 0x00; // offset from top of each scanline
+        // this.regs[6] = 0x20;
+        // this.regs[7] = 0x23;
+        // this.regs[8] = 0x01;
+        // this.regs[9] = 0x07;
+        // this.regs[10] = 0x67;
+        // this.regs[11] = 0x08;
+        // this.regs[12] = 0x0b;
+        // this.regs[13] = 0x00;
+        // this.regs[14] = 0x0b;
+        // this.regs[15] = 0x02;
+
+
         // ATOM uses 6847 chip
         this.polltimeAtom = function (clocks) {
 
             this.dispEnableSet(USERDISPENABLE);
-            var regs0 = 0x40, regs1 = 0x20, regs2 = 0x22; // horizontals
-            var regs6 = 0x10, regs7 = 0x10;
-            var regs4 = 0x12; // vertical position
-            var regs5 = 0x03; // offset from top of each scanline
+
+            // var regs0 = 0x40, regs1 = 0x20, regs2 = 0x22; // horizontals
+            // var regs6 = 0x10, regs7 = 0x10;
+            // var regs4 = 0x12; // vertical position
+            // var regs5 = 0x03; // offset from top of each scanline
+            // var regs9 = 0x0b;
+
+
+            var regs0 = 0x40, regs1 = 0x28, regs2 = 0x22; // horizontals
+            var regs4 = 0x26, regs5 = 0x03, regs6 = 0x20, regs7 = 0x23;  // verticals
+
+            //regs4 ; // vertical position
+            //regs5 ; // offset from top of each scanline
             var regs9 = 0x0b;
+
+
             this.regs[9] = regs9;
 
 
