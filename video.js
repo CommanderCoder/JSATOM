@@ -654,14 +654,14 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
             this.dispEnableSet(USERDISPENABLE);
 
             // var regs0 = 0x40, regs1 = 0x20, regs2 = 0x22; // horizontals
-            // var regs6 = 0x10, regs7 = 0x10;
             // var regs4 = 0x12; // vertical position
             // var regs5 = 0x03; // offset from top of each scanline
+            // var regs6 = 0x10, regs7 = 0x10;
             // var regs9 = 0x0b;
 
 
-            var regs0 = 0x40, regs1 = 0x28, regs2 = 0x22; // horizontals
-            var regs4 = 0x26, regs5 = 0x03, regs6 = 0x20, regs7 = 0x23;  // verticals
+            var regs0 = 0x3f, regs1 = 0x20, regs2 = 0x2e; // horizontals
+            var regs4 = 0x14, regs5 = 0x00, regs6 = 0x10, regs7 = 0x10;  // verticals
 
             //regs4 ; // vertical position
             //regs5 ; // offset from top of each scanline
@@ -669,8 +669,9 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
 
 
             this.regs[9] = regs9;
-
-
+            var val = 0xC5; // bbc mode 5
+            this.pixelsPerChar = (val & 0x10) ? 8 : 16;
+            this.halfClock = !(val & 0x10);
             while (clocks--) {
 
                 this.oddClock = !this.oddClock;
@@ -678,6 +679,10 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
                 this.bitmapX += 8;
 
                 // my version - just grab some data and display it as raw pixels
+
+                if (this.halfClock && !this.oddClock) {
+                    continue;
+                }
 
                 // Handle HSync
                 if (this.inHSync)

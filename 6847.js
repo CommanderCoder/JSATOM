@@ -179,7 +179,7 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         var chardef = this.curGlyphs[data  * 12 + scanline];
 
 
-
+        var pixelsPerBit = numPixels/8;
 
         destOffset |= 0;
         numPixels |= 0;
@@ -187,7 +187,8 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         var i = 0;
         for (i = 0; i < numPixels; ++i) {
             var n = numPixels-1 - i; // pixels in reverse order
-            fb32[destOffset + n] = ((chardef>>>i)&0x1)?0xffffffff:0x0; //white  - see 'collook'
+            var j = i / pixelsPerBit;
+            fb32[destOffset + n] = ((chardef>>>j)&0x1)?0xffffffff:0x0; //white  - see 'collook'
         }
 
     }
