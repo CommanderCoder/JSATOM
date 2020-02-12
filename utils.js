@@ -58,7 +58,7 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         UP: [8,1],
         DOWN: [9,1],
 
-        EQUALS: [0,2], // AND MINUS
+        MINUS: [0,2], // AND EQUALS
         COMMA: [1,2], // AND LESS
         SEMICOLON_PLUS: [2,2],
         COLON_STAR: [3,2],
@@ -870,7 +870,7 @@ define(['jsunzip', 'promise'], function (jsunzip) {
             map(keyCodes.K9, ATOM.K9);
             map(keyCodes.K0, ATOM.K0);
             map(keyCodes.SHIFT_LEFT, ATOM.SHIFT);
-            map(keyCodes.EQUALS, ATOM.HAT_TILDE); // ^~ on +/=
+            map(keyCodes.EQUALS, ATOM.COLON_STAR); // =+ on : *
             map(keyCodes.SEMICOLON, ATOM.SEMICOLON_PLUS); // ';' / '+'
             map(keyCodes.MINUS, ATOM.MINUS); // '-' / '=' mapped to underscore
             map(keyCodes.LEFT_SQUARE_BRACKET, ATOM.AT); // maps to [{

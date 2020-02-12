@@ -797,53 +797,35 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 }
             }
 
-            var sendCharHook = processor.debugInstruction.add(function nextCharHook() {
+            var sendCharHook = processor.debugInstruction.add(function nextCharHookAtom() {
                 var millis = processor.cycleSeconds * 1000 + processor.currentCycles / (clocksPerSecond / 1000);
                 if (millis < nextKeyMillis) {
                     return;
                 }
 
                 if (lastChar && lastChar !== utils.ATOM.SHIFT) {
-                    if (processor.model.isAtom)
-                    {
-                        console.log(">> "+lastChar);
-                        processor.atomppia.keyToggleRaw(lastChar);
-                    }
-                    else
-                    {
-                        processor.sysvia.keyToggleRaw(lastChar);
-                    }
+                    processor.atomppia.keyToggleRaw(lastChar);
 
+                    //debounce every key on atom
+                    lastChar = undefined;
+                    nextKeyMillis = millis + 20;
+                    return;
                 }
 
                 if (keysToSend.length === 0) {
                     // Finished
-                    if (processor.model.isAtom)
-                    {
-                        processor.atomppia.enableKeyboard();
-                    }
-                    else
-                    {
-                        processor.sysvia.enableKeyboard();
-                    }
+                    processor.atomppia.enableKeyboard();
                     sendCharHook.remove();
                     return;
                 }
 
                 var ch = keysToSend[0];
-                var debounce = lastChar === ch;
+                var debounce = lastChar === ch && lastChar[0] === ch[0] && lastChar[1] === ch[1];
                 lastChar = ch;
                 var clocksPerMilli = clocksPerSecond / 1000;
                 if (debounce) {
                     lastChar = undefined;
-                    if (processor.model.isAtom)
-                    {
-                        nextKeyMillis = millis + 1000;
-                    }
-                    else
-                    {
-                        nextKeyMillis = millis + 30;
-                    }
+                    nextKeyMillis = millis + 30;
                     return;
                 }
 
@@ -852,14 +834,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                     time = lastChar;
                     lastChar = undefined;
                 } else {
-                    if (processor.model.isAtom)
-                    {
-                        processor.atomppia.keyToggleRaw(lastChar);
-                    }
-                    else
-                    {
-                        processor.sysvia.keyToggleRaw(lastChar);
-                    }
+                    processor.atomppia.keyToggleRaw(lastChar);
                 }
 
                 // remove first character
