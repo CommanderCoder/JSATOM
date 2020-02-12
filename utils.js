@@ -218,6 +218,134 @@ define(['jsunzip', 'promise'], function (jsunzip) {
 
     };
 
+
+    exports.stringToATOMKeys = function(str) {
+        var ATOM = exports.ATOM;
+        var array = [];
+        var i;
+        var shiftState = false;
+        var capsLockState = true;
+        for (i = 0; i < str.length; ++i) {
+            var c = str.charCodeAt(i);
+            var charStr = str.charAt(i);
+            var atomKey = null;
+            var needsShift = false;
+            var needsCapsLock = true;
+            if (c >= 65 && c <= 90) {
+                // A-Z
+                atomKey = ATOM[charStr];
+            } else if (c >= 97 && c <= 122) {
+                // a-z
+                charStr = String.fromCharCode(c - 32);
+                atomKey = ATOM[charStr];
+                needsCapsLock = false;
+            } else if (c >= 48 && c <= 57) {
+                // 0-9
+                atomKey = ATOM["K" + charStr];
+            } else if (c >= 33 && c <= 41) {
+                // ! to )
+                charStr = String.fromCharCode(c + 16);
+                atomKey = ATOM["K" + charStr];
+                needsShift = true;
+            } else {
+                switch (charStr) {
+                    case '\n':
+                        atomKey = ATOM.RETURN;
+                        break;
+                    case '\t':
+                        atomKey = ATOM.TAB;
+                        break;
+                    case ' ':
+                        atomKey = ATOM.SPACE;
+                        break;
+                    case '-':
+                        atomKey = ATOM.MINUS;
+                        break;
+                    case '=':
+                        atomKey = ATOM.MINUS; needsShift = true;
+                        break;
+                    case '^':
+                        atomKey = ATOM.HAT_TILDE;
+                        break;
+                    case '~':
+                        atomKey = ATOM.HAT_TILDE; needsShift = true;
+                        break;
+                    case '\\':
+                        atomKey = ATOM.PIPE_BACKSLASH;
+                        break;
+                    case '|':
+                        atomKey = ATOM.PIPE_BACKSLASH; needsShift = true;
+                        break;
+                    case '@':
+                        atomKey = ATOM.AT;
+                        break;
+                    case '[':
+                        atomKey = ATOM.LEFT_SQUARE_BRACKET;
+                        break;
+                    case '{':
+                        atomKey = ATOM.LEFT_SQUARE_BRACKET; needsShift = true;
+                        break;
+                    case '_':
+                        atomKey = ATOM.UNDERSCORE_POUND;
+                        break;
+                    case ';':
+                        atomKey = ATOM.SEMICOLON_PLUS;
+                        break;
+                    case '+':
+                        atomKey = ATOM.SEMICOLON_PLUS; needsShift = true;
+                        break;
+                    case ':':
+                        atomKey = ATOM.COLON_STAR;
+                        break;
+                    case '*':
+                        atomKey = ATOM.COLON_STAR; needsShift = true;
+                        break;
+                    case ']':
+                        atomKey = ATOM.RIGHT_SQUARE_BRACKET;
+                        break;
+                    case '}':
+                        atomKey = ATOM.RIGHT_SQUARE_BRACKET; needsShift = true;
+                        break;
+                    case ',':
+                        atomKey = ATOM.COMMA;
+                        break;
+                    case '<':
+                        atomKey = ATOM.COMMA; needsShift = true;
+                        break;
+                    case '.':
+                        atomKey = ATOM.PERIOD;
+                        break;
+                    case '>':
+                        atomKey = ATOM.PERIOD; needsShift = true;
+                        break;
+                    case '/':
+                        atomKey = ATOM.SLASH;
+                        break;
+                    case '?':
+                        atomKey = ATOM.SLASH; needsShift = true;
+                        break;
+                }
+            }
+
+            if (!atomKey) continue;
+
+            if ((needsShift && !shiftState) || (!needsShift && shiftState)) {
+                array.push(ATOM.SHIFT);
+                shiftState = !shiftState;
+            }
+            if ((needsCapsLock && !capsLockState) || (!needsCapsLock && capsLockState)) {
+                array.push(ATOM.CAPSLOCK);
+                capsLockState = !capsLockState;
+            }
+            array.push(atomKey);
+        }
+
+        if (shiftState) array.push(ATOM.SHIFT);
+        if (!capsLockState) array.push(ATOM.CAPSLOCK);
+        return array;
+    };
+
+
     exports.stringToBBCKeys = function(str) {
         var BBC = exports.BBC;
         var array = [];

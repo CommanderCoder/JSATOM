@@ -36,6 +36,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         var keyLayout = window.localStorage.keyLayout || "physical";
 
         var BBC = utils.BBC;
+        var ATOM = utils.ATOM;
         var keyCodes = utils.keyCodes;
         var emuKeyHandlers = {};
         var cpuMultiplier = 1;
@@ -458,7 +459,14 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         var $pastetext = $('#paste-text');
         $pastetext.on('paste', function (event) {
             var text = event.originalEvent.clipboardData.getData('text/plain');
-            sendRawKeyboardToBBC(utils.stringToBBCKeys(text), true);
+            if (processor.model.isAtom)
+            {
+                sendRawKeyboardToATOM(utils.stringToATOMKeys(text), true);
+            }
+            else
+            {
+                sendRawKeyboardToBBC(utils.stringToBBCKeys(text), true);
+            }
         });
         $pastetext.on('dragover', function (event) {
             event.preventDefault();
@@ -758,6 +766,100 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                     lastChar = undefined;
                 } else {
                     processor.sysvia.keyToggleRaw(lastChar);
+                }
+
+                // remove first character
+                keysToSend.shift();
+
+                nextKeyMillis = millis + time;
+            });
+        }
+
+        function sendRawKeyboardToATOM(keysToSend, checkCapsAndShiftLocks) {
+            var lastChar;
+            var nextKeyMillis = 0;
+            if (processor.model.isAtom)
+            {
+                processor.atomppia.disableKeyboard();
+            }
+            else
+            {
+                processor.sysvia.disableKeyboard();
+            }
+
+            if (checkCapsAndShiftLocks) {
+                var toggleKey = null;
+                if (!processor.sysvia.capsLockLight) toggleKey = ATOM.CAPSLOCK;
+                else if (processor.sysvia.shiftLockLight) toggleKey = ATOM.SHIFTLOCK;
+                if (toggleKey) {
+                    keysToSend.unshift(toggleKey);
+                    keysToSend.push(toggleKey);
+                }
+            }
+
+            var sendCharHook = processor.debugInstruction.add(function nextCharHook() {
+                var millis = processor.cycleSeconds * 1000 + processor.currentCycles / (clocksPerSecond / 1000);
+                if (millis < nextKeyMillis) {
+                    return;
+                }
+
+                if (lastChar && lastChar !== utils.ATOM.SHIFT) {
+                    if (processor.model.isAtom)
+                    {
+                        console.log(">> "+lastChar);
+                        processor.atomppia.keyToggleRaw(lastChar);
+                    }
+                    else
+                    {
+                        processor.sysvia.keyToggleRaw(lastChar);
+                    }
+
+                }
+
+                if (keysToSend.length === 0) {
+                    // Finished
+                    if (processor.model.isAtom)
+                    {
+                        processor.atomppia.enableKeyboard();
+                    }
+                    else
+                    {
+                        processor.sysvia.enableKeyboard();
+                    }
+                    sendCharHook.remove();
+                    return;
+                }
+
+                var ch = keysToSend[0];
+                var debounce = lastChar === ch;
+                lastChar = ch;
+                var clocksPerMilli = clocksPerSecond / 1000;
+                if (debounce) {
+                    lastChar = undefined;
+                    if (processor.model.isAtom)
+                    {
+                        nextKeyMillis = millis + 1000;
+                    }
+                    else
+                    {
+                        nextKeyMillis = millis + 30;
+                    }
+                    return;
+                }
+
+                var time = 50;
+                if (typeof lastChar === "number") {
+                    time = lastChar;
+                    lastChar = undefined;
+                } else {
+                    if (processor.model.isAtom)
+                    {
+                        processor.atomppia.keyToggleRaw(lastChar);
+                    }
+                    else
+                    {
+                        processor.sysvia.keyToggleRaw(lastChar);
+                    }
                 }
 
                 // remove first character
