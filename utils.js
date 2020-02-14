@@ -39,7 +39,7 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         LEFT: [1, 0],
         UP_DOWN: [2, 0],
         LEFT_RIGHT: [3, 0],
-        LOCK: [4,0],
+        CAPSLOCK: [4,0],  //LOCK
 
         UP_ARROW: [5,0],
         RIGHT_SQUARE_BRACKET: [6,0],
@@ -893,7 +893,7 @@ define(['jsunzip', 'promise'], function (jsunzip) {
             map(keyCodes.CTRL_LEFT, ATOM.CTRL);
             map(keyCodes.CTRL_RIGHT, ATOM.CTRL);
             map(keyCodes.TAB, ATOM.LEFT_RIGHT);
-            map(keyCodes.CAPSLOCK, ATOM.UP_DOWN);
+            map(keyCodes.CAPSLOCK, ATOM.CAPSLOCK);
             map(keyCodes.LEFT, ATOM.LEFT); // arrow left
             map(keyCodes.UP, ATOM.UP); // arrow up
             map(keyCodes.RIGHT, ATOM.RIGHT); // arrow right

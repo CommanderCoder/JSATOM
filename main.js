@@ -778,24 +778,18 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         function sendRawKeyboardToATOM(keysToSend, checkCapsAndShiftLocks) {
             var lastChar;
             var nextKeyMillis = 0;
-            if (processor.model.isAtom)
-            {
-                processor.atomppia.disableKeyboard();
-            }
-            else
-            {
-                processor.sysvia.disableKeyboard();
-            }
+            processor.atomppia.disableKeyboard();
 
-            if (checkCapsAndShiftLocks) {
-                var toggleKey = null;
-                if (!processor.sysvia.capsLockLight) toggleKey = ATOM.CAPSLOCK;
-                else if (processor.sysvia.shiftLockLight) toggleKey = ATOM.SHIFTLOCK;
-                if (toggleKey) {
-                    keysToSend.unshift(toggleKey);
-                    keysToSend.push(toggleKey);
-                }
-            }
+            // // assumes lock is ON so toggle it on (then off) before starting the send..
+            // if (checkCapsAndShiftLocks) {
+            //     var toggleKey = null;
+            //     if (!processor.sysvia.capsLockLight) toggleKey = ATOM.CAPSLOCK;
+            //     else if (processor.sysvia.shiftLockLight) toggleKey = ATOM.SHIFTLOCK;
+            //     if (toggleKey) {
+            //         keysToSend.unshift(toggleKey);
+            //         keysToSend.push(toggleKey);
+            //     }
+            // }
 
             var sendCharHook = processor.debugInstruction.add(function nextCharHookAtom() {
                 var millis = processor.cycleSeconds * 1000 + processor.currentCycles / (clocksPerSecond / 1000);
@@ -808,7 +802,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
 
                     //debounce every key on atom
                     lastChar = undefined;
-                    nextKeyMillis = millis + 20;
+                    nextKeyMillis = millis + 60;
                     return;
                 }
 
