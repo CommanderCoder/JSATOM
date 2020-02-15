@@ -239,8 +239,19 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
     Video6847.prototype.blitChar = function ( buf, data, destOffset, numPixels, mode)
     {
         var scanline = this.scanlineCounter;
+
+        var inv = false;
+        if ((data&0x80)==0x80)
+        {
+            data &= 0x7f;
+            inv = true;
+        }
+
         //bitpattern for chars is in rows; each char is 12 rows deep
         var chardef = this.curGlyphs[data  * 12 + scanline];
+
+        if (inv)
+            chardef = ~chardef;
 
         numPixels |= 0;
 
