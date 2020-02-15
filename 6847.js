@@ -114,6 +114,11 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 
 */
 
+    const MODE_AG = 0x80,
+        MODE_GM2  = 0x40,
+        MODE_GM1  = 0x20,
+        MODE_GM0  = 0x10;
+
 
 
     function Video6847()
@@ -122,6 +127,9 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         this.levelDEW = false;
         this.levelDISPTMG = false;
 
+        this.collook = utils.makeFast32(new Uint32Array([
+            0xff000000, 0xff0000ff, 0xff00ff00, 0xff00ffff,
+            0xffff0000, 0xffff00ff, 0xffffff00, 0xffffffff]));
 
         this.init = function() {
             this.curGlyphs = fontData.makeCharsAtom();
@@ -173,16 +181,73 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
     };
 
 
+
+    Video6847.prototype.blitPixels = function ( buf, data, destOffset, mode)
+    {
+        var scanline = this.scanlineCounter;
+        // bitpattern from data is either 4 or 8 pixels in raw graphics
+        // either white and black
+        // or 3 colours and black (in pairs of bits)
+        mode |= 0x70;
+
+        var bitdef = data;
+        var xscale = 4;
+        var yscale = 3;
+        var bpp = 2;
+        var colour = 0xffffffff; //white  - see 'collook'  // alpha, blue, green, red
+        if (mode == 0)
+        {
+
+        }
+        else
+        {
+            xscale = 1;
+            yscale = 1;
+            bpp = 1;
+            colour = 0xff00ff00;
+        }
+// MODE NEED TO CHANGE THE RASTER SCAN
+        // currently 32 x 16 - 256 x 192 (with 12 lines per row)
+
+        // can get wide with 16 pixels
+
+        destOffset |= 0;
+        var fb32 = buf;
+        var i = 0;
+
+        // 8 or 4 bits
+        var pixelsPerBit = 2;
+        var numPixels = 8*pixelsPerBit;
+        for (i = 0; i < numPixels/bpp; i++) {
+            var n = (numPixels/bpp) - 1 - i; // pixels in reverse order
+            // get bits in pairs or singles
+            var j = i*bpp;
+            j=j/pixelsPerBit;
+            // get both bits
+            var cval = (bitdef>>>j)&0x11;
+            // get just one bit
+            if (bpp==1)
+                cval &= 0x1;
+
+            fb32[destOffset + n] = (cval!=0)?colour:0x0;
+        }
+
+    }
+
+
+
     Video6847.prototype.blitChar = function ( buf, data, destOffset, numPixels, mode)
     {
         var scanline = this.scanlineCounter;
+        //bitpattern for chars is in rows; each char is 12 rows deep
         var chardef = this.curGlyphs[data  * 12 + scanline];
 
+        numPixels |= 0;
 
+        // can get wide with 16 pixels
         var pixelsPerBit = numPixels/8;
 
         destOffset |= 0;
-        numPixels |= 0;
         var fb32 = buf;
         var i = 0;
         for (i = 0; i < numPixels; ++i) {
@@ -195,3 +260,43 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 
     return Video6847;
 });
+
+
+
+/* Video modes:
+Alpha internal
+Alpha external
+SemiGraphics Four  0011 CLEAR 1
+SemiGraphics Six   0111 CLEAR 2
+
+000
+Colour Graphics 1 - 8 colours (CSS/C1/C0)  - 64x64
+1024 bytes - 2bpp (4x3)  - 4 pixels x 3 rows
+
+001
+Resolution Graphics 1 - 4 colours (Lx) - 128x64
+1024 bytes - 1bpp (3x3)
+
+010
+Colour Graphics 2 - 8 colours (CSS/C1/C0) - 128x64
+2048 bytes - 2bpp (3x3)
+1011  CLEAR 3
+Resolution Graphics 2 - 4 colours (Lx) - 128x96
+1536 bytes - 1bpp (2x2)
+
+100
+Colour Graphics 3  - 8 colours (CSS/C1/C0) - 128x96
+3072 bytes - 2bpp (2x2)
+101
+Resolution Graphics 3 - 4 colours (Lx)- 128x192
+3072 bytes - 1bpp (2x1)
+
+110
+Colour Graphics 6 - 8 colours (CSS/C1/C0) - 128x192
+6144 bytes - 2bpp (4x1)
+1111  CLEAR 4
+Resolution Graphics 6 - 4 colours (Lx) 256x192
+6144 bytes - 1bpp  (8x1)
+
+
+ */

@@ -273,7 +273,7 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
 
         // atom video memory is 0x8000->0x9fff (8k but only bottom 6k used)
         this.readVideoMemAtom = function () {
-            var memAddr = this.addr & 0x17ff; //6k
+            var memAddr = this.addr & 0x1fff; //6k
             memAddr |= 0x8000;
             return this.cpu.videoRead(memAddr);
 
@@ -309,7 +309,7 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
         };
 
         this.endofCharacterLineAtom = function () {
-            this.vertCounter = (this.vertCounter + 1) & 0x7f;
+            this.vertCounter = (this.vertCounter + 1) & 0xff;  //0x7f - 127 / 0xff - 255
 
             this.scanlineCounter = 0;
             this.hadVSyncThisRow = false;
@@ -665,7 +665,17 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
 
             //regs4 ; // vertical position
             //regs5 ; // offset from top of each scanline
-            var regs9 = 0x0b;
+            var regs9 = 0x0b; // this is the number of LINES per character
+            // in mode 1111 this should be 1
+            var mode = (this.ppia.portapins & 0xf0);
+            if ((mode & 0xf0) == 0xf0)
+            {
+                regs9 = 0x0; //1  - scanlines per char
+
+                regs4 = 0xff; //0x26 .38
+                regs6 = 0xc0; //0x20 .32   //192 0xc0
+                regs7 = 0xc0; //0x23 .35
+            }
 
 
             this.regs[9] = regs9;
@@ -744,7 +754,7 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
                 var insideBorder = (this.dispEnabled & (HDISPENABLE | VDISPENABLE)) === (HDISPENABLE | VDISPENABLE);
                 if (insideBorder)
                 {
-                    // read from video memory - uses scanlineCounter (0 .. 7) and (this.addr << 3)
+                    // read from video memory - uses this.addr
                     var dat = this.readVideoMemAtom();
 
                     //
@@ -755,8 +765,11 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
                         offset = (offset * 1024) + this.bitmapX;
 
                        if ((this.dispEnabled & EVERYTHINGENABLED) === EVERYTHINGENABLED) {
-                           var mode = (this.ppia.portapins & 0xf0) >>> 4;
-                           this.video6847.blitChar(this.fb32, dat, offset, this.pixelsPerChar, mode);
+                           if ((mode & 0x80 ) == 0) // MODE_AG
+                               // TODO: Add in the INV, INTEXT, CSS modifiers to mode
+                               this.video6847.blitChar(this.fb32, dat, offset, this.pixelsPerChar, mode);
+                           else
+                               this.video6847.blitPixels(this.fb32, dat, offset, mode);
                        }
                     }
                 }
