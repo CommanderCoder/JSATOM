@@ -88,9 +88,9 @@ b002    4 2.4kHz input, 5 cas input, 6 REPT key, 7 60 Hz input
      1   X       X    X    0    1    0  Graphics CG2 (128x64x4)   (32 bpr)
      1   X       X    X    0    1    1  Graphics RG2 (128x96x2)   (16 bpr)
      1   X       X    X    1    0    0  Graphics CG3 (128x96x4)   (32 bpr)
-     1   X       X    X    1    0    1  Graphics RG3 (128x192x2)  (16 bpr)
-     1   X       X    X    1    1    0  Graphics CG6 (128x192x4)  (32 bpr)
-     1   X       X    X    1    1    1  Graphics RG6 (256x192x2)  (32 bpr)
+     1   X       X    X    1    0    1  Graphics RG3 (128x192x2)  (16 bpr)  #b0
+     1   X       X    X    1    1    0  Graphics CG6 (128x192x4)  (32 bpr)  #d0
+     1   X       X    X    1    1    1  Graphics RG6 (256x192x2)  (32 bpr)  #f0
 
 http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 
@@ -188,23 +188,65 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         // bitpattern from data is either 4 or 8 pixels in raw graphics
         // either white and black
         // or 3 colours and black (in pairs of bits)
-        mode |= 0x70;
+        mode |= 0;
 
         var bitdef = data;
         var xscale = 4;
-        var yscale = 3;
         var bpp = 2;
         var colour = 0xffffffff; //white  - see 'collook'  // alpha, blue, green, red
-        if (mode == 0)
-        {
-
-        }
-        else
+        if (mode == 0xf0) //4
         {
             xscale = 1;
-            yscale = 1;
             bpp = 1;
             colour = 0xff00ff00;
+        }
+        else if (mode == 0xd0) //4a
+        {
+            xscale = 2;
+            bpp = 2;
+            colour = 0xffff0000;
+
+        }
+        else if (mode == 0xb0)  //3
+        {
+            xscale = 1;
+            bpp = 1;
+            colour = 0xff0000ff;
+
+        }
+        else if (mode == 0x90) //3a
+        {
+            xscale = 1;
+            bpp = 1;
+            colour = 0xffffffff;
+
+        }
+        else if (mode == 0x70) //2
+        {
+            xscale = 1;
+            bpp = 1;
+            colour = 0xffffffff;
+
+        }
+        else if (mode == 0x50) //2a
+        {
+            xscale = 1;
+            bpp = 1;
+            colour = 0xffffffff;
+
+        }
+        else if (mode == 0x30) //1
+        {
+            xscale = 4;
+            bpp = 1;
+            colour = 0xffffffff;
+
+        }
+        else if (mode == 0x10)  //1a
+        {
+            xscale = 1;
+            bpp = 1;
+            colour = 0xffffff00;
         }
 // MODE NEED TO CHANGE THE RASTER SCAN
         // currently 32 x 16 - 256 x 192 (with 12 lines per row)
@@ -216,21 +258,41 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         var i = 0;
 
         // 8 or 4 bits
-        var pixelsPerBit = 2;
-        var numPixels = 8*pixelsPerBit;
-        for (i = 0; i < numPixels/bpp; i++) {
-            var n = (numPixels/bpp) - 1 - i; // pixels in reverse order
-            // get bits in pairs or singles
-            var j = i*bpp;
-            j=j/pixelsPerBit;
-            // get both bits
-            var cval = (bitdef>>>j)&0x11;
-            // get just one bit
-            if (bpp==1)
-                cval &= 0x1;
+        // var pixelsPerBit = 2*xscale;  // draw two,four pixels for each bit in the data to fill the width.
+        // var  numPixels = 8*pixelsPerBit;
+        // for (i = 0; i < numPixels/bpp; i++) {
+        //     var n = (numPixels/bpp) - 1 - i; // pixels in reverse order
+        //     // get bits in pairs or singles
+        //     var j = i*bpp;
+        //     j=j/pixelsPerBit;
+        //     // get both bits
+        //     var cval = (bitdef>>>j)&0x11;
+        //     // get just one bit
+        //     if (bpp==1)
+        //         cval &= 0x1;
+        //
+        //     fb32[destOffset + n] = (cval!=0)?colour:0x0;
+        // }
 
-            fb32[destOffset + n] = (cval!=0)?colour:0x0;
+        var numPixels = 16*xscale;  //per char
+        var pixelsPerBit = numPixels/8;  // draw two,four pixels for each bit in the data to fill the width.
+
+        for (i = 0; i < numPixels; i++) {
+            var n = (numPixels) - 1 - i; // pixels in reverse order
+
+            // get bits in pairs or singles
+            var j = i / pixelsPerBit;
+
+            // get both bits
+            var cval = (bitdef>>>j)&0x03;
+
+            // get just one bit
+            if (bpp == 1)
+                cval &= 0x01;
+
+            fb32[destOffset + n] = fb32[destOffset + n + 1024] = (cval!=0)?colour:0x0;
         }
+
 
     }
 
@@ -264,7 +326,9 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         for (i = 0; i < numPixels; ++i) {
             var n = numPixels-1 - i; // pixels in reverse order
             var j = i / pixelsPerBit;
-            fb32[destOffset + n] = ((chardef>>>j)&0x1)?0xffffffff:0x0; //white  - see 'collook'
+            fb32[destOffset + n] =
+                fb32[destOffset + n + 1024 ] =  // two lines
+                    ((chardef>>>j)&0x1)?0xffffffff:0x0; //white  - see 'collook'
         }
 
     }
@@ -280,32 +344,32 @@ Alpha external
 SemiGraphics Four  0011 CLEAR 1
 SemiGraphics Six   0111 CLEAR 2
 
-000
+000 ?#B000=#10  1a
 Colour Graphics 1 - 8 colours (CSS/C1/C0)  - 64x64
 1024 bytes - 2bpp (4x3)  - 4 pixels x 3 rows
 
-001
+001 clear 1
 Resolution Graphics 1 - 4 colours (Lx) - 128x64
 1024 bytes - 1bpp (3x3)
 
-010
+010  ?#B000=#50  2a
 Colour Graphics 2 - 8 colours (CSS/C1/C0) - 128x64
 2048 bytes - 2bpp (3x3)
-1011  CLEAR 3
+1011  CLEAR 2
 Resolution Graphics 2 - 4 colours (Lx) - 128x96
 1536 bytes - 1bpp (2x2)
 
-100
+100  ?#B000=#90  3a
 Colour Graphics 3  - 8 colours (CSS/C1/C0) - 128x96
 3072 bytes - 2bpp (2x2)
-101
+101  clear 3
 Resolution Graphics 3 - 4 colours (Lx)- 128x192
 3072 bytes - 1bpp (2x1)
 
-110
+110  ?#B000=#d0  4a
 Colour Graphics 6 - 8 colours (CSS/C1/C0) - 128x192
 6144 bytes - 2bpp (4x1)
-1111  CLEAR 4
+1111  clear 4
 Resolution Graphics 6 - 4 colours (Lx) 256x192
 6144 bytes - 1bpp  (8x1)
 

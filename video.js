@@ -56,6 +56,8 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
         this.ulactrl = 0;
         this.pixelsPerChar = 8;
         this.halfClock = false;
+        this.quarterClock = 0;
+        this.clockRate = 2;
         this.ulaMode = 0;
         this.teletextMode = false;
         this.displayEnableSkew = 0;
@@ -663,34 +665,95 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
             var regs0 = 0x3f, regs1 = 0x20, regs2 = 0x2e; // horizontals
             var regs4 = 0x14, regs5 = 0x00, regs6 = 0x10, regs7 = 0x10;  // verticals
 
+            this.clockRate = 2;
+
             //regs4 ; // vertical position
             //regs5 ; // offset from top of each scanline
             var regs9 = 0x0b; // this is the number of LINES per character
             // in mode 1111 this should be 1
             var mode = (this.ppia.portapins & 0xf0);
-            if ((mode & 0xf0) == 0xf0)
+            if (mode == 0xf0)  // 4
+            {
+
+                regs9 = 0x0; //1  - scanlines per char
+
+                regs4 = 0xef;
+                regs6 = 0xc0; //192 LINES
+                regs7 = 0xc0;
+            } else if (mode == 0xd0) // 4a
             {
                 regs9 = 0x0; //1  - scanlines per char
 
-                regs4 = 0xff; //0x26 .38
-                regs6 = 0xc0; //0x20 .32   //192 0xc0
-                regs7 = 0xc0; //0x23 .35
+                regs4 = 0xef;
+                regs6 = 0xc0; // 192 LINES
+                regs7 = 0xc0;
+            }else if (mode == 0xb0) //3
+            {
+
+                regs1 = 0x10;
+
+                regs9 = 0x0; //1  - scanlines per char
+
+                regs4 = 0xef;
+                regs6 = 0xc0; // 192 LINES
+                regs7 = 0xc0;
+            } else if (mode == 0x70) //2
+            {
+                regs9 = 0x1; //2  - scanlines per char
+                regs1 = 0x10;
+
+                regs4 = 0x7f;
+                regs6 = 0x60; // 96 LINES
+                regs7 = 0x60;
+            } else if (mode == 0x30) //1
+            {
+                regs9 = 0x2; //3  - scanlines per char
+                regs1 = 0x08;
+
+                this.clockRate = 8;
+
+                regs4 = 0x4f;
+                regs6 = 0x40; // 64 LINES
+                regs7 = 0x40;
+            } else if (mode == 0x10) //1a
+            {
+                regs9 = 0x2; //3  - scanlines per char
+
+                regs4 = 0x4f;
+                regs6 = 0x40; // 64 LINES
+                regs7 = 0x40;
+            } else if (mode == 0x50) //2a
+            {
+                regs9 = 0x2; //3  - scanlines per char
+
+                regs4 = 0x4f;
+                regs6 = 0x40; // 64 LINES
+                regs7 = 0x40;
+            } else if (mode == 0x90) //3a
+            {
+                regs9 = 0x1; //2  - scanlines per char
+
+                regs4 = 0x7f;
+                regs6 = 0x60; // 96 LINES
+                regs7 = 0x60;
             }
 
 
             this.regs[9] = regs9;
-            var val = 0xC5; // bbc mode 5
-            this.pixelsPerChar = (val & 0x10) ? 8 : 16;
-            this.halfClock = !(val & 0x10);
+
+
+            this.pixelsPerChar = 8*this.clockRate;  // for blitChar
+            this.halfClock = true;
+
+
             while (clocks--) {
 
-                this.oddClock = !this.oddClock;
+                this.quarterClock = (this.quarterClock+1)%this.clockRate;
+
                 // Advance CRT beam.
                 this.bitmapX += 8;
 
-                // my version - just grab some data and display it as raw pixels
-
-                if (this.halfClock && !this.oddClock) {
+                if (this.halfClock && this.quarterClock!=this.clockRate-1) {
                     continue;
                 }
 
@@ -765,7 +828,7 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
                         offset = (offset * 1024) + this.bitmapX;
 
                        if ((this.dispEnabled & EVERYTHINGENABLED) === EVERYTHINGENABLED) {
-                           if ((mode & 0x80 ) == 0) // MODE_AG
+                           if ((mode & 0x10 ) == 0) // MODE_AG - bit 4; 0x10 is the AG bit
                                // TODO: Add in the INV, INTEXT, CSS modifiers to mode
                                this.video6847.blitChar(this.fb32, dat, offset, this.pixelsPerChar, mode);
                            else
