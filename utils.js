@@ -271,11 +271,11 @@ define(['jsunzip', 'promise'], function (jsunzip) {
                         atomKey = ATOM.HAT_TILDE; needsShift = true;
                         break;
                     case '\\':
-                        atomKey = ATOM.PIPE_BACKSLASH;
+                        atomKey = ATOM.BACKSLASH;
                         break;
-                    case '|':
-                        atomKey = ATOM.PIPE_BACKSLASH; needsShift = true;
-                        break;
+                    // case '|':
+                    //     atomKey = ATOM.PIPE_BACKSLASH; needsShift = true;
+                    //     break;
                     case '@':
                         atomKey = ATOM.AT;
                         break;
