@@ -83,24 +83,30 @@ b002    4 2.4kHz input, 5 cas input, 6 REPT key, 7 60 Hz input
      0   0       1    1    X    X    X  External Alphanumerics Inverted
      0   1       0    X    X    X    X  Semigraphics 4
      0   1       1    X    X    X    X  Semigraphics 6
-     1   X       X    X    0    0    0  Graphics CG1 (64x64x4)    (16 bpr)
-     1   X       X    X    0    0    1  Graphics RG1 (128x64x2)   (16 bpr)
-     1   X       X    X    0    1    0  Graphics CG2 (128x64x4)   (32 bpr)
-     1   X       X    X    0    1    1  Graphics RG2 (128x96x2)   (16 bpr)
-     1   X       X    X    1    0    0  Graphics CG3 (128x96x4)   (32 bpr)
+     1   X       X    X    0    0    0  Graphics CG1 (64x64x4)    (16 bpr)  #10
+     1   X       X    X    0    0    1  Graphics RG1 (128x64x2)   (16 bpr)  #30
+     1   X       X    X    0    1    0  Graphics CG2 (128x64x4)   (32 bpr)  #50
+     1   X       X    X    0    1    1  Graphics RG2 (128x96x2)   (16 bpr)  #70
+     1   X       X    X    1    0    0  Graphics CG3 (128x96x4)   (32 bpr)  #90
      1   X       X    X    1    0    1  Graphics RG3 (128x192x2)  (16 bpr)  #b0
      1   X       X    X    1    1    0  Graphics CG6 (128x192x4)  (32 bpr)  #d0
      1   X       X    X    1    1    1  Graphics RG6 (256x192x2)  (32 bpr)  #f0
 
 http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 
+256 = 256/8 = 32   32x1bpp     = reg1:32  0x20
+128 = 128/8 = 16   16x2bpp     = reg1:32  0x20
+
+128 = 128/8 = 16   16x1bpp     = reg1:16 (xscale*2)  0x10
+64 = 64/8 = 8      8x2bpp     = reg1:16 (xscale*2)  0x10
+
 
 	// video mode constants
 	//ppai PORTA
-	 MODE_AG      = 0x80;  // alpha or graphics
-	 MODE_GM2     = 0x40;  // only used if AG is 1
-	 MODE_GM1     = 0x20; // only used if AG is 1
-	 MODE_GM0     = 0x10; // only used if AG is 1
+	 MODE_AG      = 0x10;  // alpha or graphics
+	 MODE_GM2     = 0x80;  // only used if AG is 1
+	 MODE_GM1     = 0x40; // only used if AG is 1
+	 MODE_GM0     = 0x20; // only used if AG is 1
 
 //ppai PORTC
 	 MODE_CSS     = 0x08;  // colour select
@@ -191,60 +197,60 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         mode |= 0;
 
         var bitdef = data;
-        var xscale = 4;
+        var pixelsPerBit = 4;
         var bpp = 2;
         var colour = 0xffffffff; //white  - see 'collook'  // alpha, blue, green, red
         if (mode == 0xf0) //4
         {
-            xscale = 1;
+            pixelsPerBit = 2;
             bpp = 1;
             colour = 0xff00ff00;
         }
-        else if (mode == 0xd0) //4a
-        {
-            xscale = 2;
-            bpp = 2;
-            colour = 0xffff0000;
-
-        }
         else if (mode == 0xb0)  //3
         {
-            xscale = 1;
+            pixelsPerBit = 4;
             bpp = 1;
             colour = 0xff0000ff;
 
         }
-        else if (mode == 0x90) //3a
-        {
-            xscale = 1;
-            bpp = 1;
-            colour = 0xffffffff;
-
-        }
         else if (mode == 0x70) //2
         {
-            xscale = 1;
+            pixelsPerBit = 4;
+            bpp = 1;
+            colour = 0xffff0000;
+
+        }
+        else if (mode == 0x30) //1
+        {
+            pixelsPerBit = 4;
+            bpp = 1;
+            colour = 0xffff00ff;
+
+        }
+        else if (mode == 0xd0) //4a
+        {
+            pixelsPerBit = 2;
+            bpp = 2;
+            colour = 0xffff0000;
+
+        }
+        else if (mode == 0x90) //3a
+        {
+            pixelsPerBit = 1;
             bpp = 1;
             colour = 0xffffffff;
 
         }
         else if (mode == 0x50) //2a
         {
-            xscale = 1;
-            bpp = 1;
-            colour = 0xffffffff;
-
-        }
-        else if (mode == 0x30) //1
-        {
-            xscale = 4;
+            pixelsPerBit = 1;
             bpp = 1;
             colour = 0xffffffff;
 
         }
         else if (mode == 0x10)  //1a
         {
-            xscale = 1;
+            pixelsPerBit = 1;
             bpp = 1;
             colour = 0xffffff00;
         }
@@ -274,8 +280,8 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         //     fb32[destOffset + n] = (cval!=0)?colour:0x0;
         // }
 
-        var numPixels = 16*xscale;  //per char
-        var pixelsPerBit = numPixels/8;  // draw two,four pixels for each bit in the data to fill the width.
+        var numPixels = 8*pixelsPerBit;  //per char
+        // draw two,four pixels for each bit in the data to fill the width.
 
         for (i = 0; i < numPixels; i++) {
             var n = (numPixels) - 1 - i; // pixels in reverse order
@@ -290,7 +296,7 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
             if (bpp == 1)
                 cval &= 0x01;
 
-            fb32[destOffset + n] = fb32[destOffset + n + 1024] = (cval!=0)?colour:0x0;
+            fb32[destOffset + n] = fb32[destOffset + n + 1024] = (cval!=0)?colour:0xff005500;
         }
 
 
@@ -302,6 +308,7 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
     {
         var scanline = this.scanlineCounter;
 
+        // invert the  char if bit 7 is set
         var inv = false;
         if ((data&0x80)==0x80)
         {
@@ -328,7 +335,7 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
             var j = i / pixelsPerBit;
             fb32[destOffset + n] =
                 fb32[destOffset + n + 1024 ] =  // two lines
-                    ((chardef>>>j)&0x1)?0xffffffff:0x0; //white  - see 'collook'
+                    ((chardef>>>j)&0x1)?0xff00dd00:0xff005500; //white  - see 'collook'
         }
 
     }
@@ -344,25 +351,25 @@ Alpha external
 SemiGraphics Four  0011 CLEAR 1
 SemiGraphics Six   0111 CLEAR 2
 
-000 ?#B000=#10  1a
+0001 ?#B000=#10  1a
 Colour Graphics 1 - 8 colours (CSS/C1/C0)  - 64x64
 1024 bytes - 2bpp (4x3)  - 4 pixels x 3 rows
 
-001 clear 1
+0011 clear 1
 Resolution Graphics 1 - 4 colours (Lx) - 128x64
 1024 bytes - 1bpp (3x3)
 
-010  ?#B000=#50  2a
+0101  ?#B000=#50  2a
 Colour Graphics 2 - 8 colours (CSS/C1/C0) - 128x64
 2048 bytes - 2bpp (3x3)
 1011  CLEAR 2
 Resolution Graphics 2 - 4 colours (Lx) - 128x96
 1536 bytes - 1bpp (2x2)
 
-100  ?#B000=#90  3a
+1001  ?#B000=#90  3a
 Colour Graphics 3  - 8 colours (CSS/C1/C0) - 128x96
 3072 bytes - 2bpp (2x2)
-101  clear 3
+1011  clear 3
 Resolution Graphics 3 - 4 colours (Lx)- 128x192
 3072 bytes - 1bpp (2x1)
 

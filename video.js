@@ -56,8 +56,6 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
         this.ulactrl = 0;
         this.pixelsPerChar = 8;
         this.halfClock = false;
-        this.quarterClock = 0;
-        this.clockRate = 2;
         this.ulaMode = 0;
         this.teletextMode = false;
         this.displayEnableSkew = 0;
@@ -498,7 +496,7 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
         };
 
         this.handleHSyncAtom = function () {
-            var regs3 = 0x24;
+            var regs3 = this.regs[3];
             this.hpulseWidth = regs3&0xf;
             this.vpulseWidth = (regs3&0xf0)>>>4;
 
@@ -650,6 +648,21 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
         // this.regs[15] = 0x02;
 
 
+
+
+        //MODE4 -1bpp 320x256 40x32
+//    &3F &28(40) &31 &24  i.e. 40/1bpp = 40    320/8 = 40
+//    &26 &00
+//        &20(32) &22
+//        &01 &07 &67 &08
+
+        //MODE1 -2bpp 320x256 40x32
+    // &7F &50(80) &62 &28   i.e. 80/2bpp = 40  - 320/8 = 40
+    //     &26 &00
+    //     &20(32) &22
+    //     &01 &07 &67 &08
+
+
         // ATOM uses 6847 chip
         this.polltimeAtom = function (clocks) {
 
@@ -661,67 +674,101 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
             // var regs6 = 0x10, regs7 = 0x10;
             // var regs9 = 0x0b;
 
+            // for text mode 0
+            this.pixelsPerChar = 16;  // 16 for blitChar
+            this.halfClock = false; // true for blitChar
 
-            var regs0 = 0x3f, regs1 = 0x20, regs2 = 0x2e; // horizontals
-            var regs4 = 0x14, regs5 = 0x00, regs6 = 0x10, regs7 = 0x10;  // verticals
 
-            this.clockRate = 2;
+            // regs1  //32bpr
+            var regs0 = 0x3f, regs1 = 0x20, regs2 = 0x31; // horizontals
+            this.regs[3] = 0x24;  //2 HEIGHT... 4 WIDTH
 
-            //regs4 ; // vertical position
-            //regs5 ; // offset from top of each scanline
+            var regs4 = 0x14, regs5 = 0x00, regs6 = 0x10, regs7 = 0x12;  // verticals
+
+            // //regs4 ; // vertical position
+            // //regs5 ; // offset from top of each scanline
             var regs9 = 0x0b; // this is the number of LINES per character
-            // in mode 1111 this should be 1
+
+            // // in mode 1111 this should be 1
             var mode = (this.ppia.portapins & 0xf0);
             if (mode == 0xf0)  // 4
             {
-
                 regs9 = 0x0; //1  - scanlines per char
 
-                regs4 = 0xef;
+                regs0 = 0x3f;
+                regs1 = 0x20; //32bpr
+                regs2 = 0x31;
+
+                regs4 = 0xff;
                 regs6 = 0xc0; //192 LINES
                 regs7 = 0xc0;
-            } else if (mode == 0xd0) // 4a
+
+                // want 256 pixels -
+
+                this.pixelsPerChar = 8;
+                this.halfClock = false;
+
+            } else if (mode == 0xb0) //3
             {
+                regs0 = 0x3f;
+                regs1 = 0x10; //16bpr
+                regs2 = 0x31;
+                this.regs[3] = 0x28;  //2 HEIGHT... 8 WIDTH
+
+                this.pixelsPerChar = 8;  // for blitChar
+                this.halfClock = true;
+
                 regs9 = 0x0; //1  - scanlines per char
 
-                regs4 = 0xef;
-                regs6 = 0xc0; // 192 LINES
-                regs7 = 0xc0;
-            }else if (mode == 0xb0) //3
-            {
-
-                regs1 = 0x10;
-
-                regs9 = 0x0; //1  - scanlines per char
-
-                regs4 = 0xef;
+                regs4 = 0xff;
                 regs6 = 0xc0; // 192 LINES
                 regs7 = 0xc0;
             } else if (mode == 0x70) //2
             {
                 regs9 = 0x1; //2  - scanlines per char
-                regs1 = 0x10;
 
-                regs4 = 0x7f;
+                regs0 = 0x3f;
+                regs1 = 0x10; //16bpr
+                regs2 = 0x31;
+                this.regs[3] = 0x28;  //2 HEIGHT... 8 WIDTH
+
+
+                this.pixelsPerChar = 8;  // for blitChar
+                this.halfClock = true;
+
+
+                regs4 = 0x6f;
                 regs6 = 0x60; // 96 LINES
                 regs7 = 0x60;
             } else if (mode == 0x30) //1
             {
                 regs9 = 0x2; //3  - scanlines per char
-                regs1 = 0x08;
+                regs0 = 0x3b;
+                regs1 = 0x10; //16bpr
+                regs2 = 0x31;
+                this.regs[3] = 0x28;  //2 HEIGHT... 8 WIDTH
 
-                this.clockRate = 8;
+
+                this.pixelsPerChar = 8;  // for blitChar
+                this.halfClock = true;
 
                 regs4 = 0x4f;
                 regs6 = 0x40; // 64 LINES
                 regs7 = 0x40;
-            } else if (mode == 0x10) //1a
+            } else if (mode == 0xd0) // 4a
             {
-                regs9 = 0x2; //3  - scanlines per char
+                regs9 = 0x0; //1  - scanlines per char
 
-                regs4 = 0x4f;
-                regs6 = 0x40; // 64 LINES
-                regs7 = 0x40;
+                regs4 = 0xcf;
+                regs6 = 0xc0; // 192 LINES
+                regs7 = 0xc0;
+            } else if (mode == 0x90) //3a
+            {
+                regs9 = 0x1; //2  - scanlines per char
+
+                regs4 = 0x6f;
+                regs6 = 0x60; // 96 LINES
+                regs7 = 0x60;
             } else if (mode == 0x50) //2a
             {
                 regs9 = 0x2; //3  - scanlines per char
@@ -729,33 +776,35 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
                 regs4 = 0x4f;
                 regs6 = 0x40; // 64 LINES
                 regs7 = 0x40;
-            } else if (mode == 0x90) //3a
+            } else if (mode == 0x10) //1a
             {
-                regs9 = 0x1; //2  - scanlines per char
+                regs9 = 0x2; //3  - scanlines per char
+                regs0 = 0x3f;
+                regs1 = 0x10; //16bpr
+                regs2 = 0x31;
+                this.regs[3] = 0x24;
+                this.pixelsPerChar = 32;  // for blitChar
+                this.halfClock = true;
 
-                regs4 = 0x7f;
-                regs6 = 0x60; // 96 LINES
-                regs7 = 0x60;
+
+                regs4 = 0x4f;
+                regs6 = 0x40; // 64 LINES
+                regs7 = 0x40;
             }
 
 
             this.regs[9] = regs9;
 
 
-            this.pixelsPerChar = 8*this.clockRate;  // for blitChar
-            this.halfClock = true;
-
-
             while (clocks--) {
-
-                this.quarterClock = (this.quarterClock+1)%this.clockRate;
-
+                this.oddClock = !this.oddClock;
                 // Advance CRT beam.
-                this.bitmapX += 8;
+                this.bitmapX += 16;
 
-                if (this.halfClock && this.quarterClock!=this.clockRate-1) {
+                if (this.halfClock && !this.oddClock) {
                     continue;
                 }
+
 
                 // Handle HSync
                 if (this.inHSync)
