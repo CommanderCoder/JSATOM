@@ -699,7 +699,7 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
                 regs1 = 0x20; //32bpr
                 regs2 = 0x31;
 
-                regs4 = 0xff;
+                regs4 = 0xe0;
                 regs6 = 0xc0; //192 LINES
                 regs7 = 0xc0;
 
@@ -710,7 +710,7 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
 
             } else if (mode == 0xb0) //3
             {
-                regs0 = 0x3f;
+                regs0 = 0x3b;
                 regs1 = 0x10; //16bpr
                 regs2 = 0x31;
                 this.regs[3] = 0x28;  //2 HEIGHT... 8 WIDTH
@@ -720,16 +720,16 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
 
                 regs9 = 0x0; //1  - scanlines per char
 
-                regs4 = 0xff;
+                regs4 = 0xe0;
                 regs6 = 0xc0; // 192 LINES
                 regs7 = 0xc0;
             } else if (mode == 0x70) //2
             {
                 regs9 = 0x1; //2  - scanlines per char
 
-                regs0 = 0x3f;
+                regs0 = 0x33;
                 regs1 = 0x10; //16bpr
-                regs2 = 0x31;
+                regs2 = 0x29;
                 this.regs[3] = 0x28;  //2 HEIGHT... 8 WIDTH
 
 
@@ -737,22 +737,22 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
                 this.halfClock = true;
 
 
-                regs4 = 0x6f;
+                regs4 = 0x6b;
                 regs6 = 0x60; // 96 LINES
                 regs7 = 0x60;
             } else if (mode == 0x30) //1
             {
                 regs9 = 0x2; //3  - scanlines per char
-                regs0 = 0x3b;
+                regs0 = 0x33;
                 regs1 = 0x10; //16bpr
-                regs2 = 0x31;
+                regs2 = 0x29;
                 this.regs[3] = 0x28;  //2 HEIGHT... 8 WIDTH
 
 
                 this.pixelsPerChar = 8;  // for blitChar
                 this.halfClock = true;
 
-                regs4 = 0x4f;
+                regs4 = 0x4b;
                 regs6 = 0x40; // 64 LINES
                 regs7 = 0x40;
             } else if (mode == 0xd0) // 4a
