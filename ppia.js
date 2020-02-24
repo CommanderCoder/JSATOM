@@ -2,7 +2,8 @@ define(['./utils'], function (utils) {
     "use strict";
     const PORTA = 0x0,
         PORTB = 0x1,
-        PORTC = 0x2;
+        PORTC = 0x2,
+    CREG=0x3; // control register
 
     /*
  http://mdfs.net/Docs/Comp/Acorn/Atom/atap25.htm
@@ -82,6 +83,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
         var self = {
             latcha:0, latchb:0, latchc:0,
             portapins:0, portbpins:0, portcpins: 0,
+            cr:0,
 
             reset: function (hard) {
                 //http://members.casema.nl/hhaydn/8255_pin.html
@@ -112,35 +114,19 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                 cycles |= 0;
             },
 /*
-// a is 0,1,2  for b000, b001, b002
-// v is not used
-        function fPIAR(a, v) {
-            return a - 1 ? aPPIA[a] : aKeys[aPPIA[0] & 15]
-        }
+ Port C - #B002
+        Output bits:      Function:
+             0          Tape output
+             1          Enable 2.4 kHz to cassette output
+             2          Loudspeaker
+             3          Not used
 
-// a is 0,1,2,3,... 15  for b000, b001, b002, b00n...
-// v is value to store
-        function fPIAW(a, v) {
-
-        // 0,1,2 : sent to PPIA
-        : a < 2 : store v in [a]
-        : otherwise (i.e. a == 2) change only bits 2 & 3
-
-           if (a < 3)
-                aPPIA[a] =
-                    a - 2 ? v :
-                    (aPPIA[a] & 243) | (v & 12);
-         : a >= 2 then 0
-         : a == 1 then fmode&8
-         : a == 0 then fmode>>4
-
-          then set the fMode
-            a ?
-                a - 2 ?
-                    0 :
-                    fMode(nMode, v & 8 ? 1 : 0) :
-                fMode(v >> 4, nPal)
-        }
+        Input bits:       Function:
+             4          2.4 kHz input
+             5          Cassette input
+             6          REPT key (low when pressed)
+             7          60 Hz sync signal (low during flyback)
+ The port C output lines, bits 0 to 3, may be used for user applications when the cassette interface is not being used.
 
  */
             write: function (addr, val) {
@@ -160,7 +146,24 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         break;
 
                     case PORTC:
-                        self.latchc = (self.portcpins & 243) | (val & 12);
+                        //11110000 - 0xF0
+                        //00001111 - 0x0F -- only write to the bottom 4 bits
+                        self.latchc = (self.portcpins & 0xF0) | (val & 0x0F);
+
+                        if (self.portcpins & 0x01)
+                            console.log("casout");
+                        if (self.portcpins & 0x02) {
+                            //start
+                            self.runTape();
+                            console.log("hzout");
+                        }
+                        else
+                        {
+                            //stop
+                            // toneGen.mute();
+                            // self.runTapeTask.cancel();
+                            // self.setTapeCarrier(false);
+                        }
                         // console.log("write portc "+self.latchc);
                         self.recalculatePortCPins();
                         break;
@@ -197,7 +200,14 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                     case PORTC:
                         self.recalculatePortCPins();
                         // console.log("read portc "+self.portcpins);
-                        return self.portcpins;
+                        // only read top 4 bits
+                        var val =  self.portcpins & 0xF0;
+                        if (self.portcpins & 0x20)
+                            console.log("casin");
+                        if (self.portcpins & 0x10) {
+                            console.log("hzin");
+                        }
+                        return val;
                     default:
                         throw "Unknown PPIA read";
                 }
@@ -223,11 +233,12 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                 self.drivePortC();
                 self.portCUpdated();
             },
+
         };
         return self;
     }
 
-    function atomppia(cpu, video, initialLayout) {
+    function atomppia(cpu, video, initialLayout, scheduler, toneGen) {
         var self = ppia(cpu, 0x01);
 
         self.keys = [];
@@ -349,6 +360,89 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
         };
 
         self.reset();
+
+
+        // ATOM TAPE SUPPORT
+
+        // set by TAPE
+        self.tone = function (freq) {
+            if (!freq) toneGen.mute();
+            else toneGen.tone(freq);
+        };
+
+        // set by TAPE
+        self.setTapeCarrier = function (level) {
+            if (!level) {
+                self.tapeCarrierCount = 0;
+                self.tapeDcdLineLevel = false;
+            } else {
+                self.tapeCarrierCount++;
+                // The tape hardware doesn't raise DCD until the carrier tone
+                // has persisted for a while. The BBC service manual opines,
+                // "The DCD flag in the 6850 should change 0.1 to 0.4 seconds
+                // after a continuous tone appears".
+                // Star Drifter doesn't load without this.
+                // We use 0.174s, measured on an issue 3 model B.
+                // Testing on real hardware, DCD is blipped, it lowers about
+                // 210us after it raises, even though the carrier tone
+                // may be continuing.
+                if (self.tapeCarrierCount === 209) {
+                    self.tapeDcdLineLevel = true;
+                } else {
+                    self.tapeDcdLineLevel = false;
+                }
+            }
+            self.dcdLineUpdated();
+        };
+        self.dcdLineUpdated = function () {
+
+        };
+
+        // receive is set by the TAPE POLL
+        self.receive = function (byte) {
+            byte |= 0;
+            // if (self.sr & 0x01) {
+            //     // Overrun.
+            //     // TODO: this doesn't match the datasheet:
+            //     // "The Overrun does not occur in the Status Register until the
+            //     // valid character prior to Overrun has been read."
+            //     console.log("Serial overrun");
+            //     self.sr |= 0xa0;
+            // } else {
+            //     self.dr = byte;
+            //     self.sr |= 0x81;
+            // }
+
+            // self.portcpins = (self.portcpins & 0xdf) | (byte << 5);
+            console.log(byte.toString(16) + ":" + String.fromCharCode(byte));
+            updateIrq();
+        };
+
+        self.setTape = function (tape) {
+            self.tape = tape;
+        };
+
+        self.rewindTape = function () {
+            if (self.tape) {
+                console.log("rewinding tape");
+                self.tape.rewind();
+            }
+        };
+
+        function runTape() {
+            if (self.tape) self.runTapeTask.reschedule(self.tape.poll(self));
+        }
+
+        function updateIrq()
+        {}
+
+        self.updateIrq = updateIrq;//?
+        self.runTape = runTape;// ?
+
+        self.runTapeTask = scheduler.newTask(runTape);
+
+
+
         return self;
     }
 
@@ -356,3 +450,17 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
         AtomPPIA: atomppia
     };
 });
+
+
+/*
+pia 8255 - 0x3fc mirror : device read/write
+6522 - 0x3f0 mirror
+
+int m_hz2400;
+int m_pc0;
+int m_pc1;
+
+
+
+
+ */

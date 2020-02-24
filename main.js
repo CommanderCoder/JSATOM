@@ -997,7 +997,14 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             var reader = new FileReader();
             utils.noteEvent('local', 'clickTape'); // NB no filename here
             reader.onload = function (e) {
-                processor.acia.setTape(tapes.loadTapeFromData("local file", e.target.result));
+                if (processor.model.isAtom)
+                {
+                    processor.atomppia.setTape(tapes.loadTapeFromData("local file", e.target.result));
+                }
+                else
+                {
+                    processor.acia.setTape(tapes.loadTapeFromData("local file", e.target.result));
+                }
                 delete parsedQuery.tape;
                 updateUrl();
                 $('#tapes').modal("hide");
