@@ -7,7 +7,6 @@ define(['utils'], function (utils) {
         var dummyData, state, count, curByte, numDataBits, parity;
         var numParityBits, numStopBits, carrierBefore, carrierAfter;
 
-
         self.rewind = function () {
 
             dummyData = [false, false, true, false, true, false, true, false, true, true];
@@ -27,6 +26,8 @@ define(['utils'], function (utils) {
             if (major !== 0x00) throw "Unsupported UEF version " + major + "." + minor;
         };
 
+        self.cpuSpeed = 1 * 1000 * 1000;
+
         self.rewind();
 
         function readChunk() {
@@ -42,7 +43,7 @@ define(['utils'], function (utils) {
         var baseFrequency = 1200;
 
         function secsToClocks(secs) {
-            return (2 * 1000 * 1000 * secs) | 0;
+            return (self.cpuSpeed * secs) | 0;
         }
 
         function cycles(count) {
@@ -80,17 +81,22 @@ define(['utils'], function (utils) {
                         state = 0;
                         curByte = curChunk.stream.readByte();
                         acia.tone(baseFrequency); // Start bit
+                        acia.receiveBit(0);
                     } else if (state < 9) {
                         if (state === 0) {
                             // Start bit
                             acia.tone(baseFrequency);
+                            acia.receiveBit(0);
                         } else {
-                            acia.tone((curByte & (1 << (state - 1))) ? (2 * baseFrequency) : baseFrequency);
+                            var bit = (curByte & (1 << (state - 1)));
+                            acia.tone(bit ? (2 * baseFrequency) : baseFrequency);
+                            acia.receiveBit(bit?1:0);
                         }
                         state++;
                     } else {
                         acia.receive(curByte);
                         acia.tone(2 * baseFrequency); // Stop bit
+                        acia.receiveBit(1);
                         if (curChunk.stream.eof()) {
                             state = -1;
                         } else {
@@ -115,18 +121,23 @@ define(['utils'], function (utils) {
                         } else {
                             curByte = curChunk.stream.readByte() & ((1 << numDataBits) - 1);
                             acia.tone(baseFrequency); // Start bit
+                            acia.receiveBit(0);
                             state++;
                         }
                     } else if (state < (1 + numDataBits)) {
-                        acia.tone((curByte & (1 << (state - 1))) ? (2 * baseFrequency) : baseFrequency);
+                        var bit = (curByte & (1 << (state - 1)));
+                        acia.tone(bit ? (2 * baseFrequency) : baseFrequency);
+                        acia.receiveBit(bit?1:0);
                         state++;
                     } else if (state < (1 + numDataBits + numParityBits)) {
                         var bit = parityOf(curByte);
                         if (parity === 'N') bit = !bit;
                         acia.tone(bit ? (2 * baseFrequency) : baseFrequency);
+                        acia.receiveBit(bit?1:0);
                         state++;
                     } else if (state < (1 + numDataBits + numParityBits + numStopBits)) {
                         acia.tone(2 * baseFrequency); // Stop bits
+                        acia.receiveBit(1);
                         state++;
                     } else {
                         acia.receive(curByte);

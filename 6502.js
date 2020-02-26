@@ -459,7 +459,7 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
             this.resetLine = true;
             this.cpuMultiplier = config.cpuMultiplier;
             this.videoCyclesBatch = config.videoCyclesBatch | 0;
-            this.peripheralCyclesPerSecond = 2 * 1000 * 1000;
+            this.peripheralCyclesPerSecond = this.model.isAtom ? 1 * 1000 * 1000 : 2 * 1000 * 1000;
             this.getPrevPc = function (index) {
                 if (!this.tracing) throw new Error("Tracing not enabled");
                 return this.oldPcArray[(this.oldPcIndex - index) & 0xff];
@@ -1218,9 +1218,10 @@ Hardware:   PPIA 8255
                 // that from both, to keep the domain low (while accumulating seconds). Take care to preserve the bottom
                 // bit though; as that encodes whether we're on an even or odd bus cycle.
                 var smaller = Math.min(this.targetCycles, this.currentCycles) & 0xfffffffe;
-                if (smaller >= 2 * 1000 * 1000) {
-                    this.targetCycles -= 2 * 1000 * 1000;
-                    this.currentCycles -= 2 * 1000 * 1000;
+                var clocksPerSecond = this.model.isAtom ? 1 * 1000 * 1000 : 2 * 1000 * 1000;
+                if (smaller >= clocksPerSecond) {
+                    this.targetCycles -= clocksPerSecond;
+                    this.currentCycles -= clocksPerSecond;
                     this.cycleSeconds++;
                 }
                 // Any tracing or debugging means we need to run the potentially slower version: the debug read or

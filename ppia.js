@@ -84,6 +84,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
             latcha:0, latchb:0, latchc:0,
             portapins:0, portbpins:0, portcpins: 0,
             cr:0,
+            processor:cpu,
 
             reset: function (hard) {
                 //http://members.casema.nl/hhaydn/8255_pin.html
@@ -153,16 +154,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         if (self.portcpins & 0x01)
                             console.log("casout");
                         if (self.portcpins & 0x02) {
-                            //start
-                            self.runTape();
                             console.log("hzout");
-                        }
-                        else
-                        {
-                            //stop
-                            // toneGen.mute();
-                            // self.runTapeTask.cancel();
-                            // self.setTapeCarrier(false);
                         }
                         // console.log("write portc "+self.latchc);
                         self.recalculatePortCPins();
@@ -398,7 +390,21 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
         };
 
+        self.lasttime = 0;
         // receive is set by the TAPE POLL
+        self.receiveBit = function (bit) {
+            var clocksPerSecond = (1 * 1000 * 1000) | 0;
+            var millis = self.processor.cycleSeconds * 1000 + self.processor.currentCycles / (clocksPerSecond / 1000);
+
+
+            var t = millis - self.lasttime;
+            self.lasttime = millis;
+            bit |= 0;
+            console.log("> "+ t +" bit " + bit.toString(2));
+            self.portcpins = (self.portcpins & 0xdf) | (bit << 5);
+        };
+
+
         self.receive = function (byte) {
             byte |= 0;
             // if (self.sr & 0x01) {
@@ -413,8 +419,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
             //     self.sr |= 0x81;
             // }
 
-            // self.portcpins = (self.portcpins & 0xdf) | (byte << 5);
-            console.log(byte.toString(16) + ":" + String.fromCharCode(byte));
+            console.log("] "+byte.toString(16) + " : " + String.fromCharCode(byte));
             updateIrq();
         };
 
@@ -422,10 +427,57 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
             self.tape = tape;
         };
 
+        self.counterTimer = null;
+        self.tape_counter = 0;
+
         self.rewindTape = function () {
             if (self.tape) {
                 console.log("rewinding tape");
                 self.tape.rewind();
+                self.tape_counter = 0;
+            }
+        };
+
+
+        self.playTape = function () {
+            if (self.tape) {
+                console.log("playing tape");
+                //start
+                self.runTape();
+
+                var display_div = $("#counter_id");
+                function incrementCount(){
+                    self.counterTimer = setInterval(function(){
+                        // clear count
+                        display_div.empty();
+
+                        self.tape_counter++;
+                        if (self.tape_counter > 100000) {
+                            self.tape_counter = 0; // reset count
+                        }
+                        var display_str = "";
+                        display_str = self.tape_counter.toString().padStart(8,'0');
+                        for (var i = 0; i < display_str.length; i++) {
+                            display_div.append("<span class='cas counter num_tiles'>"+display_str[i]+"</span>");
+                        }
+                    },1000);
+                }
+                // example of a counter.
+                incrementCount();
+
+            }
+        };
+
+        self.stopTape = function () {
+            if (self.tape) {
+                console.log("stopping tape");
+
+                toneGen.mute();
+                self.runTapeTask.cancel();
+                self.setTapeCarrier(false);
+
+                clearInterval(self.counterTimer);
+                self.counterTimer = null;
             }
         };
 

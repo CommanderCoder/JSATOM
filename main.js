@@ -179,7 +179,8 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             cpuMultiplier = parseFloat(parsedQuery.cpuMultiplier);
             console.log("CPU multiplier set to " + cpuMultiplier);
         }
-        var clocksPerSecond = (cpuMultiplier * 2 * 1000 * 1000) | 0;
+        var cpuSpeed = model.isAtom ? 1 * 1000 * 1000 : 2 * 1000 * 1000;
+        var clocksPerSecond = (cpuMultiplier * cpuSpeed) | 0;
         var MaxCyclesPerFrame = clocksPerSecond / 10;
 
         var tryGl = true;
@@ -1218,6 +1219,32 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             }
         });
 
+        if (processor.model.isAtom) {
+            $('#cas-controls button').on("click", function (e) {
+                var type = $(e.target).attr("data-id");
+                if (type === undefined) return;
+
+                if (type === "rewind-button") {
+                    console.log("Rewinding tape to the start");
+
+                    processor.atomppia.rewindTape();
+
+                } else if (type === "stop-button") {
+                    console.log("Stopping tape");
+
+                    processor.atomppia.stopTape();
+
+                } else if (type === "play-button") {
+                    console.log("Playing tape");
+
+                    processor.atomppia.playTape();
+
+                } else {
+                    console.log("unknown type", type);
+                }
+            });
+        }
+
         function Light(name) {
             var dom = $("#" + name);
             var on = false;
@@ -1387,7 +1414,8 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 if (this.cycles) {
                     var thisMHz = this.cycles / this.time / 1000;
                     this.v.text(thisMHz.toFixed(1));
-                    if (this.cycles >= 10 * 2 * 1000 * 1000) {
+                    var clocksPerSecond = processor.model.isAtom ? 1 * 1000 * 1000 : 2 * 1000 * 1000;
+                    if (this.cycles >= 10 * clocksPerSecond) {
                         this.cycles = this.time = 0;
                     }
                     var colour = "white";

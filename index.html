@@ -152,6 +152,34 @@ Your browser has suspended audio -- mouse click or key press for sound.
             </tbody>
         </table>
     </div>
+    <div id="cas-controls">
+        <table>
+            <thead>
+            <tr>
+                <th>STOP</th>
+                <th>PLAY</th>
+                <th>REWIND</th>
+                <th id="cas-counter-header">Counter</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>
+                    <button class="cas button" data-id="stop-button"></button>
+                </td>
+                <td>
+                    <button class="cas button" data-id="play-button"></button>
+                </td>
+                <td>
+                    <button class="cas button" data-id="rewind-button"></button>
+                </td>
+                <td>
+                    <div class="cas counter" id="counter_id"></div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
     <div id="crtc_debug" class="initially-hidden">
         <div class="crtc_state">
             <h6 class="dbg">6845 state</h6>
