@@ -193,12 +193,16 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         self.recalculatePortCPins();
                         // console.log("read portc "+self.portcpins);
                         // only read top 4 bits
-                        var val =  self.portcpins & 0xF0;
                         if (self.portcpins & 0x20)
                             console.log("casin");
                         if (self.portcpins & 0x10) {
                             console.log("hzin");
                         }
+                        
+                        // only read top 4 bits
+                        var val =  self.portcpins & 0xF0;
+
+
                         return val;
                     default:
                         throw "Unknown PPIA read";
@@ -400,8 +404,8 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
             var t = millis - self.lasttime;
             self.lasttime = millis;
             bit |= 0;
-            console.log("> "+ t +" bit " + bit.toString(2));
             self.portcpins = (self.portcpins & 0xdf) | (bit << 5);
+            console.log("> "+ t.toFixed(1) +" portcpins " + self.portcpins.toString(2));
         };
 
 

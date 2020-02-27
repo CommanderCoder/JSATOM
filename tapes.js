@@ -6,6 +6,7 @@ define(['utils'], function (utils) {
 
         var dummyData, state, count, curByte, numDataBits, parity;
         var numParityBits, numStopBits, carrierBefore, carrierAfter;
+        var shortWave = false;
 
         self.rewind = function () {
 
@@ -41,13 +42,14 @@ define(['utils'], function (utils) {
 
         var curChunk = readChunk();
         var baseFrequency = 1200;
+        var baudMultiplier = 1;
 
         function secsToClocks(secs) {
             return (self.cpuSpeed * secs) | 0;
         }
 
         function cycles(count) {
-            return secsToClocks(count / baseFrequency);
+            return secsToClocks(count / baseFrequency * baudMultiplier);
         }
 
 
@@ -110,9 +112,14 @@ define(['utils'], function (utils) {
                     if (state === -1) {
                         numDataBits = curChunk.stream.readByte();
                         parity = curChunk.stream.readByte();
-                        numStopBits = curChunk.stream.readByte();
-                        numParityBits = parity !== 'N' ? 1 : 0;
-                        console.log("Defined data with " + numDataBits + String.fromCharCode(parity) + numStopBits);
+                        numStopBits = curChunk.stream.readByte() & 0xff;
+                        if (numStopBits & 0x80) // negative
+                        {
+                            numStopBits = Math.abs(numStopBits-256);
+                            shortWave = true;
+                        }
+                        numParityBits = parity !== 0x4E ? 1 : 0; // 'N' value in condition
+                        console.log("Defined data with " + numDataBits + String.fromCharCode(parity) + (shortWave?'-':'') + numStopBits);
                         state = 0;
                     }
                     if (state === 0) {
@@ -131,7 +138,7 @@ define(['utils'], function (utils) {
                         state++;
                     } else if (state < (1 + numDataBits + numParityBits)) {
                         var bit = parityOf(curByte);
-                        if (parity === 'N') bit = !bit;
+                        if (parity === 0x4E) bit = !bit;
                         acia.tone(bit ? (2 * baseFrequency) : baseFrequency);
                         acia.receiveBit(bit?1:0);
                         state++;
@@ -181,9 +188,11 @@ define(['utils'], function (utils) {
                     if (state === -1) {
                         state = 0;
                         count = curChunk.stream.readInt16();
+                        console.log("Carrier tone for ", count);
                     }
                     acia.setTapeCarrier(true);
                     acia.tone(2 * baseFrequency);
+                    acia.receiveBit(1);
                     count--;
                     if (count <= 0) state = -1;
                     return cycles(1);
@@ -195,14 +204,22 @@ define(['utils'], function (utils) {
                     acia.setTapeCarrier(false);
                     gap = 1 / (2 * curChunk.stream.readInt16() * baseFrequency);
                     console.log("Tape gap of " + gap + "s");
+                    acia.receiveBit(0);
                     acia.tone(0);
                     return secsToClocks(gap);
                 case 0x0116:
                     acia.setTapeCarrier(false);
                     gap = curChunk.stream.readFloat32();
                     console.log("Tape gap of " + gap + "s");
+                    acia.receiveBit(0);
                     acia.tone(0);
                     return secsToClocks(gap);
+                case 0x0117:
+                    var baud = curChunk.stream.readInt16();
+                    if (baud == 300)
+                        baudMultiplier = 4;
+                    console.log("Baud rate of " + baud);
+                    break;
                 default:
                     console.log("Skipping unknown chunk " + utils.hexword(curChunk.id));
                     curChunk = readChunk();
