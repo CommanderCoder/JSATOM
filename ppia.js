@@ -193,21 +193,39 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         self.recalculatePortCPins();
                         // console.log("read portc "+self.portcpins);
                         // only read top 4 bits
-                        if (self.portcpins & 0x20)
-                            console.log("casin");
-                        if (self.portcpins & 0x10) {
-                            console.log("hzin");
-                        }
+                        // if (self.portcpins & 0x20)
+                        //     console.log("casin");
+                        // if (self.portcpins & 0x10) {
+                        //     console.log("hzin");
+                        // }
 
                         // only read top 4 bits
                         var val =  self.portcpins & 0xF0;
 
+                        var flyback = self.portcpins & 0x80;
+                        var rept = self.portcpins & 0x40;  // low when pressed
+                        var casin = self.portcpins & 0x20; //
+                        var hzin = self.portcpins & 0x10;
+
+                        var casbit = casin?1:0;
+                        if (casbit != self.prevcas)
+                        {
+                            var clocksPerSecond = (1 * 1000 * 1000) | 0;
+                            var millis = self.processor.cycleSeconds * 1000 + self.processor.currentCycles / (clocksPerSecond / 1000);
+                            self.prevcas = casbit;
+                            console.log(millis.toFixed(1)+ " } "+(self.prevcas));
+                        }
+
+                        //console.log("} "+(flyback?"F":"_")+(rept?"_":"R")+(casin?"1":"0")+(hzin?"h":"_"));
+//                        console.log("} "+val.toString(2).padStart(10,'0'));
 
                         return val;
                     default:
                         throw "Unknown PPIA read";
                 }
             },
+
+            prevcas:0,
 
             recalculatePortAPins: function () {
                 self.portapins = self.latcha;
@@ -405,7 +423,13 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
             self.lasttime = millis;
             bit |= 0;
             self.portcpins = (self.portcpins & 0xdf) | (bit << 5);
-            console.log("> "+ t.toFixed(1) +" portcpins " + self.portcpins.toString(2));
+
+
+            var flyback = self.portcpins & 0x80;
+            var rept = self.portcpins & 0x40;  // low when pressed
+            var casin = self.portcpins & 0x20; //
+            var hzin = self.portcpins & 0x10;
+        //    console.log("> "+ t.toFixed(1) +" portcpins " + (casin|hzin).toString(2).padStart(10,'0'));
         };
 
 
