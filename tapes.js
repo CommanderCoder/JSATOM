@@ -6,7 +6,7 @@ define(['utils'], function (utils) {
 
         var dummyData, state, count, curByte, numDataBits, parity;
         var numParityBits, numStopBits, carrierBefore, carrierAfter;
-        var shortWave = false;
+        var shortWave = 0;
 
         self.rewind = function () {
 
@@ -116,7 +116,7 @@ define(['utils'], function (utils) {
                         if (numStopBits & 0x80) // negative
                         {
                             numStopBits = Math.abs(numStopBits-256);
-                            shortWave = true;
+                            shortWave = 1;
                         }
                         numParityBits = parity !== 0x4E ? 1 : 0; // 'N' value in condition
                         console.log("Defined data with " + numDataBits + String.fromCharCode(parity) + (shortWave?'-':'') + numStopBits);
@@ -144,6 +144,10 @@ define(['utils'], function (utils) {
                         state++;
                     } else if (state < (1 + numDataBits + numParityBits + numStopBits)) {
                         acia.tone(2 * baseFrequency); // Stop bits
+                        acia.receiveBit(1);
+                        state++;
+                    } else if (state < (1 + numDataBits + numParityBits + numStopBits + shortWave)) {
+                        acia.tone(2 * baseFrequency); // Extra short wave - one cycle bits
                         acia.receiveBit(1);
                         state++;
                     } else {

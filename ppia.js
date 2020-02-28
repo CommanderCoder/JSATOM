@@ -198,7 +198,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         if (self.portcpins & 0x10) {
                             console.log("hzin");
                         }
-                        
+
                         // only read top 4 bits
                         var val =  self.portcpins & 0xF0;
 
