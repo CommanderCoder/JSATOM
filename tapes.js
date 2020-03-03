@@ -49,8 +49,29 @@ define(['utils'], function (utils) {
         }
 
         function cycles(count) {
-            return secsToClocks(count / baseFrequency * baudMultiplier);
+            // a cycle is a full sine wave from 0 to 360
+            // 1 cycle at 1200 is 0.0008333 seconds
+            // if this is a 2000000 (2mhz) clock then this will take
+            //  1666.667 cycles
+
+            // 1 cycle at 300 is 0.0033333 seconds
+            // if this is a 1000000 (1mhz) clock then this will take
+            //  3333.333 clock cycles
+
+            return secsToClocks(count / baseFrequency / baudMultiplier);
         }
+
+        /*
+
+        PPIA is read by CPU every 33 cycles (i.e us = microseconds)
+        a high tone is detected by counting either <8 or >=8 changes
+        need to have <8 for a high tone to have been detected
+        need to have >=8 for a low tone to have been detected
+
+        a '0' is 8 cycles of 2.4khz  (8/2400 = 3.3ms) - i.e up and down 8 times in 3.3ms
+        a '1' is 4 cycles of 1.2khz  (4/1200 = 3.3ms) - i.e up and down 4 times in 3.3 ms
+         */
+
 
 
         function parityOf(curByte) {

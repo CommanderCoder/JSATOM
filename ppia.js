@@ -208,17 +208,28 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         var hzin = self.portcpins & 0x10;
 
                         var casbit = casin?1:0;
-                        if (casbit != self.prevcas)
+
+                        if (!([0xfe6e, 0XFE9D, 0xfe69].includes(self.processor.pc)))
                         {
-                            var clocksPerSecond = (1 * 1000 * 1000) | 0;
-                            var millis = self.processor.cycleSeconds * 1000 + self.processor.currentCycles / (clocksPerSecond / 1000);
-                            self.prevcas = casbit;
-                            console.log(millis.toFixed(1)+ " } "+(self.prevcas));
-                        }
+                            // this is called once every 33 clock cycles
+                            // there are 6 calls this between every change
+                            // of a bit due to 'receiveBit'.
 
-                        //console.log("} "+(flyback?"F":"_")+(rept?"_":"R")+(casin?"1":"0")+(hzin?"h":"_"));
+                            // console.log("#" + self.processor.pc.toString(16) + " ppia_read " + val.toString(2).padStart(8, '0') + " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
+
+                            if (casbit != self.prevcas) {
+                                // var clocksPerSecond = (1 * 1000 * 1000) | 0;
+                                // var millis = self.processor.cycleSeconds * 1000 + self.processor.currentCycles / (clocksPerSecond / 1000);
+
+//                            var t = millis - self.lasttime;
+//                            self.lasttime = millis;
+                                self.prevcas = casbit;
+                                console.log("#" + self.processor.pc.toString(16) + " ppia_read casin switched to " + self.prevcas + " } ");
+                            }
+
+                            //console.log("} "+(flyback?"F":"_")+(rept?"_":"R")+(casin?"1":"0")+(hzin?"h":"_"));
 //                        console.log("} "+val.toString(2).padStart(10,'0'));
-
+                        }
                         return val;
                     default:
                         throw "Unknown PPIA read";
@@ -419,17 +430,31 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
             var millis = self.processor.cycleSeconds * 1000 + self.processor.currentCycles / (clocksPerSecond / 1000);
 
 
-            var t = millis - self.lasttime;
-            self.lasttime = millis;
+ //           var t = millis - self.lasttime;
+ //           self.lasttime = millis;
             bit |= 0;
-            self.portcpins = (self.portcpins & 0xdf) | (bit << 5);
+            var casin = (self.portcpins & 0x20)>>5; //
 
+            self.latchc = (self.portcpins & 0xdf) | (bit << 5);
 
-            var flyback = self.portcpins & 0x80;
-            var rept = self.portcpins & 0x40;  // low when pressed
-            var casin = self.portcpins & 0x20; //
-            var hzin = self.portcpins & 0x10;
-        //    console.log("> "+ t.toFixed(1) +" portcpins " + (casin|hzin).toString(2).padStart(10,'0'));
+            // this is called once every 208 clock cycles (208us or 0.2ms)
+
+            /*
+            for this to be recognised as a '1'; it needs to be 4 cycles at 1.2khz (or is this '0') - duration of tape pulse < 8
+            for this to be recognised as a '0'; it needs to be 8 cycles at 2.4khz (or is this '1')
+             leader tone is a '1' - so reading 8 half cycles at 2.4khz
+
+             */
+
+            console.log("#  receiveBit " + self.latchc.toString(2).padStart(8, '0') + " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
+
+            // if (casin != bit) {
+            //     // var flyback = self.latchc & 0x80;
+            //     // var rept = self.latchc & 0x40;  // low when pressed
+            //     casin = self.latchc & 0x20; //
+            //     var hzin = self.latchc & 0x10;
+            //     console.log("> " + millis.toFixed(1) + " portcpins " + (casin | hzin).toString(2).padStart(10, '0'));
+            // }
         };
 
 
@@ -463,6 +488,12 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                 console.log("rewinding tape");
                 self.tape.rewind();
                 self.tape_counter = 0;
+                var display_div = $("#counter_id");
+                var display_str = "";
+                display_str = self.tape_counter.toString().padStart(8,'0');
+                for (var i = 0; i < display_str.length; i++) {
+                    display_div.append("<span class='cas counter num_tiles'>"+display_str[i]+"</span>");
+                }
             }
         };
 
@@ -490,6 +521,8 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         }
                     },1000);
                 }
+
+
                 // example of a counter.
                 incrementCount();
 
