@@ -1,4 +1,48 @@
 
+
+LEADER:
+Wait for high tone by:
+.. count duration of tape pulse
+.. .. Carry set if loops >= 8 and Zero set if loops == 8
+.. .. Carry clear if loops < 8
+.. .. X = count (but X == 0 means no change detected)
+.. .. .. keep testing #B002 for changes from 0 to 1 and 1 to 0.
+.. if Carry Set (>=8 loops of 33ms) - low pulse detected
+.. otherwise (<8 loops of 33ms) - high pulse detected
+
+
+: In the alternate ("300 baud") data encoding format, a zero bit is encoded as four complete cycles at the base frequency. A one bit is eight complete cycles at twice the base frequency.
+
+
+High pulse - this is 8 complete cycles in the 8*33ms (8*33 = 264, 8*26 = 208)
+
+Need 4096 (#1000) cycles of the high pulse (THIS IS ABOUT 1 SECOND at 1mHz)
+
+
+To write this leader: #FC40.  Send 00000111 to #B002 and wait for a keypress! The bit pattern means (intensity/colourset, loudspeaker, 2.4khz and tape output)
+
+
+//need to be filling buffers with waveform for 0's and 1's
+So inside tapes.js - need to be outputting 00001111000011110000111100001111 to get a low frequency pulse (base frequency, 4 cycles) and  00110011001100110011001100110011 to get a high frequency pulse (2*base frequency, 8 cycles)
+
+
+The frequency is
+
+
+2400hz
+
+
+- Byte format consists of: 1 '0' start bit
+                           8     data bits
+                           1 '1' stop bit
+
+
+
+
+
+
+
+
 FB81: the wait for 0.5 seconds is set a counter to 30 and wait for 30 x 60ths of a second.
 
 FB83: Using CRT flyback (FE66) to register a 60th
