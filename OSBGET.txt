@@ -23,13 +23,37 @@ To write this leader: #FC40.  Send 00000111 to #B002 and wait for a keypress! Th
 
 
 //need to be filling buffers with waveform for 0's and 1's
-So inside tapes.js - need to be outputting 00001111000011110000111100001111 to get a low frequency pulse (base frequency, 4 cycles) and  00110011001100110011001100110011 to get a high frequency pulse (2*base frequency, 8 cycles)
+So inside tapes.js - need to be outputting 00001111000011110000111100001111 to get a low frequency pulse (base frequency, 4 cycles)
+and  00110011001100110011001100110011 to get a high frequency pulse (2*base frequency, 8 cycles)
+
+0011001100110011 (low freq)
+0101010101010101 (high freq)
+
+The frequency is 2400hz   or each cycle is 1/2400 = 0.000416666... secs
+
+so that's 0s for 1/2400 and 1s for 1/2400  (2*base freq)
+or that's 0s for 1/1200 and 1s for 1/1200  (base freq)
+
+for 8 cycles at high freq or 4 cycles at low freq it will take 0.003333...
+
+The high freq is tested by looking for less than 8 cycles before a transition from 0 to 1 or 1 to 0
+The low freq is tested by looking for more than 8 cycles before a transition from 0 to 1 or 1 to 0
+
+(for high freq test)
+It take 33us to make 1 cycle for this test.  6.3 cycles is 33us * 6.3 = 208 us (or 0.208ms)
+2 cycles is one pulse (from 0 to 1 and back to 0) 16- 0.416ms
+8 pulses is one bit - 3.328ms - 300.5baud
+
+(for low freq test)
+It take 33us to make 1 cycle for this test.  12.6 cycles is 33us * 12 = 416 us (or 0.416ms)
+2 cycles is one pulse (from 0 to 1 and back to 0) - 0.832ms
+4 pulses is one bit - 3.328ms - 300.5baud
 
 
-The frequency is
+FOR 1:  a 0 needs sending for 208us then 1 for 208us  - 8 times
+FOR 0:  a 0 needs sending for 2*208us  then 1 for 2*208us  - 4 times
 
-
-2400hz
+cycle time is 1/0.000208 (4800hz)
 
 
 - Byte format consists of: 1 '0' start bit

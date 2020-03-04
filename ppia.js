@@ -209,13 +209,14 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
                         var casbit = casin?1:0;
 
-                        if (!([0xfe6e, 0XFE9D, 0xfe69].includes(self.processor.pc)))
+                        //
+                        if (!([0xfe6e, 0XFE9D, 0xfe69, 0xFCC2, 0xfcd2].includes(self.processor.pc)))
                         {
-                            // this is called once every 33 clock cycles
+                            // this is called once every 33 clock cycles from FCCF
                             // there are 6 calls this between every change
                             // of a bit due to 'receiveBit'.
 
-                            // console.log("#" + self.processor.pc.toString(16) + " ppia_read " + val.toString(2).padStart(8, '0') + " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
+                           console.log("#" + self.processor.pc.toString(16) + " ppia_read " + val.toString(2).padStart(8, '0') + " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
 
                             if (casbit != self.prevcas) {
                                 // var clocksPerSecond = (1 * 1000 * 1000) | 0;
@@ -224,7 +225,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 //                            var t = millis - self.lasttime;
 //                            self.lasttime = millis;
                                 self.prevcas = casbit;
-                                console.log("#" + self.processor.pc.toString(16) + " ppia_read casin switched to " + self.prevcas + " } ");
+                                // console.log("#" + self.processor.pc.toString(16) + " ppia_read casin switched to " + self.prevcas + " } ");
                             }
 
                             //console.log("} "+(flyback?"F":"_")+(rept?"_":"R")+(casin?"1":"0")+(hzin?"h":"_"));
@@ -437,7 +438,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
             self.latchc = (self.portcpins & 0xdf) | (bit << 5);
 
-            // this is called once every 208 clock cycles (208us or 0.2ms)
+            // this is called once every 208 clock cycles (208us or 0.2ms at 1Mhz)
 
             /*
             for this to be recognised as a '1'; it needs to be 4 cycles at 1.2khz (or is this '0') - duration of tape pulse < 8
@@ -446,7 +447,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
              */
 
-            console.log("#  receiveBit " + self.latchc.toString(2).padStart(8, '0') + " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
+            // console.log("#  receiveBit " + self.latchc.toString(2).padStart(8, '0') + " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
 
             // if (casin != bit) {
             //     // var flyback = self.latchc & 0x80;

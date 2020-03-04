@@ -7,6 +7,11 @@ define(['utils'], function (utils) {
         var dummyData, state, count, curByte, numDataBits, parity;
         var numParityBits, numStopBits, carrierBefore, carrierAfter;
         var shortWave = 0;
+        var wavebits=[];
+        const bit1pattern = [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1];
+        const bit0pattern = [0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1];
+        // FOR 0:  a 0 needs sending for 2*208us then 1 for 2*208ms - 4 times
+        // FOR 1:  a 0 needs sending for 208ms then 1 for 208us - 8 times
 
         self.rewind = function () {
 
@@ -49,6 +54,10 @@ define(['utils'], function (utils) {
         }
 
         function cycles(count) {
+            // 1 cycle is 1/1200*4 (at 300baud)
+            //
+
+
             // a cycle is a full sine wave from 0 to 360
             // 1 cycle at 1200 is 0.0008333 seconds
             // if this is a 2000000 (2mhz) clock then this will take
@@ -58,7 +67,9 @@ define(['utils'], function (utils) {
             // if this is a 1000000 (1mhz) clock then this will take
             //  3333.333 clock cycles
 
-            return secsToClocks(count / baseFrequency / baudMultiplier);
+            return secsToClocks(count / baseFrequency * baudMultiplier);
+
+            // should this be count / baseFrequency * baudMultiplier / 16 // for 16 little parts of the wave
         }
 
         /*
@@ -91,6 +102,14 @@ define(['utils'], function (utils) {
                     return;
                 }
                 curChunk = readChunk();
+            }
+
+
+            if (wavebits.length > 0)
+            {
+                const wbit = wavebits.shift();
+                acia.receiveBit(wbit);
+                return cycles(1/16);
             }
 
             var gap;
@@ -149,34 +168,46 @@ define(['utils'], function (utils) {
                         } else {
                             curByte = curChunk.stream.readByte() & ((1 << numDataBits) - 1);
                             acia.tone(baseFrequency); // Start bit
-                            acia.receiveBit(0);
+                            wavebits = Array.from(bit0pattern);
+                           // FOR 0:  a 0 needs sending for 2*198ms then 1 for 2*198ms - 4 times
+
+
                             state++;
                         }
                     } else if (state < (1 + numDataBits)) {
                         var bit = (curByte & (1 << (state - 1)));
                         acia.tone(bit ? (2 * baseFrequency) : baseFrequency);
-                        acia.receiveBit(bit?1:0);
+                        wavebits = Array.from(bit?bit1pattern:bit0pattern);
+
+                        // FOR 0:  a 0 needs sending for 2*208us then 1 for 2*208ms - 4 times
+                        // FOR 1:  a 0 needs sending for 208ms then 1 for 208us - 8 times
+
                         state++;
                     } else if (state < (1 + numDataBits + numParityBits)) {
                         var bit = parityOf(curByte);
                         if (parity === 0x4E) bit = !bit;
                         acia.tone(bit ? (2 * baseFrequency) : baseFrequency);
-                        acia.receiveBit(bit?1:0);
+                        wavebits = Array.from(bit?bit1pattern:bit0pattern);
+
+                        // FOR 0:  a 0 needs sending for 2*208us then 1 for 2*208us - 4 times
+                        // FOR 1:  a 0 needs sending for 208us then 1 for 208us - 8 times
                         state++;
                     } else if (state < (1 + numDataBits + numParityBits + numStopBits)) {
                         acia.tone(2 * baseFrequency); // Stop bits
-                        acia.receiveBit(1);
+                        wavebits = Array.from(bit1pattern);
+                        // FOR 1:  a 0 needs sending for 208us then 1 for 208us - 8 times
                         state++;
                     } else if (state < (1 + numDataBits + numParityBits + numStopBits + shortWave)) {
                         acia.tone(2 * baseFrequency); // Extra short wave - one cycle bits
-                        acia.receiveBit(1);
+                        wavebits = Array.from(bit1pattern);
+                        // FOR 1:  a 0 needs sending for 208us then 1 for 208us - 8 times
                         state++;
                     } else {
                         acia.receive(curByte);
                         state = 0;
                         return 0;
                     }
-                    return cycles(1);
+                    return 0;//cycles(1);
                 case 0x0111: // Carrier tone with dummy data
                     if (state === -1) {
                         state = 0;
@@ -213,14 +244,15 @@ define(['utils'], function (utils) {
                     if (state === -1) {
                         state = 0;
                         count = curChunk.stream.readInt16();
+                        count /= 16;
                         console.log("Carrier tone for ", count);
                     }
                     acia.setTapeCarrier(true);
                     acia.tone(2 * baseFrequency);
-                    acia.receiveBit(1);
+                    wavebits = Array.from(bit1pattern);
                     count--;
                     if (count <= 0) state = -1;
-                    return cycles(1);
+                    return 0;//cycles(1);
                 case 0x0113:
                     baseFrequency = curChunk.stream.readFloat32();
                     console.log("Frequency change ", baseFrequency);
@@ -229,14 +261,14 @@ define(['utils'], function (utils) {
                     acia.setTapeCarrier(false);
                     gap = 1 / (2 * curChunk.stream.readInt16() * baseFrequency);
                     console.log("Tape gap of " + gap + "s");
-                    acia.receiveBit(0);
+                    wavebits = Array.from(bit0pattern);
                     acia.tone(0);
                     return secsToClocks(gap);
                 case 0x0116:
                     acia.setTapeCarrier(false);
                     gap = curChunk.stream.readFloat32();
                     console.log("Tape gap of " + gap + "s");
-                    acia.receiveBit(0);
+                    wavebits = Array.from(bit0pattern);
                     acia.tone(0);
                     return secsToClocks(gap);
                 case 0x0117:
