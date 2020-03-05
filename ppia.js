@@ -209,8 +209,8 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
                         var casbit = casin?1:0;
 
-                        //
-                        if (!([0xfe6e, 0XFE9D, 0xfe69, 0xFCC2, 0xfcd2].includes(self.processor.pc)))
+                        //0xFCC2,
+                        if (!([0xfe6e, 0XFE9D, 0xfe69,  0xfcd2].includes(self.processor.pc)))
                         {
                             // this is called once every 33 clock cycles from FCCF
                             // there are 6 calls this between every change

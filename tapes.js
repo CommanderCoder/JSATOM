@@ -167,6 +167,8 @@ define(['utils'], function (utils) {
                             state = -1;
                         } else {
                             curByte = curChunk.stream.readByte() & ((1 << numDataBits) - 1);
+                            console.log("Sending 0x"+curByte.toString(16)+" = "+String.fromCharCode(curByte));
+
                             acia.tone(baseFrequency); // Start bit
                             wavebits = Array.from(bit0pattern);
                            // FOR 0:  a 0 needs sending for 2*198ms then 1 for 2*198ms - 4 times
