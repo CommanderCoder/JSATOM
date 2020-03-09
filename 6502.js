@@ -541,6 +541,9 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 addr &= 0xffff;
                 var res = this.ramRomOs[addr];
                 if (this._debugRead) this._debugRead(addr, 0, res);
+        if (addr == 0x00c0)
+            console.log(">> 0x"+ res.toString(16) +" <<");
+
                 return res | 0;
             };
             this.writememZpStack = function (addr, b) {

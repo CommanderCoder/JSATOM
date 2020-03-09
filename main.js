@@ -983,7 +983,14 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             }
 
             return tapes.loadTape("tapes/" + tapeImage).then(function (tape) {
-                processor.acia.setTape(tape);
+                if (processor.model.isAtom)
+                {
+                    processor.atomppia.setTape(tape);
+                }
+                else
+                {
+                    processor.acia.setTape(tape);
+                }
             });
         }
 

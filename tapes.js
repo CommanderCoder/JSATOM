@@ -57,13 +57,16 @@ define(['utils'], function (utils) {
             // 1 cycle is 1/1200*4 (at 300baud)
             //
 
+            //  bit change every 0.033ms (33ns or 33 clocks)
+            // 33 /1000000 = 0.000033secs
+            //
 
             // a cycle is a full sine wave from 0 to 360
             // 1 cycle at 1200 is 0.0008333 seconds
             // if this is a 2000000 (2mhz) clock then this will take
             //  1666.667 cycles
 
-            // 1 cycle at 300 is 0.0033333 seconds
+            // 1 cycle at 300 is 0.0333333 seconds
             // if this is a 1000000 (1mhz) clock then this will take
             //  3333.333 clock cycles
 
@@ -83,6 +86,7 @@ define(['utils'], function (utils) {
         a '1' is 4 cycles of 1.2khz  (4/1200 = 3.3ms) - i.e up and down 4 times in 3.3 ms
          */
 
+        self.lasttime = 0;
 
 
         function parityOf(curByte) {
@@ -94,6 +98,8 @@ define(['utils'], function (utils) {
             return parity;
         }
 
+        self.lastChunkId = 0;
+
         self.poll = function (acia) {
             if (!curChunk) return;
             if (state === -1) {
@@ -104,41 +110,62 @@ define(['utils'], function (utils) {
                 curChunk = readChunk();
             }
 
+            self.processor = acia.processor;
+
+            var clocksPerSecond = (1 * 1000 * 1000) | 0;
+            var millis = self.processor.cycleSeconds * 1000 + self.processor.currentCycles / (clocksPerSecond / 1000);
+            var t = millis - self.lasttime;
+            self.lasttime = millis;
+
+
 
             if (wavebits.length > 0)
             {
+                // console.log("SEND (0x"+self.lastChunkId.toString(16)+") at ["+wavebits+"]" + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles ("+t+") } ");
                 const wbit = wavebits.shift();
                 acia.receiveBit(wbit);
-                return cycles(1/16);
+                return cycles(0.0616);
             }
-
+            else
+            {
+                // console.log("NEXT (0x"+self.lastChunkId.toString(16)+") at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles ("+t+") } ");
+            }
             var gap;
-            switch (curChunk.id) {
+            self.lastChunkId = curChunk.id;
+            switch (self.lastChunkId) {
                 case 0x0000:
                     console.log("Origin: " + curChunk.stream.readNulString());
                     break;
                 case 0x0100:
                     acia.setTapeCarrier(false);
                     if (state === -1) {
+                        console.log("0x100: implicit start/stop bit tape data block ");
                         state = 0;
                         curByte = curChunk.stream.readByte();
                         acia.tone(baseFrequency); // Start bit
-                        acia.receiveBit(0);
+                        wavebits = Array.from(bit0pattern);
+                        console.log("start "+"0".padStart(8, '0') );
+
                     } else if (state < 9) {
                         if (state === 0) {
                             // Start bit
                             acia.tone(baseFrequency);
-                            acia.receiveBit(0);
+                            wavebits = Array.from(bit0pattern);
+                            console.log("start "+"0".padStart(8, '0') );
+
                         } else {
                             var bit = (curByte & (1 << (state - 1)));
                             acia.tone(bit ? (2 * baseFrequency) : baseFrequency);
-                            acia.receiveBit(bit?1:0);
+                            wavebits = Array.from(bit?bit1pattern:bit0pattern);
+                            console.log("data "+bit.toString(2).padStart(8, '0') );
+
                         }
                         state++;
                     } else {
                         acia.receive(curByte);
                         acia.tone(2 * baseFrequency); // Stop bit
-                        acia.receiveBit(1);
+                        wavebits = Array.from(bit1pattern);
+                        console.log("stop "+"1".padStart(8, '0') );
                         if (curChunk.stream.eof()) {
                             state = -1;
                         } else {
@@ -146,7 +173,7 @@ define(['utils'], function (utils) {
                             curByte = curChunk.stream.readByte();
                         }
                     }
-                    return cycles(1);
+                    return 0;//cycles(1);
                 case 0x0104: // Defined data
                     acia.setTapeCarrier(false);
                     if (state === -1) {
@@ -171,7 +198,7 @@ define(['utils'], function (utils) {
                             wavebits = Array.from(bit0pattern);
                            // FOR 0:  a 0 needs sending for 2*198ms then 1 for 2*198ms - 4 times
 
-
+                            console.log("start "+"0".padStart(8, '0') );
                             state++;
                         }
                     } else if (state < (1 + numDataBits)) {
@@ -181,6 +208,7 @@ define(['utils'], function (utils) {
 
                         // FOR 0:  a 0 needs sending for 2*208us then 1 for 2*208ms - 4 times
                         // FOR 1:  a 0 needs sending for 208ms then 1 for 208us - 8 times
+                        console.log("data "+bit.toString(2).padStart(8, '0') );
 
                         state++;
                     } else if (state < (1 + numDataBits + numParityBits)) {
@@ -191,16 +219,21 @@ define(['utils'], function (utils) {
 
                         // FOR 0:  a 0 needs sending for 2*208us then 1 for 2*208us - 4 times
                         // FOR 1:  a 0 needs sending for 208us then 1 for 208us - 8 times
+
+                        console.log("parity "+bit.toString(2).padStart(8, '0') );
+
                         state++;
                     } else if (state < (1 + numDataBits + numParityBits + numStopBits)) {
                         acia.tone(2 * baseFrequency); // Stop bits
                         wavebits = Array.from(bit1pattern);
                         // FOR 1:  a 0 needs sending for 208us then 1 for 208us - 8 times
+                        console.log("stop "+"1".padStart(8, '0') );
                         state++;
                     } else if (state < (1 + numDataBits + numParityBits + numStopBits + shortWave)) {
                         acia.tone(2 * baseFrequency); // Extra short wave - one cycle bits
                         wavebits = Array.from(bit1pattern);
                         // FOR 1:  a 0 needs sending for 208us then 1 for 208us - 8 times
+                        console.log("short "+"1".padStart(8, '0') );
                         state++;
                     } else {
                         acia.receive(curByte);

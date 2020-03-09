@@ -209,18 +209,35 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
                         var casbit = casin?1:0;
 
-                        //
-                        if (!([0xfe6e, 0XFE9D, 0xfe69, 0xFCC2, 0xfcd2].includes(self.processor.pc)))
+                        // TAPE - 0xfc0a  (every 3.340ms/3340us), -OSBGET Get Byte from Tape subroutine; get a bit and count duration of tape pulse (using FCD2)
+                        // TAPE - 0xfcd2  (every 0.033ms/3.3us), -Test state of #B002 tape input pulse subroutine (has there been a change?)
+                        // TAPE - 0xFCC2 (every 8.446ms/8446us), -Count Duration of Tape Pulse subroutine (<8 loops, >=8 loops)
+                        // FLYBACK - 0xfe6e, 0XFE9D, 0xfe69,
+                        var myPC = self.processor.pc;
+                        if (!([0xfe6e, 0XFE9D, 0xfe69, 0xfcd2].includes(myPC)))
                         {
+                            var clocksPerSecond = (1 * 1000 * 1000) | 0;
+                            var millis = self.processor.cycleSeconds * 1000 + self.processor.currentCycles / (clocksPerSecond / 1000);
+                            var tt = millis - self.lastTime;
+                            self.lastTime = millis;
+
+                            // for fc0a - it is called every 3.34ms and in this time it should change from 0 to 1 either
+                            // 8 or 16 times (which the ASM compares against 12)
+
                             // this is called once every 33 clock cycles from FCCF
                             // there are 6 calls this between every change
                             // of a bit due to 'receiveBit'.
 
-                           console.log("#" + self.processor.pc.toString(16) + " ppia_read " + val.toString(2).padStart(8, '0') + " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
+                            // if([0xfc0a,0xFCC2].includes(myPC) )
+                            // {
+                            //     console.log("." + myPC.toString(16) + " ppia_read " + ((val&0x20)>>5) + " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles ("+tt+") } ");
+                            // }
+                            // else
+                            // {
+                            //     console.log("#" + self.processor.pc.toString(16) + " ppia_read " + val.toString(2).padStart(8, '0') + " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles ("+tt+") } ");
+                            // }
 
                             if (casbit != self.prevcas) {
-                                // var clocksPerSecond = (1 * 1000 * 1000) | 0;
-                                // var millis = self.processor.cycleSeconds * 1000 + self.processor.currentCycles / (clocksPerSecond / 1000);
 
 //                            var t = millis - self.lasttime;
 //                            self.lasttime = millis;
@@ -424,7 +441,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
         };
 
-        self.lasttime = 0;
+        self.lastTime = 0;
         // receive is set by the TAPE POLL
         self.receiveBit = function (bit) {
             var clocksPerSecond = (1 * 1000 * 1000) | 0;
