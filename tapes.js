@@ -77,6 +77,8 @@ define(['utils'], function (utils) {
 
         /*
 
+3340
+
         PPIA is read by CPU every 33 cycles (i.e us = microseconds)
         a high tone is detected by counting either <8 or >=8 changes
         need to have <8 for a high tone to have been detected
@@ -102,13 +104,6 @@ define(['utils'], function (utils) {
 
         self.poll = function (acia) {
             if (!curChunk) return;
-            if (state === -1) {
-                if (stream.eof()) {
-                    curChunk = null;
-                    return;
-                }
-                curChunk = readChunk();
-            }
 
             self.processor = acia.processor;
 
@@ -124,12 +119,23 @@ define(['utils'], function (utils) {
                 // console.log("SEND (0x"+self.lastChunkId.toString(16)+") at ["+wavebits+"]" + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles ("+t+") } ");
                 const wbit = wavebits.shift();
                 acia.receiveBit(wbit);
-                return cycles(0.0616);
+                return cycles(1.0/15.5136);  // to create 3340 cycles between bits
             }
             else
             {
                 // console.log("NEXT (0x"+self.lastChunkId.toString(16)+") at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles ("+t+") } ");
             }
+
+
+            if (state === -1) {
+                if (stream.eof()) {
+                    curChunk = null;
+                    return;
+                }
+                curChunk = readChunk();
+            }
+
+
             var gap;
             self.lastChunkId = curChunk.id;
             switch (self.lastChunkId) {
@@ -198,7 +204,7 @@ define(['utils'], function (utils) {
                             wavebits = Array.from(bit0pattern);
                            // FOR 0:  a 0 needs sending for 2*198ms then 1 for 2*198ms - 4 times
 
-                            console.log("start "+"0".padStart(8, '0') );
+                            // console.log("start "+"0".padStart(8, '0') );
                             state++;
                         }
                     } else if (state < (1 + numDataBits)) {
@@ -208,7 +214,7 @@ define(['utils'], function (utils) {
 
                         // FOR 0:  a 0 needs sending for 2*208us then 1 for 2*208ms - 4 times
                         // FOR 1:  a 0 needs sending for 208ms then 1 for 208us - 8 times
-                        console.log("data "+bit.toString(2).padStart(8, '0') );
+                        // console.log("data "+bit.toString(2).padStart(8, '0') );
 
                         state++;
                     } else if (state < (1 + numDataBits + numParityBits)) {
@@ -220,14 +226,14 @@ define(['utils'], function (utils) {
                         // FOR 0:  a 0 needs sending for 2*208us then 1 for 2*208us - 4 times
                         // FOR 1:  a 0 needs sending for 208us then 1 for 208us - 8 times
 
-                        console.log("parity "+bit.toString(2).padStart(8, '0') );
+                        // console.log("parity "+bit.toString(2).padStart(8, '0') );
 
                         state++;
                     } else if (state < (1 + numDataBits + numParityBits + numStopBits)) {
                         acia.tone(2 * baseFrequency); // Stop bits
                         wavebits = Array.from(bit1pattern);
                         // FOR 1:  a 0 needs sending for 208us then 1 for 208us - 8 times
-                        console.log("stop "+"1".padStart(8, '0') );
+                        // console.log("stop "+"1".padStart(8, '0') );
                         state++;
                     } else if (state < (1 + numDataBits + numParityBits + numStopBits + shortWave)) {
                         acia.tone(2 * baseFrequency); // Extra short wave - one cycle bits
