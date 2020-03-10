@@ -149,8 +149,8 @@ define(['utils'], function (utils) {
                         state = 0;
                         curByte = curChunk.stream.readByte();
                         acia.tone(baseFrequency); // Start bit
-                        wavebits = Array.from(bit0pattern);
-                        console.log("start "+"0".padStart(8, '0') );
+                        // wavebits = Array.from(bit0pattern);
+                        // console.log("start "+"0".padStart(8, '0') );
 
                     } else if (state < 9) {
                         if (state === 0) {
@@ -239,7 +239,7 @@ define(['utils'], function (utils) {
                         acia.tone(2 * baseFrequency); // Extra short wave - one cycle bits
                         wavebits = Array.from(bit1pattern);
                         // FOR 1:  a 0 needs sending for 208us then 1 for 208us - 8 times
-                        console.log("short "+"1".padStart(8, '0') );
+                        // console.log("short "+"1".padStart(8, '0') );
                         state++;
                     } else {
                         acia.receive(curByte);

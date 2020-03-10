@@ -490,7 +490,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
             //     self.sr |= 0x81;
             // }
 
-            console.log("] "+byte.toString(16) + " : " + String.fromCharCode(byte));
+            console.log("[ "+byte.toString(16) + " : " + String.fromCharCode(byte));
             updateIrq();
         };
 
