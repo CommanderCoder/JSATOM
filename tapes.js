@@ -1,6 +1,23 @@
 define(['utils'], function (utils) {
     "use strict";
 
+    function ATMFile(stream)
+    {
+        /* file format for Atom MMC2 files
+        Offset		Purpose
+        $00 - $0F	File name - Up-to 12 bytes of name + zero padding
+        $10 - $11	Load address
+        $12 - $13	Exec address
+        $14 - $15	Length
+
+        Firmware sits in E000 on atomulator and assumes firmware version 2.9
+
+        */
+
+    }
+
+
+
     function UefTape(stream) {
         var self = this;
 
@@ -200,6 +217,8 @@ define(['utils'], function (utils) {
                             state = -1;
                         } else {
                             curByte = curChunk.stream.readByte() & ((1 << numDataBits) - 1);
+                            console.log("Sending 0x"+curByte.toString(16)+" = "+String.fromCharCode(curByte));
+
                             acia.tone(baseFrequency); // Start bit
                             wavebits = Array.from(bit0pattern);
                            // FOR 0:  a 0 needs sending for 2*198ms then 1 for 2*198ms - 4 times
