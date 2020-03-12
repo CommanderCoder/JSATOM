@@ -1,0 +1,304 @@
+ERIK.TAP: Software for the Acorn Atom
+
+These programs were made on an original Acorn Atom in the early
+1980's. They were converted from cassette to Wouter Ras's Atom
+Emulator, v. 1.33, in 2000, and this documentation was put together.
+Most of the programs are in Swedish, but this documentation provides
+translations to let English-speaking people access most of the
+programs.
+
+Have fun!
+
+Erik Agrell
+Jan. 3, 2001
+
+
+ASTEROID by EA
+
+Drive your spaceship through an asteroid swarm. Game over after 5
+hits. You control the spaceship with SHIFT and REPT. When asked for
+the level ("NIVA"), answer with a number, or S for same as before.
+  This is a very small game, one of the first I made, on a classical
+theme, but it is kind of fun anyway. As an option, you can try to
+hit 5 asteroids as fast as possible.
+  Try to beat my old records from the original Atom:
+
+   Level  High     Low
+     1    9883     12
+     2    2812      6
+     3    1474      6
+     4     829      5
+     5     795      5
+     6     574      5
+     7     565      5
+     8     477
+    10     643 (really!)
+    11     383
+    14     283
+    18     225
+    25     120
+    33      61
+    50      28
+
+
+AWARI by Creative Computing, modified by EA.
+
+A game of skill with beans and bins. You control six bins and the
+computer controls six. In addition, you have one collector bin each.
+When it is your turn, you take all beans from one of your bins and
+spread them counterclockwise, one bean per bin. If the last bean
+falls into your collector bin, it is your turn again. If the last
+bean falls into an empty bin, you gain all beans in the opposite
+bin. The game is over when the player to move has no legal moves to
+make, because all six bins are empty. The player who has most beans
+in the collector bin wins.
+  You will be asked for the initial number of beans in each bin.
+Then you enter your moves by giving the number (1-6) of a bin on
+your side.
+  The program is similar to a game on LEENDERT.TAP (2000), but the
+computer player seems to be stronger in this version.
+
+
+DIMP by Acornsoft, modified by EA
+
+This is a Stargate clone, in which you shoot down spaceships with a
+sliding cannon. Instructions in English are included. The game was
+created by changing just the following 6 bytes of the game Stargate
+by Acornsoft (from Games Pack 8):
+    ?#2A60 = #8C
+    ?#2BEF = #8B
+    ?#2DBB = #8B
+    ?#2E13 = #AF
+    ?#33EE = #42
+    ?#343E = #33
+The modified game, which my brother for some reason called Dimp, has
+twice the distance between the cannon and the stargates.
+  Try to beat my old record from original Atom, which is 672. (My
+best score in regular Stargate was 562.)
+
+
+DISASSEMBLER by EA
+
+A nice little disassembler. I used it a lot in the golden Atom age,
+about 1983-85, to investigate the Atom ROMs and some commercial
+programs.
+  The program resides in the higher-mode graphics memory, to let
+another program reside in the regular program memory simultaneously.
+To run the disassembler, enter ?18=#92 and thereafter RUN. You will
+be prompted for the start address and the assembler code is listed.
+To quit disassembling a particular segment, type Q to quit, and you
+may specify a new start address. Enter S for the same segment as
+before.
+
+
+HEATHROW by unknown, from the journal "Interface", vol. 2, no. 7,
+March 1982, pp. 17-18.
+
+A flight simulator. This is a large but boring program of the type
+"push a button when the computer tells you to". These are the
+original instructions from the journal:
+
+YOU ARE THE CAPTAIN OF A JET
+AIRCRAFT LANDING AT HEATHROW
+IN THICK FOG YOU DEPEND ENTIRELYON INSTRUMENTS
+A COPY OF THE INSTRUCTIONS
+WOULD BE USEFUL DURING FLIGHT
+PRESS 'SPACE' TO READ EACH FRAME'T' KEEPS YOU ON TRACK
+'C' CUTS AIR SPEED (A/S)
+'V' INCREASES A/S
+'W' CONTACTS TOWER AT 11 OR 12 MFROM TOUCH DOWN (T/D)
+'U' LOWERS UNDER-CARRIAGE (U/C)
+AFTER'OUTER BEACON'
+'H' TRIMS A/C TO HORIZON
+AFTER 'INNER BEACON'
+'L' TURNS A/C 90 DEG. TO LEFT        for safe landing
+VEL <225 & >205
+ALT <100
+U/C DOWN
+NOT > 4YDS. OFF TRACK
+ON COURSE 270
+A/C TRIMMED TO HORIZON
+TOWER CHECKED-RUNWAY CLEAR
+          flight plan
+TURN LEFT ON TO 000 AT 14 M FROM T/D
+CONTACT TOWER AT 11 OR 12 M.
+U/C DOWN AFTER 'OUTER BEACON'
+TURN LEFT ON TO 270 AT 7 M. FROM T/D
+TRIM TO HORIZON AFTER INNER
+BEACON
+KEEP A/S AT ABOUT 215
+
+thick fog-visibility zero!
+ONLY ONE KEY AT A TIME!
+CONTROLS RESPOND AFTER 2 SECS.
+
+
+LABYRINT by EA
+
+Draws a labyrinth and then traces it to the end. The labyrinth is
+unforked (not precisely a maze) and follows a historically
+interesting pattern, which can be found on ancient sites throughout
+Sweden (and perhaps elsewhere). The first question decides the size
+(1-12) and the second the tracing mode (M for worm or L for flea).
+When the labyrinth is drawn, press RETURN to trace the path.
+
+
+LIFE by EA
+
+J. H. Conways classical simulation utility Life. It can be regarded
+as a generator of beautiful patterns or as a simulation model for
+biological life, depending on your interests and mood. A rectangular
+grid is inhabited by an arbitrary pattern of cells. If a cell has 2
+or 3 neighbors, it will survive to the next generation. If an empty
+square has exactly 3 neighbors, a cell is born there. That's all.
+The entire future is determined by the initial pattern. Watch and
+enjoy.
+  The initial pattern can be chosen as (1) last session's initial
+pattern, (2) last session's final pattern, (3) random, or (4)
+custom. In custom mode, you enter a simple drawing program, in which
+the controls are (X) move forward, (SHIFT-X) draw/erase forward, (Z)
+left, (C) right, and (RETURN) start. The program prompts for
+horizontal and vertical size, where S can be given for same size as
+last time. In mode 1 and 2 you will be given the opportunity to edit
+the pattern. Answer J for yes or N for no. To abort a running Life
+session and return to the main menu, press Q (and hold it down until
+the next generation).
+
+
+LOGIK by EA
+
+My first attempt at artificial intelligence. The program deduces
+facts from given plaintext statements. At times it can draw
+amazingly smart conclusions. I guess you have to know Swedish to
+appreciate this program.
+  Examples:
+
+1. Statement: JAG AR HUNGRIG, OCH OM JAG AR HUNGRIG SA ATER JAG PIZZA.
+(I am hungry, and if I am hungry, then I eat pizza.) Conclusion: DU AR
+HUNGRIG OCH ATER PIZZA. (You are hungry and eat pizza.)
+
+2. Statement: OM DET INTE REGNAR SA GAR JAG UT MED MIN HUND. (If it is
+not raining, I will take my dog for a walk.) Conclusion: DET REGNAR
+ELLER DU GAR UT MED DIN HUND. (It is raining or you will take your dog
+for a walk.)
+
+3. Statement: BOB HAR EN PAPEGOJA. BOB HAR INTE EN PAPEGOJA. (Bob has
+got a parrot. Bob has not got a parrot.) Conclusion: contradiction.
+
+4. Statement: OM JAG SPELAR PIANO SA BANKAR GRANNEN I GOLVET. OM
+GRANNEN BANKAR I GOLVET SA SPELAR JAG INTE PIANO. (If I play the
+piano, the neighbor punches the floor. If the neighbor punches the
+floor, I do not play the piano.) The logical conclusion is left as a
+problem for the reader. Try to find it before asking the Atom. (No,
+the statement is not a contradiction!)
+
+  Do not be alarmed if the program fails to interpret some
+statements. After all, no 3 kB program can understand the full
+syntax of a natural language.
+
+
+MORSE by EA
+
+Practise reception of Morse telegraph signals. First you are asked
+for the mode. Answer B for receiving four different letters only, A
+for all letters, or S for letters and digits. The second question
+decides the speed, which can be set from 1 to 255, where 255 is
+slowest.
+
+
+NIM by EA
+
+A classical game with a random number of heaps and a random number
+of items in each heap. You take turns with the computer to remove an
+arbitrary number of items from *one* of the heaps. The player who
+takes the last item wins - or loses, depending on the setup. The
+computer is very hard to beat.
+  Answer J to the first question to let the last item be the winning
+item and N to let it be losing. When it is your turn, enter first
+the number of a heap and then the number of items to remove from
+that heap.
+
+
+ORM by EA
+
+Another classical theme. You are a snake. Eat digits while avoiding
+the walls and your own tail. Note the design of the cobra head.
+  Control the snake with Z, X, /, and [. The score (POANG) and the
+current length of the snake (LANGD) are given. Try to beat my old
+record from the original Atom, which is 201 POANG.
+
+
+PIA
+
+This is Pia the Piano, with which you play music on the keyboard.
+While most programs of this kind (such as Harpsichord in "Atomic
+Theory and Practice") plays a tone with a fixed duration each time a
+key is pressed, this program aborts the tone as soon as the key is
+released. This feature (which as I recall was somewhat tricky to
+implement) gives the instrument a more natural feeling. Only one
+tone at a time can however be played.
+  To change the setup, press REPT. The options concern (1) the
+organization of the keys and (2) the sound source. Valid keyboard
+organizations are (A) regular piano, (B) piano with quarter tones,
+(C) button accordion, and (D) imaginary string instrument. Setup 2
+toggles the sound source between the internal speaker of the Atom
+and an external source, which can be connected to the cassette cable
+of an original Atom. The latter mode is not applicable to the Atom
+Emulator.
+
+
+PS by unknown, programmed by EA
+
+The digital psychiatrist asks you some questions and presents an
+elaborate analysis of your character. The program is in German and
+PS stands for Psycho-Spiel. The program is large, over 8 kB, and not
+very complex. It consists of a lot of text organized according to a
+simple flowchart. The game originates in the journal "Brigitte", no.
+11, 1983, p. 142, where it was given as a (noncomputerized) test for
+the readers.
+  At the time I made this program, I had begun to realize that my
+generation would spend an awesome fraction of our lives united with
+a keyboard and I had decided to learn typing in a professional
+manner. Thus I put a towel on top of the keyboard, put my hands
+under the towel, and stubbornly typed the text from an article in a
+German journal that happened to be around, without seeing my
+fingers. I made a lot of mistakes and my fingers made heavy use of
+the delete key, but I persisted and learnt. In retrospect, this was
+one of the wisest decisions I have ever made. When all the text was
+typed, it was a simple step to implement the flowchart given in the
+article and this game was born.
+
+
+PSYCHO2
+
+This module is automatically loaded by the above game (PS) and
+should not be run independently. Since PS is so large, it uses both
+the regular program memory and the higher-mode graphics memory. The
+two blocks are saved under different names.
+
+
+SUMS TESTER by unknown
+
+Your task is to solve 10 random arithmetic problems as fast as
+possible. The program includes a nice assembler routine for timing
+the keyboard input.
+  I typed this program off some written source, possibly "The Acorn
+Atom Magic Book". I do not remember if I modified it. It is in
+English. Try to beat my old record from the original Atom, which is
+10 correct answers in 10 seconds.
+
+
+TRIPPE
+
+An implementation of the children's game of tic-tac-toe. It is
+played on a 3x3 grid, where you and the computer have three crosses
+and circles, respectively, which you try to maneuvre into a line.
+For your first three moves, you will be prompted for the positions
+(1-9) of your crosses. For subsequent moves, you enter first the
+position of the cross you want to move and then its new position.
+  If the program finds several equally good moves, where a slowly
+forced victory counts as high as a directly winning move, it chooses
+one of the moves at random.
+  The game should be a draw at correct play, so in general, the
+first player to make a mistake loses. I vaguely recall beating the
+program once, but I could never reproduce it.
