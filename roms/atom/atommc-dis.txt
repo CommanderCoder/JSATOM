@@ -1,0 +1,2666 @@
+                  * = E000
+; test ctrl - if pressed, don't initialise
+;
+E000   2C 01 B0   BIT $B001
+E003   70 03      BVS $E008
+E005   4C B2 C2   JMP $C2B2 ; set #2900 text space and enter command handler
+@initialise:
+E008   98         TYA
+E009   48         PHA
+E00A   8A         TXA
+E00B   48         PHA
+;?  CRC = $C9
+E00C   A9 04      LDA #$04   ; timeout value, ret when crc == -1
+E00E   85 C9      STA $C9    ;crc
+E010   20 B3 E0   JSR $E0B3  ; irqgetcardtype
+E013   24 C9      BIT $C9
+E015   30 5D      BMI $E074 ; unpatched
+E017   A8         TAY
+E018   A2 00      LDX #$00
+
+; FKIDX      =$3ca         ; B - fake key index
+E01A   8E CA 03   STX $03CA
+
+
+E01D   A9 2B      LDA #$2B  ;'+'
+E01F   8D 0B 80   STA $800B
+; @shorttitle:
+E022   BD D0 EF   LDA $EFD0,X  ; version
+E025   29 BF      AND #$BF
+E027   9D 0D 80   STA $800D,X
+E02A   E8         INX
+E02B   C9 20      CMP #$20
+E02D   D0 F3      BNE $E022  ; @shorttitle
+
+E02F   2C 02 B0   BIT $B002  ; is REPT pressed?
+E032   70 22      BVS $E056  ; @quiet
+E034   CA         DEX
+
+;@announce
+E035   29 BF      AND #$BF
+E037   9D 0D 80   STA $800D,X
+E03A   E8         INX
+E03B   BD D0 EF   LDA $EFD0,X  ; version
+E03E   C9 0D      CMP #$0D
+E040   D0 F3      BNE $E035 ;announce
+
+
+   ; display appropriate type
+   ; none = 0, mmc = 1, sdv1 = 2, sdv2 = 4
+   ;
+E042   98         TYA
+E043   20 7D E0   JSR $E07D  ; bittoindex
+E046   A0 00      LDY #$00
+
+;sctloop
+E048   BD 6E E9   LDA $E96E,X  ; cardtypes
+E04B   29 BF      AND #$BF
+E04D   99 1C 80   STA $801C,Y
+E050   E8         INX
+E051   C8         INY
+E052   C0 04      CPY #$04
+E054   D0 F2      BNE $E048  ; sctloop
+
+;@quiet
+E056   20 99 E0   JSR $E099  ; installhooks
+E059   A9 F0      LDA #$F0   ; CMD_GET_CFG_BYTE
+E05B   8D 0F B4   STA $B40F  ; fast_cmd (util.asm)
+E05E   20 FE E7   JSR $E7FE  ; write_cmd_reg
+E061   AD 0F B4   LDA $B40F  ; ACMD_REG - AREG_BASE + CMD_REG
+E064   0A         ASL A
+E065   4D 01 B0   EOR $B001
+E068   10 0A      BPL $E074 ;unpatched
+
+;@patchosrdch
+E06A   A9 E3      LDA #$E3   ; <osrdchcode
+E06C   8D 0A 02   STA $020A  ; RDCVEC
+E06F   A9 E0      LDA #$E0   ; >osrdchcode
+E071   8D 0B 02   STA $020B  ; RDCVEC+1
+
+
+;@unpatched:
+E074   68         PLA
+E075   AA         TAX
+E076   68         PLA
+E077   A8         TAY
+E078   4C B2 C2   JMP $C2B2 ; set #2900 text space and enter command handler
+;irqveccode
+E07B   68         PLA
+E07C   40         RTI
+
+;bittoindex;
+E07D   09 08      ORA #$08
+E07F   85 AE      STA $AE
+E081   A9 FC      LDA #$FC
+E083   18         CLC
+;@add
+E084   69 04      ADC #$04
+E086   46 AE      LSR $AE
+E088   90 FA      BCC $E084
+E08A   AA         TAX
+E08B   60         RTS
+;print_version
+E08C   A2 00      LDX #$00
+;@announce
+E08E   BD D0 EF   LDA $EFD0,X ; version
+E091   20 F4 FF   JSR $FFF4 ; oswrch
+E094   E8         INX
+E095   E0 10      CPX #$10
+E097   D0 F5      BNE $E08E ; announce
+
+;installhooks
+E099   A2 0B      LDX #$0B
+;@initvectors
+E09B   BD 7E E9   LDA $E97E,X  ; fullvecdat
+E09E   9D 04 02   STA $0204,X ; IRQVEC
+E0A1   CA         DEX
+E0A2   10 F7      BPL $E09B ;initvectors
+E0A4   60         RTS
+
+E0A5   A6 00      LDX $00
+E0A7   A4 00      LDY $00
+E0A9   88         DEY
+E0AA   D0 FD      BNE $E0A9
+E0AC   CA         DEX
+E0AD   D0 FA      BNE $E0A9
+E0AF   C6 C9      DEC $C9
+E0B1   30 2F      BMI $E0E2
+;irqgetcardtype:
+E0B3   A9 FE      LDA #$FE
+E0B5   8D 0F B4   STA $B40F
+E0B8   20 FE E7   JSR $E7FE
+E0BB   AD 0F B4   LDA $B40F
+E0BE   C9 AA      CMP #$AA
+E0C0   D0 E3      BNE $E0A5
+E0C2   A9 FE      LDA #$FE
+E0C4   8D 0F B4   STA $B40F
+E0C7   20 FE E7   JSR $E7FE
+E0CA   AD 0F B4   LDA $B40F
+E0CD   C9 55      CMP #$55
+E0CF   D0 D4      BNE $E0A5
+E0D1   A9 80      LDA #$80
+E0D3   8D 0F B4   STA $B40F
+E0D6   A9 00      LDA #$00
+E0D8   38         SEC
+E0D9   E9 01      SBC #$01
+E0DB   D0 FC      BNE $E0D9
+E0DD   AD 0F B4   LDA $B40F
+E0E0   30 F4      BMI $E0D6
+E0E2   60         RTS
+;osrdchcode
+E0E3   08         PHP
+E0E4   D8         CLD
+E0E5   86 E4      STX $E4
+E0E7   84 E5      STY $E5
+E0E9   AE CA 03   LDX $03CA
+E0EC   BD 8A E9   LDA $E98A,X
+E0EF   F0 0A      BEQ $E0FB
+E0F1   E8         INX
+E0F2   8E CA 03   STX $03CA
+E0F5   A6 E4      LDX $E4
+E0F7   A4 E5      LDY $E5
+E0F9   28         PLP
+E0FA   60         RTS
+E0FB   A6 E4      LDX $E4
+E0FD   A4 E5      LDY $E5
+E0FF   A9 94      LDA #$94
+E101   8D 0A 02   STA $020A
+E104   A9 FE      LDA #$FE
+E106   8D 0B 02   STA $020B
+E109   28         PLP
+E10A   6C 0A 02   JMP ($020A)
+E10D   A2 FF      LDX #$FF
+E10F   D8         CLD
+E110   A0 00      LDY #$00
+E112   20 76 F8   JSR $F876
+E115   88         DEY
+E116   C8         INY
+E117   E8         INX
+E118   BD 91 E9   LDA $E991,X
+E11B   30 18      BMI $E135
+E11D   D9 00 01   CMP $0100,Y
+E120   F0 F4      BEQ $E116
+E122   CA         DEX
+E123   E8         INX
+E124   BD 91 E9   LDA $E991,X
+E127   10 FA      BPL $E123
+E129   E8         INX
+E12A   B9 00 01   LDA $0100,Y
+E12D   C9 2E      CMP #$2E
+E12F   D0 DF      BNE $E110
+E131   C8         INY
+E132   CA         DEX
+E133   B0 E3      BCS $E118
+E135   84 9A      STY $9A
+E137   A4 03      LDY $03
+E139   84 D5      STY $D5
+E13B   A4 05      LDY $05
+E13D   84 D6      STY $D6
+E13F   A4 06      LDY $06
+E141   84 D7      STY $D7
+E143   A0 00      LDY #$00
+E145   84 05      STY $05
+E147   A0 01      LDY #$01
+E149   84 06      STY $06
+E14B   A4 9A      LDY $9A
+E14D   84 03      STY $03
+E14F   85 53      STA $53
+E151   BD 92 E9   LDA $E992,X
+E154   85 52      STA $52
+E156   A2 00      LDX #$00
+E158   20 6C E1   JSR $E16C
+E15B   A4 D6      LDY $D6
+E15D   84 05      STY $05
+E15F   A4 D7      LDY $D7
+E161   84 06      STY $06
+E163   A4 D5      LDY $D5
+E165   84 03      STY $03
+E167   A9 0D      LDA #$0D
+E169   91 05      STA ($05),Y
+E16B   60         RTS
+E16C   6C 52 00   JMP ($0052)
+E16F   A9 00      LDA #$00
+E171   8D CD 03   STA $03CD
+E174   A9 0D      LDA #$0D
+E176   8D 40 01   STA $0140
+E179   20 76 F8   JSR $F876
+E17C   C9 0D      CMP #$0D
+E17E   F0 2D      BEQ $E1AD
+E180   C9 40      CMP #$40
+E182   F0 1B      BEQ $E19F
+E184   A2 00      LDX #$00
+E186   9D 40 01   STA $0140,X
+E189   C9 0D      CMP #$0D
+E18B   F0 20      BEQ $E1AD
+E18D   C9 20      CMP #$20
+E18F   F0 07      BEQ $E198
+E191   C8         INY
+E192   B9 00 01   LDA $0100,Y
+E195   E8         INX
+E196   D0 EE      BNE $E186
+E198   A9 0D      LDA #$0D
+E19A   9D 40 01   STA $0140,X
+E19D   D0 DA      BNE $E179
+E19F   C8         INY
+E1A0   B9 00 01   LDA $0100,Y
+E1A3   C9 0D      CMP #$0D
+E1A5   F0 06      BEQ $E1AD
+E1A7   8D CD 03   STA $03CD
+E1AA   C8         INY
+E1AB   D0 CC      BNE $E179
+E1AD   20 E7 E6   JSR $E6E7
+E1B0   A9 00      LDA #$00
+E1B2   8D 02 B4   STA $B402
+E1B5   A9 00      LDA #$00
+E1B7   38         SEC
+E1B8   E9 01      SBC #$01
+E1BA   D0 FC      BNE $E1B8
+E1BC   AD 02 B4   LDA $B402
+E1BF   30 F4      BMI $E1B5
+E1C1   20 2E E8   JSR $E82E
+E1C4   A9 01      LDA #$01
+E1C6   8D 02 B4   STA $B402
+E1C9   A9 00      LDA #$00
+E1CB   38         SEC
+E1CC   E9 01      SBC #$01
+E1CE   D0 FC      BNE $E1CC
+E1D0   AD 02 B4   LDA $B402
+E1D3   30 F4      BMI $E1C9
+E1D5   20 2E E8   JSR $E82E
+E1D8   C9 40      CMP #$40
+E1DA   D0 01      BNE $E1DD
+E1DC   60         RTS
+E1DD   20 06 E8   JSR $E806
+E1E0   AD 06 B4   LDA $B406
+E1E3   29 02      AND #$02
+E1E5   D0 1B      BNE $E202
+E1E7   AD 40 01   LDA $0140
+E1EA   A0 00      LDY #$00
+E1EC   AE CD 03   LDX $03CD
+E1EF   F0 05      BEQ $E1F6
+E1F1   EC 40 01   CPX $0140
+E1F4   D0 CE      BNE $E1C4
+E1F6   20 F4 FF   JSR $FFF4
+E1F9   C8         INY
+E1FA   B9 40 01   LDA $0140,Y
+E1FD   D0 F7      BNE $E1F6
+E1FF   20 ED FF   JSR $FFED
+E202   2C 02 B0   BIT $B002
+E205   50 FB      BVC $E202
+E207   AD 01 B0   LDA $B001
+E20A   2A         ROL A
+E20B   90 F5      BCC $E202
+E20D   2A         ROL A
+E20E   90 F2      BCC $E202
+E210   2A         ROL A
+E211   B0 B1      BCS $E1C4
+E213   4C ED FF   JMP $FFED
+E216   60         RTS
+E217   20 76 F8   JSR $F876
+E21A   D0 03      BNE $E21F
+E21C   4C 7D FA   JMP $FA7D
+E21F   20 C0 E8   JSR $E8C0
+E222   20 76 FA   JSR $FA76
+E225   A2 C9      LDX #$C9
+E227   20 4F F8   JSR $F84F
+E22A   20 E7 E6   JSR $E6E7
+E22D   A9 10      LDA #$10
+E22F   8D 02 B4   STA $B402
+E232   A9 00      LDA #$00
+E234   38         SEC
+E235   E9 01      SBC #$01
+E237   D0 FC      BNE $E235
+E239   AD 02 B4   LDA $B402
+E23C   30 F4      BMI $E232
+E23E   4C 2E E8   JMP $E82E
+E241   60         RTS
+E242   A9 A0      LDA #$A0
+E244   85 CE      STA $CE
+E246   4C 54 E2   JMP $E254
+E249   A9 A2      LDA #$A2
+E24B   85 CE      STA $CE
+E24D   4C 54 E2   JMP $E254
+E250   A9 F0      LDA #$F0
+E252   85 CE      STA $CE
+E254   A2 CB      LDX #$CB
+E256   20 93 F8   JSR $F893
+E259   D0 11      BNE $E26C
+E25B   A5 CE      LDA $CE
+E25D   8D 0F B4   STA $B40F
+E260   20 FE E7   JSR $E7FE
+E263   AD 0F B4   LDA $B40F
+E266   20 02 F8   JSR $F802
+E269   4C ED FF   JMP $FFED
+E26C   A5 CB      LDA $CB
+E26E   8D 0E B4   STA $B40E
+E271   20 FE E7   JSR $E7FE
+E274   A6 CE      LDX $CE
+E276   E8         INX
+E277   8E 0F B4   STX $B40F
+E27A   60         RTS
+E27B   A2 CF      LDX #$CF
+E27D   20 65 FA   JSR $FA65
+E280   A2 D1      LDX #$D1
+E282   20 65 FA   JSR $FA65
+E285   A0 FF      LDY #$FF
+E287   84 C9      STY $C9
+E289   84 CA      STY $CA
+E28B   C8         INY
+E28C   F0 09      BEQ $E297
+E28E   A9 00      LDA #$00
+E290   20 AA E2   JSR $E2AA
+E293   E6 D0      INC $D0
+E295   C6 D2      DEC $D2
+E297   A5 D2      LDA $D2
+E299   D0 F3      BNE $E28E
+E29B   A5 D1      LDA $D1
+E29D   F0 03      BEQ $E2A2
+E29F   20 AA E2   JSR $E2AA
+E2A2   A2 C9      LDX #$C9
+E2A4   20 F1 F7   JSR $F7F1
+E2A7   4C ED FF   JMP $FFED
+E2AA   85 CB      STA $CB
+E2AC   B1 CF      LDA ($CF),Y
+E2AE   84 CC      STY $CC
+E2B0   45 CA      EOR $CA
+E2B2   85 CA      STA $CA
+E2B4   4A         LSR A
+E2B5   4A         LSR A
+E2B6   4A         LSR A
+E2B7   4A         LSR A
+E2B8   AA         TAX
+E2B9   0A         ASL A
+E2BA   45 C9      EOR $C9
+E2BC   85 C9      STA $C9
+E2BE   8A         TXA
+E2BF   45 CA      EOR $CA
+E2C1   85 CA      STA $CA
+E2C3   0A         ASL A
+E2C4   0A         ASL A
+E2C5   0A         ASL A
+E2C6   AA         TAX
+E2C7   0A         ASL A
+E2C8   0A         ASL A
+E2C9   45 CA      EOR $CA
+E2CB   A8         TAY
+E2CC   8A         TXA
+E2CD   2A         ROL A
+E2CE   45 C9      EOR $C9
+E2D0   85 CA      STA $CA
+E2D2   84 C9      STY $C9
+E2D4   A4 CC      LDY $CC
+E2D6   C8         INY
+E2D7   C6 CB      DEC $CB
+E2D9   D0 D1      BNE $E2AC
+E2DB   60         RTS
+E2DC   20 C0 E8   JSR $E8C0
+E2DF   A9 01      LDA #$01
+E2E1   20 D2 E6   JSR $E6D2
+E2E4   20 2E E8   JSR $E82E
+E2E7   20 09 E3   JSR $E309
+E2EA   48         PHA
+E2EB   20 ED FF   JSR $FFED
+E2EE   68         PLA
+E2EF   C9 59      CMP #$59
+E2F1   F0 01      BEQ $E2F4
+E2F3   60         RTS
+E2F4   A9 40      LDA #$40
+E2F6   8D 03 B4   STA $B403
+E2F9   A9 00      LDA #$00
+E2FB   38         SEC
+E2FC   E9 01      SBC #$01
+E2FE   D0 FC      BNE $E2FC
+E300   AD 03 B4   LDA $B403
+E303   30 F4      BMI $E2F9
+E305   20 2E E8   JSR $E82E
+E308   60         RTS
+E309   20 D1 F7   JSR $F7D1
+E30C   43         ???
+E30D   4F         ???
+E30E   4E 46 49   LSR $4946
+E311   52         ???
+E312   4D 20 28   EOR $2820
+E315   59 29 3A   EOR $3A29,Y
+E318   EA         NOP
+E319   20 E3 FF   JSR $FFE3
+E31C   4C F4 FF   JMP $FFF4
+E31F   20 C0 E8   JSR $E8C0
+E322   A9 01      LDA #$01
+E324   20 D2 E6   JSR $E6D2
+E327   20 2E E8   JSR $E82E
+E32A   A9 40      LDA #$40
+E32C   85 AC      STA $AC
+E32E   A9 01      LDA #$01
+E330   85 AD      STA $AD
+E332   A9 80      LDA #$80
+E334   8D 03 B4   STA $B403
+E337   A9 00      LDA #$00
+E339   38         SEC
+E33A   E9 01      SBC #$01
+E33C   D0 FC      BNE $E33A
+E33E   AD 03 B4   LDA $B403
+E341   30 F4      BMI $E337
+E343   A2 0D      LDX #$0D
+E345   20 1A E8   JSR $E81A
+E348   AD 40 01   LDA $0140
+E34B   85 CA      STA $CA
+E34D   AD 41 01   LDA $0141
+E350   85 CB      STA $CB
+E352   A9 00      LDA #$00
+E354   85 C9      STA $C9
+E356   A9 61      LDA #$61
+E358   8D 0A 02   STA $020A
+E35B   A9 E3      LDA #$E3
+E35D   8D 0B 02   STA $020B
+E360   60         RTS
+E361   08         PHP
+E362   D8         CLD
+E363   A5 C9      LDA $C9
+E365   D0 39      BNE $E3A0
+E367   A5 CB      LDA $CB
+E369   D0 06      BNE $E371
+E36B   A5 CA      LDA $CA
+E36D   C9 11      CMP #$11
+E36F   90 02      BCC $E373
+E371   A9 10      LDA #$10
+E373   85 C9      STA $C9
+E375   A5 CA      LDA $CA
+E377   38         SEC
+E378   E5 C9      SBC $C9
+E37A   85 CA      STA $CA
+E37C   B0 02      BCS $E380
+E37E   C6 CB      DEC $CB
+E380   A5 C9      LDA $C9
+E382   8D 04 B4   STA $B404
+E385   A9 00      LDA #$00
+E387   38         SEC
+E388   E9 01      SBC #$01
+E38A   D0 FC      BNE $E388
+E38C   AD 04 B4   LDA $B404
+E38F   30 F4      BMI $E385
+E391   C9 40      CMP #$40
+E393   F0 03      BEQ $E398
+E395   4C FF E0   JMP $E0FF
+E398   A9 3F      LDA #$3F
+E39A   8D 06 B4   STA $B406
+E39D   20 FE E7   JSR $E7FE
+E3A0   C6 C9      DEC $C9
+E3A2   D0 15      BNE $E3B9
+E3A4   A5 CA      LDA $CA
+E3A6   05 CB      ORA $CB
+E3A8   D0 0F      BNE $E3B9
+E3AA   A9 94      LDA #$94
+E3AC   8D 0A 02   STA $020A
+E3AF   A9 FE      LDA #$FE
+E3B1   8D 0B 02   STA $020B
+E3B4   AD 06 B4   LDA $B406
+E3B7   28         PLP
+E3B8   60         RTS
+E3B9   AD 06 B4   LDA $B406
+E3BC   C9 0A      CMP #$0A
+E3BE   F0 A3      BEQ $E363
+E3C0   28         PLP
+E3C1   60         RTS
+E3C2   20 C0 E8   JSR $E8C0
+E3C5   A9 01      LDA #$01
+E3C7   20 D2 E6   JSR $E6D2
+E3CA   20 2E E8   JSR $E82E
+E3CD   A9 40      LDA #$40
+E3CF   85 AC      STA $AC
+E3D1   A9 01      LDA #$01
+E3D3   85 AD      STA $AD
+E3D5   A9 80      LDA #$80
+E3D7   8D 03 B4   STA $B403
+E3DA   A9 00      LDA #$00
+E3DC   38         SEC
+E3DD   E9 01      SBC #$01
+E3DF   D0 FC      BNE $E3DD
+E3E1   AD 03 B4   LDA $B403
+E3E4   30 F4      BMI $E3DA
+E3E6   A2 0D      LDX #$0D
+E3E8   20 1A E8   JSR $E81A
+E3EB   24 EA      BIT $EA
+E3ED   10 01      BPL $E3F0
+E3EF   60         RTS
+E3F0   A2 03      LDX #$03
+E3F2   20 08 E4   JSR $E408
+E3F5   A2 07      LDX #$07
+E3F7   20 08 E4   JSR $E408
+E3FA   A2 0B      LDX #$0B
+E3FC   20 08 E4   JSR $E408
+E3FF   AD 4C 01   LDA $014C
+E402   20 02 F8   JSR $F802
+E405   4C ED FF   JMP $FFED
+E408   BD 40 01   LDA $0140,X
+E40B   20 02 F8   JSR $F802
+E40E   CA         DEX
+E40F   BD 40 01   LDA $0140,X
+E412   20 02 F8   JSR $F802
+E415   CA         DEX
+E416   BD 40 01   LDA $0140,X
+E419   20 02 F8   JSR $F802
+E41C   CA         DEX
+E41D   BD 40 01   LDA $0140,X
+E420   4C FA F7   JMP $F7FA
+E423   A2 00      LDX #$00
+E425   BD D0 EF   LDA $EFD0,X
+E428   20 F4 FF   JSR $FFF4
+E42B   E8         INX
+E42C   E0 30      CPX #$30
+E42E   D0 F5      BNE $E425
+E430   20 ED FF   JSR $FFED
+E433   20 D1 F7   JSR $F7D1
+E436   49 4E      EOR #$4E
+E438   54         ???
+E439   45 52      EOR $52
+E43B   46 41      LSR $41
+E43D   43         ???
+E43E   45 20      EOR $20
+E440   46 2F      LSR $2F
+E442   57         ???
+E443   20 56 45   JSR $4556
+E446   52         ???
+E447   53         ???
+E448   49 4F      EOR #$4F
+E44A   4E 20 EA   LSR $EA20
+E44D   A9 E0      LDA #$E0
+E44F   8D 0F B4   STA $B40F
+E452   20 FE E7   JSR $E7FE
+E455   AD 0F B4   LDA $B40F
+E458   20 BC E4   JSR $E4BC
+E45B   20 ED FF   JSR $FFED
+E45E   20 D1 F7   JSR $F7D1
+E461   42         ???
+E462   4F         ???
+E463   4F         ???
+E464   54         ???
+E465   4C 4F 41   JMP $414F
+E468   44         ???
+E469   45 52      EOR $52
+E46B   20 56 45   JSR $4556
+E46E   52         ???
+E46F   53         ???
+E470   49 4F      EOR #$4F
+E472   4E 20 EA   LSR $EA20
+E475   A9 E1      LDA #$E1
+E477   8D 0F B4   STA $B40F
+E47A   20 FE E7   JSR $E7FE
+E47D   AD 0F B4   LDA $B40F
+E480   20 BC E4   JSR $E4BC
+E483   20 ED FF   JSR $FFED
+E486   20 D1 F7   JSR $F7D1
+E489   43         ???
+E48A   41 52      EOR ($52,X)
+E48C   44         ???
+E48D   20 54 59   JSR $5954
+E490   50 45      BVC $E4D7
+E492   3A         ???
+E493   20 EA A9   JSR $A9EA
+E496   80         ???
+E497   8D 0F B4   STA $B40F
+E49A   A9 00      LDA #$00
+E49C   38         SEC
+E49D   E9 01      SBC #$01
+E49F   D0 FC      BNE $E49D
+E4A1   AD 0F B4   LDA $B40F
+E4A4   30 F4      BMI $E49A
+E4A6   20 7D E0   JSR $E07D
+E4A9   A0 04      LDY #$04
+E4AB   BD 6E E9   LDA $E96E,X
+E4AE   C9 20      CMP #$20
+E4B0   F0 03      BEQ $E4B5
+E4B2   20 F4 FF   JSR $FFF4
+E4B5   E8         INX
+E4B6   88         DEY
+E4B7   D0 F2      BNE $E4AB
+E4B9   4C ED FF   JMP $FFED
+E4BC   48         PHA
+E4BD   4A         LSR A
+E4BE   4A         LSR A
+E4BF   4A         LSR A
+E4C0   4A         LSR A
+E4C1   20 0B F8   JSR $F80B
+E4C4   A9 2E      LDA #$2E
+E4C6   20 F4 FF   JSR $FFF4
+E4C9   68         PLA
+E4CA   4C 0B F8   JMP $F80B
+E4CD   A9 00      LDA #$00
+E4CF   85 CD      STA $CD
+E4D1   20 C0 E8   JSR $E8C0
+E4D4   A9 01      LDA #$01
+E4D6   20 D2 E6   JSR $E6D2
+E4D9   20 2E E8   JSR $E82E
+E4DC   20 09 E7   JSR $E709
+E4DF   20 83 E8   JSR $E883
+E4E2   20 A2 E8   JSR $E8A2
+E4E5   4C ED FF   JMP $FFED
+E4E8   20 C0 E8   JSR $E8C0
+E4EB   4C 5B F9   JMP $F95B
+E4EE   20 4F F8   JSR $F84F
+E4F1   A9 01      LDA #$01
+E4F3   20 D2 E6   JSR $E6D2
+E4F6   20 2E E8   JSR $E82E
+E4F9   20 09 E7   JSR $E709
+E4FC   24 EA      BIT $EA
+E4FE   30 06      BMI $E506
+E500   20 A2 E8   JSR $E8A2
+E503   20 ED FF   JSR $FFED
+E506   4C 34 E7   JMP $E734
+E509   20 C0 E8   JSR $E8C0
+E50C   A2 CB      LDX #$CB
+E50E   20 93 F8   JSR $F893
+E511   F0 3B      BEQ $E54E
+E513   20 76 FA   JSR $FA76
+E516   A2 C9      LDX #$C9
+E518   20 4F F8   JSR $F84F
+E51B   A9 01      LDA #$01
+E51D   20 D2 E6   JSR $E6D2
+E520   20 2E E8   JSR $E82E
+E523   A9 40      LDA #$40
+E525   85 AC      STA $AC
+E527   A9 01      LDA #$01
+E529   85 AD      STA $AD
+E52B   A9 80      LDA #$80
+E52D   8D 03 B4   STA $B403
+E530   A9 00      LDA #$00
+E532   38         SEC
+E533   E9 01      SBC #$01
+E535   D0 FC      BNE $E533
+E537   AD 03 B4   LDA $B403
+E53A   30 F4      BMI $E530
+E53C   A2 0D      LDX #$0D
+E53E   20 1A E8   JSR $E81A
+E541   AD 40 01   LDA $0140
+E544   85 CF      STA $CF
+E546   AD 41 01   LDA $0141
+E549   85 D0      STA $D0
+E54B   4C 34 E7   JMP $E734
+E54E   4C 7D FA   JMP $FA7D
+E551   A9 5C      LDA #$5C
+E553   85 D5      STA $D5
+E555   A9 E5      LDA #$E5
+E557   85 D6      STA $D6
+E559   4C 78 E8   JMP $E878
+E55C   4E 4F 20   LSR $204F
+E55F   52         ???
+E560   41 4D      EOR ($4D,X)
+E562   EA         NOP
+E563   A9 00      LDA #$00
+E565   8D FE BF   STA $BFFE
+E568   09 01      ORA #$01
+E56A   85 CC      STA $CC
+E56C   A9 55      LDA #$55
+E56E   8D 00 70   STA $7000
+E571   CD 00 70   CMP $7000
+E574   D0 DB      BNE $E551
+E576   0A         ASL A
+E577   8D 00 70   STA $7000
+E57A   CD 00 70   CMP $7000
+E57D   D0 D2      BNE $E551
+E57F   20 C0 E8   JSR $E8C0
+E582   20 4F F8   JSR $F84F
+E585   A9 01      LDA #$01
+E587   20 D2 E6   JSR $E6D2
+E58A   20 2E E8   JSR $E82E
+E58D   A9 00      LDA #$00
+E58F   85 CB      STA $CB
+E591   85 CF      STA $CF
+E593   85 CB      STA $CB
+E595   A9 10      LDA #$10
+E597   85 D0      STA $D0
+E599   A9 70      LDA #$70
+E59B   85 CC      STA $CC
+E59D   20 34 E7   JSR $E734
+E5A0   4C EF E5   JMP $E5EF
+E5A3   20 C0 E8   JSR $E8C0
+E5A6   20 76 F8   JSR $F876
+E5A9   A2 00      LDX #$00
+E5AB   B9 00 01   LDA $0100,Y
+E5AE   9D 00 01   STA $0100,X
+E5B1   E8         INX
+E5B2   C8         INY
+E5B3   C9 0D      CMP #$0D
+E5B5   D0 F4      BNE $E5AB
+E5B7   A5 EA      LDA $EA
+E5B9   48         PHA
+E5BA   A9 FF      LDA #$FF
+E5BC   85 EA      STA $EA
+E5BE   20 44 F8   JSR $F844
+E5C1   20 5B F9   JSR $F95B
+E5C4   68         PLA
+E5C5   85 EA      STA $EA
+E5C7   A5 CD      LDA $CD
+E5C9   C9 B2      CMP #$B2
+E5CB   D0 11      BNE $E5DE
+E5CD   A5 CE      LDA $CE
+E5CF   C9 C2      CMP #$C2
+E5D1   D0 0B      BNE $E5DE
+E5D3   A9 E1      LDA #$E1
+E5D5   85 05      STA $05
+E5D7   A9 E5      LDA #$E5
+E5D9   85 06      STA $06
+E5DB   4C F2 C2   JMP $C2F2
+E5DE   6C CD 00   JMP ($00CD)
+E5E1   52         ???
+E5E2   55 4E      EOR $4E,X
+E5E4   0D A2 CB   ORA $CBA2
+E5E7   20 93 F8   JSR $F893
+E5EA   D0 03      BNE $E5EF
+E5EC   4C 7D FA   JMP $FA7D
+E5EF   20 33 E8   JSR $E833
+E5F2   A2 0D      LDX #$0D
+E5F4   BD 15 E6   LDA $E615,X
+E5F7   9D 40 01   STA $0140,X
+E5FA   CA         DEX
+E5FB   10 F7      BPL $E5F4
+E5FD   20 D1 F7   JSR $F7D1
+E600   3C         ???
+E601   50 52      BVC $E655
+E603   45 53      EOR $53
+E605   53         ???
+E606   20 42 52   JSR $5242
+E609   45 41      EOR $41
+E60B   4B         ???
+E60C   3E EA A9   ROL $A9EA,X
+E60F   00         BRK
+E610   85 CC      STA $CC
+E612   4C 40 01   JMP $0140
+E615   A5 CC      LDA $CC
+E617   8D FE BF   STA $BFFE
+E61A   A5 CB      LDA $CB
+E61C   8D FF BF   STA $BFFF
+E61F   38         SEC
+E620   B0 FE      BCS $E620
+E622   20 C0 E8   JSR $E8C0
+E625   4C BE FA   JMP $FABE
+E628   20 4F F8   JSR $F84F
+E62B   A9 11      LDA #$11
+E62D   20 D2 E6   JSR $E6D2
+E630   29 3F      AND #$3F
+E632   F0 30      BEQ $E664
+E634   C9 08      CMP #$08
+E636   F0 03      BEQ $E63B
+E638   4C 2E E8   JMP $E82E
+E63B   20 BA E6   JSR $E6BA
+E63E   48         PHA
+E63F   20 ED FF   JSR $FFED
+E642   68         PLA
+E643   C9 59      CMP #$59
+E645   F0 01      BEQ $E648
+E647   60         RTS
+E648   A9 40      LDA #$40
+E64A   8D 03 B4   STA $B403
+E64D   A9 00      LDA #$00
+E64F   38         SEC
+E650   E9 01      SBC #$01
+E652   D0 FC      BNE $E650
+E654   AD 03 B4   LDA $B403
+E657   30 F4      BMI $E64D
+E659   20 2E E8   JSR $E82E
+E65C   A9 11      LDA #$11
+E65E   20 D2 E6   JSR $E6D2
+E661   20 2E E8   JSR $E82E
+E664   A5 CB      LDA $CB
+E666   8D 50 01   STA $0150
+E669   A5 CC      LDA $CC
+E66B   8D 51 01   STA $0151
+E66E   A5 CD      LDA $CD
+E670   8D 52 01   STA $0152
+E673   A5 CE      LDA $CE
+E675   8D 53 01   STA $0153
+E678   38         SEC
+E679   A5 D2      LDA $D2
+E67B   E5 D0      SBC $D0
+E67D   8D 55 01   STA $0155
+E680   A5 D1      LDA $D1
+E682   E5 CF      SBC $CF
+E684   8D 54 01   STA $0154
+E687   A2 FF      LDX #$FF
+E689   A0 FF      LDY #$FF
+E68B   E8         INX
+E68C   C8         INY
+E68D   B1 C9      LDA ($C9),Y
+E68F   9D 40 01   STA $0140,X
+E692   C9 0D      CMP #$0D
+E694   D0 F5      BNE $E68B
+E696   A9 00      LDA #$00
+E698   9D 40 01   STA $0140,X
+E69B   E8         INX
+E69C   E0 10      CPX #$10
+E69E   D0 F8      BNE $E698
+E6A0   20 91 E7   JSR $E791
+E6A3   20 A5 E7   JSR $E7A5
+E6A6   24 EA      BIT $EA
+E6A8   30 0D      BMI $E6B7
+E6AA   A2 05      LDX #$05
+E6AC   BD 50 01   LDA $0150,X
+E6AF   95 CB      STA $CB,X
+E6B1   CA         DEX
+E6B2   10 F8      BPL $E6AC
+E6B4   20 A2 E8   JSR $E8A2
+E6B7   4C ED FF   JMP $FFED
+E6BA   20 D1 F7   JSR $F7D1
+E6BD   4F         ???
+E6BE   56 45      LSR $45,X
+E6C0   52         ???
+E6C1   57         ???
+E6C2   52         ???
+E6C3   49 54      EOR #$54
+E6C5   45 20      EOR $20
+E6C7   28         PLP
+E6C8   59 29 3A   EOR $3A29,Y
+E6CB   EA         NOP
+E6CC   20 E3 FF   JSR $FFE3
+E6CF   4C F4 FF   JMP $FFF4
+E6D2   48         PHA
+E6D3   20 E7 E6   JSR $E6E7
+E6D6   68         PLA
+E6D7   8D 03 B4   STA $B403
+E6DA   A9 00      LDA #$00
+E6DC   38         SEC
+E6DD   E9 01      SBC #$01
+E6DF   D0 FC      BNE $E6DD
+E6E1   AD 03 B4   LDA $B403
+E6E4   30 F4      BMI $E6DA
+E6E6   60         RTS
+E6E7   A9 FF      LDA #$FF
+E6E9   8D 03 B4   STA $B403
+E6EC   20 FE E7   JSR $E7FE
+E6EF   98         TYA
+E6F0   48         PHA
+E6F1   A0 00      LDY #$00
+E6F3   F0 04      BEQ $E6F9
+E6F5   8D 07 B4   STA $B407
+E6F8   C8         INY
+E6F9   B1 C9      LDA ($C9),Y
+E6FB   C9 0D      CMP #$0D
+E6FD   D0 F6      BNE $E6F5
+E6FF   A9 00      LDA #$00
+E701   8D 07 B4   STA $B407
+E704   68         PLA
+E705   A8         TAY
+E706   4C FE E7   JMP $E7FE
+E709   A9 40      LDA #$40
+E70B   85 AC      STA $AC
+E70D   A9 01      LDA #$01
+E70F   85 AD      STA $AD
+E711   A9 16      LDA #$16
+E713   20 6A E7   JSR $E76A
+E716   A0 05      LDY #$05
+E718   A2 03      LDX #$03
+E71A   24 CD      BIT $CD
+E71C   30 02      BMI $E720
+E71E   A2 05      LDX #$05
+E720   B9 50 01   LDA $0150,Y
+E723   99 CB 00   STA $00CB,Y
+E726   88         DEY
+E727   CA         DEX
+E728   10 F6      BPL $E720
+E72A   60         RTS
+E72B   A9 00      LDA #$00
+E72D   20 60 E7   JSR $E760
+E730   E6 CC      INC $CC
+E732   C6 D0      DEC $D0
+E734   A5 D0      LDA $D0
+E736   D0 F3      BNE $E72B
+E738   A5 CF      LDA $CF
+E73A   F0 10      BEQ $E74C
+E73C   20 60 E7   JSR $E760
+E73F   A5 CB      LDA $CB
+E741   18         CLC
+E742   65 CF      ADC $CF
+E744   85 CB      STA $CB
+E746   90 02      BCC $E74A
+E748   E6 CC      INC $CC
+E74A   86 CF      STX $CF
+E74C   A9 00      LDA #$00
+E74E   8D 03 B4   STA $B403
+E751   A9 00      LDA #$00
+E753   38         SEC
+E754   E9 01      SBC #$01
+E756   D0 FC      BNE $E754
+E758   AD 03 B4   LDA $B403
+E75B   30 F4      BMI $E751
+E75D   4C 2E E8   JMP $E82E
+E760   48         PHA
+E761   A5 CB      LDA $CB
+E763   85 AC      STA $AC
+E765   A5 CC      LDA $CC
+E767   85 AD      STA $AD
+E769   68         PLA
+E76A   AA         TAX
+E76B   8D 04 B4   STA $B404
+E76E   A9 00      LDA #$00
+E770   38         SEC
+E771   E9 01      SBC #$01
+E773   D0 FC      BNE $E771
+E775   AD 04 B4   LDA $B404
+E778   30 F4      BMI $E76E
+E77A   20 2E E8   JSR $E82E
+E77D   A9 3F      LDA #$3F
+E77F   8D 06 B4   STA $B406
+E782   20 FE E7   JSR $E7FE
+E785   A0 00      LDY #$00
+E787   AD 06 B4   LDA $B406
+E78A   91 AC      STA ($AC),Y
+E78C   C8         INY
+E78D   CA         DEX
+E78E   D0 F7      BNE $E787
+E790   60         RTS
+E791   A9 40      LDA #$40
+E793   85 AC      STA $AC
+E795   A9 01      LDA #$01
+E797   85 AD      STA $AD
+E799   A9 16      LDA #$16
+E79B   4C D6 E7   JMP $E7D6
+E79E   A9 00      LDA #$00
+E7A0   20 CE E7   JSR $E7CE
+E7A3   E6 D0      INC $D0
+E7A5   A5 D0      LDA $D0
+E7A7   C5 D2      CMP $D2
+E7A9   D0 F3      BNE $E79E
+E7AB   A5 D1      LDA $D1
+E7AD   C5 CF      CMP $CF
+E7AF   F0 06      BEQ $E7B7
+E7B1   38         SEC
+E7B2   E5 CF      SBC $CF
+E7B4   20 CE E7   JSR $E7CE
+E7B7   A9 00      LDA #$00
+E7B9   8D 03 B4   STA $B403
+E7BC   A9 00      LDA #$00
+E7BE   38         SEC
+E7BF   E9 01      SBC #$01
+E7C1   D0 FC      BNE $E7BF
+E7C3   AD 03 B4   LDA $B403
+E7C6   30 F4      BMI $E7BC
+E7C8   20 2E E8   JSR $E82E
+E7CB   4C 2E E8   JMP $E82E
+E7CE   A4 CF      LDY $CF
+E7D0   84 AC      STY $AC
+E7D2   A4 D0      LDY $D0
+E7D4   84 AD      STY $AD
+E7D6   AA         TAX
+E7D7   48         PHA
+E7D8   A9 FF      LDA #$FF
+E7DA   8D 03 B4   STA $B403
+E7DD   20 FE E7   JSR $E7FE
+E7E0   A0 00      LDY #$00
+E7E2   B1 AC      LDA ($AC),Y
+E7E4   8D 07 B4   STA $B407
+E7E7   C8         INY
+E7E8   CA         DEX
+E7E9   D0 F7      BNE $E7E2
+E7EB   68         PLA
+E7EC   8D 05 B4   STA $B405
+E7EF   A9 00      LDA #$00
+E7F1   38         SEC
+E7F2   E9 01      SBC #$01
+E7F4   D0 FC      BNE $E7F2
+E7F6   AD 05 B4   LDA $B405
+E7F9   30 F4      BMI $E7EF
+E7FB   4C 2E E8   JMP $E82E
+
+; write_cmd_reg
+E7FE   A9 04      LDA #$04
+E800   38         SEC
+E801   E9 01      SBC #$01
+E803   D0 FC      BNE $E801
+E805   60         RTS
+
+
+E806   A9 3F      LDA #$3F
+E808   8D 06 B4   STA $B406
+E80B   20 FE E7   JSR $E7FE
+E80E   A0 FF      LDY #$FF
+E810   C8         INY
+E811   AD 06 B4   LDA $B406
+E814   99 40 01   STA $0140,Y
+E817   D0 F7      BNE $E810
+E819   60         RTS
+E81A   A9 3F      LDA #$3F
+E81C   8D 06 B4   STA $B406
+E81F   20 FE E7   JSR $E7FE
+E822   A0 00      LDY #$00
+E824   AD 06 B4   LDA $B406
+E827   91 AC      STA ($AC),Y
+E829   C8         INY
+E82A   CA         DEX
+E82B   D0 F7      BNE $E824
+E82D   60         RTS
+E82E   C9 41      CMP #$41
+E830   B0 29      BCS $E85B
+E832   60         RTS
+E833   20 43 E8   JSR $E843
+E836   29 DF      AND #$DF
+E838   4C 4F E8   JMP $E84F
+E83B   20 43 E8   JSR $E843
+E83E   09 20      ORA #$20
+E840   4C 4F E8   JMP $E84F
+E843   A9 F0      LDA #$F0
+E845   8D 0F B4   STA $B40F
+E848   20 FE E7   JSR $E7FE
+E84B   AD 0F B4   LDA $B40F
+E84E   60         RTS
+E84F   8D 0E B4   STA $B40E
+E852   20 FE E7   JSR $E7FE
+E855   A9 F1      LDA #$F1
+E857   8D 0F B4   STA $B40F
+E85A   60         RTS
+E85B   29 3F      AND #$3F
+E85D   AA         TAX
+E85E   A0 FF      LDY #$FF
+E860   C8         INY
+E861   B9 07 EA   LDA $EA07,Y
+E864   C9 0D      CMP #$0D
+E866   D0 F8      BNE $E860
+E868   CA         DEX
+E869   D0 F5      BNE $E860
+E86B   C8         INY
+E86C   98         TYA
+E86D   18         CLC
+E86E   69 07      ADC #$07
+E870   85 D5      STA $D5
+E872   A9 EA      LDA #$EA
+E874   69 00      ADC #$00
+E876   85 D6      STA $D6
+E878   A9 D2      LDA #$D2
+E87A   85 05      STA $05
+E87C   A9 EA      LDA #$EA
+E87E   85 06      STA $06
+E880   4C F2 C2   JMP $C2F2
+E883   A2 00      LDX #$00
+E885   F0 04      BEQ $E88B
+E887   20 F4 FF   JSR $FFF4
+E88A   E8         INX
+E88B   BD 40 01   LDA $0140,X
+E88E   C9 20      CMP #$20
+E890   90 0B      BCC $E89D
+E892   E0 10      CPX #$10
+E894   D0 F1      BNE $E887
+E896   60         RTS
+E897   A9 20      LDA #$20
+E899   20 F4 FF   JSR $FFF4
+E89C   E8         INX
+E89D   E0 10      CPX #$10
+E89F   D0 F6      BNE $E897
+E8A1   60         RTS
+E8A2   A5 CC      LDA $CC
+E8A4   20 02 F8   JSR $F802
+E8A7   A5 CB      LDA $CB
+E8A9   20 FA F7   JSR $F7FA
+E8AC   A5 CE      LDA $CE
+E8AE   20 02 F8   JSR $F802
+E8B1   A5 CD      LDA $CD
+E8B3   20 FA F7   JSR $F7FA
+E8B6   A5 D0      LDA $D0
+E8B8   20 02 F8   JSR $F802
+E8BB   A5 CF      LDA $CF
+E8BD   4C FA F7   JMP $F7FA
+E8C0   A2 00      LDX #$00
+E8C2   A4 9A      LDY $9A
+E8C4   20 76 F8   JSR $F876
+E8C7   C9 22      CMP #$22
+E8C9   F0 1C      BEQ $E8E7
+E8CB   C9 0D      CMP #$0D
+E8CD   F0 0C      BEQ $E8DB
+E8CF   9D 40 01   STA $0140,X
+E8D2   E8         INX
+E8D3   C8         INY
+E8D4   B9 00 01   LDA $0100,Y
+E8D7   C9 20      CMP #$20
+E8D9   D0 F0      BNE $E8CB
+E8DB   A9 0D      LDA #$0D
+E8DD   9D 40 01   STA $0140,X
+E8E0   E0 00      CPX #$00
+E8E2   F0 1F      BEQ $E903
+E8E4   4C 44 F8   JMP $F844
+E8E7   C8         INY
+E8E8   B9 00 01   LDA $0100,Y
+E8EB   C9 0D      CMP #$0D
+E8ED   F0 14      BEQ $E903
+E8EF   9D 40 01   STA $0140,X
+E8F2   E8         INX
+E8F3   C9 22      CMP #$22
+E8F5   D0 F0      BNE $E8E7
+E8F7   CA         DEX
+E8F8   C8         INY
+E8F9   B9 00 01   LDA $0100,Y
+E8FC   C9 22      CMP #$22
+E8FE   D0 DB      BNE $E8DB
+E900   E8         INX
+E901   B0 E4      BCS $E8E7
+E903   4C 7D FA   JMP $FA7D
+E906   20 76 F8   JSR $F876
+E909   20 7E F8   JSR $F87E
+E90C   B0 1B      BCS $E929
+E90E   85 CB      STA $CB
+E910   C8         INY
+E911   B9 00 01   LDA $0100,Y
+E914   20 7E F8   JSR $F87E
+E917   B0 0D      BCS $E926
+E919   C8         INY
+E91A   06 CB      ASL $CB
+E91C   06 CB      ASL $CB
+E91E   06 CB      ASL $CB
+E920   06 CB      ASL $CB
+E922   05 CB      ORA $CB
+E924   85 CB      STA $CB
+E926   A5 CB      LDA $CB
+E928   18         CLC
+E929   60         RTS
+E92A   20 D1 F7   JSR $F7D1
+E92D   3C         ???
+E92E   50 52      BVC $E982
+E930   45 53      EOR $53
+E932   53         ???
+E933   20 41 20   JSR $2041
+E936   4B         ???
+E937   45 59      EOR $59
+E939   3E EA 20   ROL $20EA,X
+E93C   E3         ???
+E93D   FF         ???
+E93E   48         PHA
+E93F   A9 00      LDA #$00
+E941   85 E0      STA $E0
+E943   20 D1 F7   JSR $F7D1
+E946   20 20 20   JSR $2020
+E949   20 20 20   JSR $2020
+E94C   20 20 20   JSR $2020
+E94F   20 20 20   JSR $2020
+E952   20 EA A9   JSR $A9EA
+E955   00         BRK
+E956   85 E0      STA $E0
+E958   68         PLA
+E959   60         RTS
+E95A   A9 20      LDA #$20
+E95C   20 F4 FF   JSR $FFF4
+E95F   E4 E0      CPX $E0
+E961   B0 F7      BCS $E95A
+E963   60         RTS
+E964   A2 0A      LDX #$0A
+E966   4C 5F E9   JMP $E95F
+E969   A2 10      LDX #$10
+E96B   4C 5F E9   JMP $E95F
+
+; cardtypees
+   .byte " MMC  SDSDHC N/A"
+   ;      1111222244448888
+
+E96E   20 4D 4D   JSR $4D4D
+E971   43         ???
+E972   20 20 53   JSR $5320
+E975   44         ???
+E976   53         ???
+E977   44         ???
+E978   48         PHA
+E979   43         ???
+E97A   20 4E 2F   JSR $2F4E
+E97D   41 
+
+;fullvecdat
+; IRQVEC
+E97E   7B 
+E97F   E0 
+;COMVEC
+0D      
+E981   E1 
+;WRCVEC
+52    
+E983   FE 
+;RDCVEC
+94 
+FE   INC $FE94,X
+E986   EE E4 
+28 E6
+
+;fakekeys
+;  .byte "*MENU"
+;  .byte 0
+E98A   2A 4D 45 4E 55 0D
+E990   00         BRK
+E991   43         ???
+E992   41 54      EOR ($54,X)
+E994   E1 6F      SBC ($6F,X)
+E996   43         ???
+E997   57         ???
+E998   44         ???
+E999   E2         ???
+E99A   17         ???
+E99B   44         ???
+E99C   45 4C      EOR $4C
+E99E   45 54      EOR $54
+E9A0   45 E2      EOR $E2
+E9A2   DC         ???
+E9A3   45 58      EOR $58
+E9A5   45 43      EOR $43
+E9A7   E3         ???
+E9A8   1F         ???
+E9A9   52         ???
+E9AA   55 4E      EOR $4E,X
+E9AC   E5 A3      SBC $A3
+E9AE   48         PHA
+E9AF   45 4C      EOR $4C
+E9B1   50 E4      BVC $E997
+E9B3   23         ???
+E9B4   49 4E      EOR #$4E
+E9B6   46 4F      LSR $4F
+E9B8   E4 CD      CPX $CD
+E9BA   4C 4F 41   JMP $414F
+E9BD   44         ???
+E9BE   E4 E8      CPX $E8
+E9C0   52         ???
+E9C1   4C 4F 41   JMP $414F
+E9C4   44         ???
+E9C5   E5 09      SBC $09
+E9C7   52         ???
+E9C8   4F         ???
+E9C9   4D 4C 4F   EOR $4F4C
+E9CC   41 44      EOR ($44,X)
+E9CE   E5 63      SBC $63
+E9D0   55 52      EOR $52,X
+E9D2   4F         ???
+E9D3   4D E5 E5   EOR $E5E5
+E9D6   4D 4F 4E   EOR $4E4F
+E9D9   FA         ???
+E9DA   1A         ???
+E9DB   4E 4F 4D   LSR $4D4F
+E9DE   4F         ???
+E9DF   4E FA 19   LSR $19FA
+E9E2   43         ???
+E9E3   46 47      LSR $47
+E9E5   E2         ???
+E9E6   50 50      BVC $EA38
+E9E8   42         ???
+E9E9   44         ???
+E9EA   E2         ???
+E9EB   42         ???
+E9EC   50 42      BVC $EA30
+E9EE   56 E2      LSR $E2,X
+E9F0   49 53      EOR #$53
+E9F2   41 56      EOR ($56,X)
+E9F4   45 E6      EOR $E6
+E9F6   22         ???
+E9F7   46 41      LSR $41
+E9F9   54         ???
+E9FA   49 4E      EOR #$4E
+E9FC   46 4F      LSR $4F
+E9FE   E3         ???
+E9FF   C2         ???
+EA00   43         ???
+EA01   52         ???
+EA02   43         ???
+EA03   E2         ???
+EA04   7B         ???
+EA05   E5 A3      SBC $A3
+EA07   0D 44 49   ORA $4944
+EA0A   53         ???
+EA0B   4B         ???
+EA0C   20 46 41   JSR $4146
+EA0F   55 4C      EOR $4C,X
+EA11   54         ???
+EA12   0D 49 4E   ORA $4E49
+EA15   54         ???
+EA16   45 52      EOR $52
+EA18   4E 41 4C   LSR $4C41
+EA1B   20 45 52   JSR $5245
+EA1E   52         ???
+EA1F   4F         ???
+EA20   52         ???
+EA21   0D 4E 4F   ORA $4F4E
+EA24   54         ???
+EA25   20 52 45   JSR $4552
+EA28   41 44      EOR ($44,X)
+EA2A   59 0D 4E   EOR $4E0D,Y
+EA2D   4F         ???
+EA2E   54         ???
+EA2F   20 46 4F   JSR $4F46
+EA32   55 4E      EOR $4E,X
+EA34   44         ???
+EA35   0D 4E 4F   ORA $4F4E
+EA38   20 50 41   JSR $4150
+EA3B   54         ???
+EA3C   48         PHA
+EA3D   0D 49 4E   ORA $4E49
+EA40   56 41      LSR $41,X
+EA42   4C 49 44   JMP $4449
+EA45   20 4E 41   JSR $414E
+EA48   4D 45 0D   EOR $0D45
+EA4B   41 43      EOR ($43,X)
+EA4D   43         ???
+EA4E   45 53      EOR $53
+EA50   53         ???
+EA51   20 44 45   JSR $4544
+EA54   4E 49 45   LSR $4549
+EA57   44         ???
+EA58   0D 45 58   ORA $5845
+EA5B   49 53      EOR #$53
+EA5D   54         ???
+EA5E   53         ???
+EA5F   0D 49 4E   ORA $4E49
+EA62   56 41      LSR $41,X
+EA64   4C 49 44   JMP $4449
+EA67   20 4F 42   JSR $424F
+EA6A   4A         LSR A
+EA6B   45 43      EOR $43
+EA6D   54         ???
+EA6E   0D 57 52   ORA $5257
+EA71   49 54      EOR #$54
+EA73   45 20      EOR $20
+EA75   50 52      BVC $EAC9
+EA77   4F         ???
+EA78   54         ???
+EA79   45 43      EOR $43
+EA7B   54         ???
+EA7C   45 44      EOR $44
+EA7E   0D 49 4E   ORA $4E49
+EA81   56 41      LSR $41,X
+EA83   4C 49 44   JMP $4449
+EA86   20 44 52   JSR $5244
+EA89   49 56      EOR #$56
+EA8B   45 0D      EOR $0D
+EA8D   4E 4F 54   LSR $544F
+EA90   20 45 4E   JSR $4E45
+EA93   41 42      EOR ($42,X)
+EA95   4C 45 44   JMP $4445
+EA98   0D 4E 4F   ORA $4F4E
+EA9B   20 46 49   JSR $4946
+EA9E   4C 45 53   JMP $5345
+EAA1   59 53 54   EOR $5453,Y
+EAA4   45 4D      EOR $4D
+EAA6   0D 0D 54   ORA $540D
+EAA9   49 4D      EOR #$4D
+EAAB   45 4F      EOR $4F
+EAAD   55 54      EOR $54,X
+EAAF   0D 45 45   ORA $4545
+EAB2   50 52      BVC $EB06
+EAB4   4F         ???
+EAB5   4D 20 45   EOR $4520
+EAB8   52         ???
+EAB9   52         ???
+EABA   4F         ???
+EABB   52         ???
+EABC   0D 46 41   ORA $4146
+EABF   49 4C      EOR #$4C
+EAC1   45 44      EOR $44
+EAC3   0D 4E 4F   ORA $4F4E
+EAC6   54         ???
+EAC7   20 4E 4F   JSR $4F4E
+EACA   57         ???
+EACB   0D 53 49   ORA $4953
+EACE   4C 4C 59   JMP $594C
+EAD1   0D 40 3D   ORA $3D40
+EAD4   38         SEC
+EAD5   3B         ???
+EAD6   50 2E      BVC $EB06
+EAD8   24 36      BIT $36
+EADA   24 37      BIT $37
+EADC   27         ???
+EADD   22         ???
+EADE   45 52      EOR $52
+EAE0   52         ???
+EAE1   4F         ???
+EAE2   52         ???
+EAE3   20 2D 20   JSR $202D
+EAE6   22         ???
+EAE7   24 21      BIT $21
+EAE9   23         ???
+EAEA   44         ???
+EAEB   35 26      AND $26,X
+EAED   23         ???
+EAEE   46 46      LSR $46
+EAF0   46 46      LSR $46
+EAF2   3B         ???
+EAF3   49 46      EOR #$46
+EAF5   3F         ???
+EAF6   31 7C      AND ($7C),Y
+EAF8   3F         ???
+EAF9   32         ???
+EAFA   50 2E      BVC $EB2A
+EAFC   22         ???
+EAFD   20 2D 20   JSR $202D
+EB00   4C 49 4E   JMP $4E49
+EB03   45 20      EOR $20
+EB05   22         ???
+EB06   21 31      AND ($31,X)
+EB08   26 20      ROL $20
+EB0A   23         ???
+EB0B   46 46      LSR $46
+EB0D   46 46      LSR $46
+EB0F   0D 00 00   ORA $0000
+EB12   50 2E      BVC $EB42
+EB14   27         ???
+EB15   3B         ???
+EB16   45 2E      EOR $2E
+EB18   0D FF FF   ORA $FFFF
+EB1B   FF         ???
+EB1C   FF         ???
+EB1D   FF         ???
+EB1E   FF         ???
+EB1F   FF         ???
+EB20   FF         ???
+EB21   FF         ???
+EB22   FF         ???
+EB23   FF         ???
+EB24   FF         ???
+EB25   FF         ???
+EB26   FF         ???
+EB27   FF         ???
+EB28   FF         ???
+EB29   FF         ???
+EB2A   FF         ???
+EB2B   FF         ???
+EB2C   FF         ???
+EB2D   FF         ???
+EB2E   FF         ???
+EB2F   FF         ???
+EB30   FF         ???
+EB31   FF         ???
+EB32   FF         ???
+EB33   FF         ???
+EB34   FF         ???
+EB35   FF         ???
+EB36   FF         ???
+EB37   FF         ???
+EB38   FF         ???
+EB39   FF         ???
+EB3A   FF         ???
+EB3B   FF         ???
+EB3C   FF         ???
+EB3D   FF         ???
+EB3E   FF         ???
+EB3F   FF         ???
+EB40   FF         ???
+EB41   FF         ???
+EB42   FF         ???
+EB43   FF         ???
+EB44   FF         ???
+EB45   FF         ???
+EB46   FF         ???
+EB47   FF         ???
+EB48   FF         ???
+EB49   FF         ???
+EB4A   FF         ???
+EB4B   FF         ???
+EB4C   FF         ???
+EB4D   FF         ???
+EB4E   FF         ???
+EB4F   FF         ???
+EB50   FF         ???
+EB51   FF         ???
+EB52   FF         ???
+EB53   FF         ???
+EB54   FF         ???
+EB55   FF         ???
+EB56   FF         ???
+EB57   FF         ???
+EB58   FF         ???
+EB59   FF         ???
+EB5A   FF         ???
+EB5B   FF         ???
+EB5C   FF         ???
+EB5D   FF         ???
+EB5E   FF         ???
+EB5F   FF         ???
+EB60   FF         ???
+EB61   FF         ???
+EB62   FF         ???
+EB63   FF         ???
+EB64   FF         ???
+EB65   FF         ???
+EB66   FF         ???
+EB67   FF         ???
+EB68   FF         ???
+EB69   FF         ???
+EB6A   FF         ???
+EB6B   FF         ???
+EB6C   FF         ???
+EB6D   FF         ???
+EB6E   FF         ???
+EB6F   FF         ???
+EB70   FF         ???
+EB71   FF         ???
+EB72   FF         ???
+EB73   FF         ???
+EB74   FF         ???
+EB75   FF         ???
+EB76   FF         ???
+EB77   FF         ???
+EB78   FF         ???
+EB79   FF         ???
+EB7A   FF         ???
+EB7B   FF         ???
+EB7C   FF         ???
+EB7D   FF         ???
+EB7E   FF         ???
+EB7F   FF         ???
+EB80   FF         ???
+EB81   FF         ???
+EB82   FF         ???
+EB83   FF         ???
+EB84   FF         ???
+EB85   FF         ???
+EB86   FF         ???
+EB87   FF         ???
+EB88   FF         ???
+EB89   FF         ???
+EB8A   FF         ???
+EB8B   FF         ???
+EB8C   FF         ???
+EB8D   FF         ???
+EB8E   FF         ???
+EB8F   FF         ???
+EB90   FF         ???
+EB91   FF         ???
+EB92   FF         ???
+EB93   FF         ???
+EB94   FF         ???
+EB95   FF         ???
+EB96   FF         ???
+EB97   FF         ???
+EB98   FF         ???
+EB99   FF         ???
+EB9A   FF         ???
+EB9B   FF         ???
+EB9C   FF         ???
+EB9D   FF         ???
+EB9E   FF         ???
+EB9F   FF         ???
+EBA0   FF         ???
+EBA1   FF         ???
+EBA2   FF         ???
+EBA3   FF         ???
+EBA4   FF         ???
+EBA5   FF         ???
+EBA6   FF         ???
+EBA7   FF         ???
+EBA8   FF         ???
+EBA9   FF         ???
+EBAA   FF         ???
+EBAB   FF         ???
+EBAC   FF         ???
+EBAD   FF         ???
+EBAE   FF         ???
+EBAF   FF         ???
+EBB0   FF         ???
+EBB1   FF         ???
+EBB2   FF         ???
+EBB3   FF         ???
+EBB4   FF         ???
+EBB5   FF         ???
+EBB6   FF         ???
+EBB7   FF         ???
+EBB8   FF         ???
+EBB9   FF         ???
+EBBA   FF         ???
+EBBB   FF         ???
+EBBC   FF         ???
+EBBD   FF         ???
+EBBE   FF         ???
+EBBF   FF         ???
+EBC0   FF         ???
+EBC1   FF         ???
+EBC2   FF         ???
+EBC3   FF         ???
+EBC4   FF         ???
+EBC5   FF         ???
+EBC6   FF         ???
+EBC7   FF         ???
+EBC8   FF         ???
+EBC9   FF         ???
+EBCA   FF         ???
+EBCB   FF         ???
+EBCC   FF         ???
+EBCD   FF         ???
+EBCE   FF         ???
+EBCF   FF         ???
+EBD0   FF         ???
+EBD1   FF         ???
+EBD2   FF         ???
+EBD3   FF         ???
+EBD4   FF         ???
+EBD5   FF         ???
+EBD6   FF         ???
+EBD7   FF         ???
+EBD8   FF         ???
+EBD9   FF         ???
+EBDA   FF         ???
+EBDB   FF         ???
+EBDC   FF         ???
+EBDD   FF         ???
+EBDE   FF         ???
+EBDF   FF         ???
+EBE0   FF         ???
+EBE1   FF         ???
+EBE2   FF         ???
+EBE3   FF         ???
+EBE4   FF         ???
+EBE5   FF         ???
+EBE6   FF         ???
+EBE7   FF         ???
+EBE8   FF         ???
+EBE9   FF         ???
+EBEA   FF         ???
+EBEB   FF         ???
+EBEC   FF         ???
+EBED   FF         ???
+EBEE   FF         ???
+EBEF   FF         ???
+EBF0   FF         ???
+EBF1   FF         ???
+EBF2   FF         ???
+EBF3   FF         ???
+EBF4   FF         ???
+EBF5   FF         ???
+EBF6   FF         ???
+EBF7   FF         ???
+EBF8   FF         ???
+EBF9   FF         ???
+EBFA   FF         ???
+EBFB   FF         ???
+EBFC   FF         ???
+EBFD   FF         ???
+EBFE   FF         ???
+EBFF   FF         ???
+EC00   FF         ???
+EC01   FF         ???
+EC02   FF         ???
+EC03   FF         ???
+EC04   FF         ???
+EC05   FF         ???
+EC06   FF         ???
+EC07   FF         ???
+EC08   FF         ???
+EC09   FF         ???
+EC0A   FF         ???
+EC0B   FF         ???
+EC0C   FF         ???
+EC0D   FF         ???
+EC0E   FF         ???
+EC0F   FF         ???
+EC10   FF         ???
+EC11   FF         ???
+EC12   FF         ???
+EC13   FF         ???
+EC14   FF         ???
+EC15   FF         ???
+EC16   FF         ???
+EC17   FF         ???
+EC18   FF         ???
+EC19   FF         ???
+EC1A   FF         ???
+EC1B   FF         ???
+EC1C   FF         ???
+EC1D   FF         ???
+EC1E   FF         ???
+EC1F   FF         ???
+EC20   FF         ???
+EC21   FF         ???
+EC22   FF         ???
+EC23   FF         ???
+EC24   FF         ???
+EC25   FF         ???
+EC26   FF         ???
+EC27   FF         ???
+EC28   FF         ???
+EC29   FF         ???
+EC2A   FF         ???
+EC2B   FF         ???
+EC2C   FF         ???
+EC2D   FF         ???
+EC2E   FF         ???
+EC2F   FF         ???
+EC30   FF         ???
+EC31   FF         ???
+EC32   FF         ???
+EC33   FF         ???
+EC34   FF         ???
+EC35   FF         ???
+EC36   FF         ???
+EC37   FF         ???
+EC38   FF         ???
+EC39   FF         ???
+EC3A   FF         ???
+EC3B   FF         ???
+EC3C   FF         ???
+EC3D   FF         ???
+EC3E   FF         ???
+EC3F   FF         ???
+EC40   FF         ???
+EC41   FF         ???
+EC42   FF         ???
+EC43   FF         ???
+EC44   FF         ???
+EC45   FF         ???
+EC46   FF         ???
+EC47   FF         ???
+EC48   FF         ???
+EC49   FF         ???
+EC4A   FF         ???
+EC4B   FF         ???
+EC4C   FF         ???
+EC4D   FF         ???
+EC4E   FF         ???
+EC4F   FF         ???
+EC50   FF         ???
+EC51   FF         ???
+EC52   FF         ???
+EC53   FF         ???
+EC54   FF         ???
+EC55   FF         ???
+EC56   FF         ???
+EC57   FF         ???
+EC58   FF         ???
+EC59   FF         ???
+EC5A   FF         ???
+EC5B   FF         ???
+EC5C   FF         ???
+EC5D   FF         ???
+EC5E   FF         ???
+EC5F   FF         ???
+EC60   FF         ???
+EC61   FF         ???
+EC62   FF         ???
+EC63   FF         ???
+EC64   FF         ???
+EC65   FF         ???
+EC66   FF         ???
+EC67   FF         ???
+EC68   FF         ???
+EC69   FF         ???
+EC6A   FF         ???
+EC6B   FF         ???
+EC6C   FF         ???
+EC6D   FF         ???
+EC6E   FF         ???
+EC6F   FF         ???
+EC70   FF         ???
+EC71   FF         ???
+EC72   FF         ???
+EC73   FF         ???
+EC74   FF         ???
+EC75   FF         ???
+EC76   FF         ???
+EC77   FF         ???
+EC78   FF         ???
+EC79   FF         ???
+EC7A   FF         ???
+EC7B   FF         ???
+EC7C   FF         ???
+EC7D   FF         ???
+EC7E   FF         ???
+EC7F   FF         ???
+EC80   FF         ???
+EC81   FF         ???
+EC82   FF         ???
+EC83   FF         ???
+EC84   FF         ???
+EC85   FF         ???
+EC86   FF         ???
+EC87   FF         ???
+EC88   FF         ???
+EC89   FF         ???
+EC8A   FF         ???
+EC8B   FF         ???
+EC8C   FF         ???
+EC8D   FF         ???
+EC8E   FF         ???
+EC8F   FF         ???
+EC90   FF         ???
+EC91   FF         ???
+EC92   FF         ???
+EC93   FF         ???
+EC94   FF         ???
+EC95   FF         ???
+EC96   FF         ???
+EC97   FF         ???
+EC98   FF         ???
+EC99   FF         ???
+EC9A   FF         ???
+EC9B   FF         ???
+EC9C   FF         ???
+EC9D   FF         ???
+EC9E   FF         ???
+EC9F   FF         ???
+ECA0   FF         ???
+ECA1   FF         ???
+ECA2   FF         ???
+ECA3   FF         ???
+ECA4   FF         ???
+ECA5   FF         ???
+ECA6   FF         ???
+ECA7   FF         ???
+ECA8   FF         ???
+ECA9   FF         ???
+ECAA   FF         ???
+ECAB   FF         ???
+ECAC   FF         ???
+ECAD   FF         ???
+ECAE   FF         ???
+ECAF   FF         ???
+ECB0   FF         ???
+ECB1   FF         ???
+ECB2   FF         ???
+ECB3   FF         ???
+ECB4   FF         ???
+ECB5   FF         ???
+ECB6   FF         ???
+ECB7   FF         ???
+ECB8   FF         ???
+ECB9   FF         ???
+ECBA   FF         ???
+ECBB   FF         ???
+ECBC   FF         ???
+ECBD   FF         ???
+ECBE   FF         ???
+ECBF   FF         ???
+ECC0   FF         ???
+ECC1   FF         ???
+ECC2   FF         ???
+ECC3   FF         ???
+ECC4   FF         ???
+ECC5   FF         ???
+ECC6   FF         ???
+ECC7   FF         ???
+ECC8   FF         ???
+ECC9   FF         ???
+ECCA   FF         ???
+ECCB   FF         ???
+ECCC   FF         ???
+ECCD   FF         ???
+ECCE   FF         ???
+ECCF   FF         ???
+ECD0   FF         ???
+ECD1   FF         ???
+ECD2   FF         ???
+ECD3   FF         ???
+ECD4   FF         ???
+ECD5   FF         ???
+ECD6   FF         ???
+ECD7   FF         ???
+ECD8   FF         ???
+ECD9   FF         ???
+ECDA   FF         ???
+ECDB   FF         ???
+ECDC   FF         ???
+ECDD   FF         ???
+ECDE   FF         ???
+ECDF   FF         ???
+ECE0   FF         ???
+ECE1   FF         ???
+ECE2   FF         ???
+ECE3   FF         ???
+ECE4   FF         ???
+ECE5   FF         ???
+ECE6   FF         ???
+ECE7   FF         ???
+ECE8   FF         ???
+ECE9   FF         ???
+ECEA   FF         ???
+ECEB   FF         ???
+ECEC   FF         ???
+ECED   FF         ???
+ECEE   FF         ???
+ECEF   FF         ???
+ECF0   FF         ???
+ECF1   FF         ???
+ECF2   FF         ???
+ECF3   FF         ???
+ECF4   FF         ???
+ECF5   FF         ???
+ECF6   FF         ???
+ECF7   FF         ???
+ECF8   FF         ???
+ECF9   FF         ???
+ECFA   FF         ???
+ECFB   FF         ???
+ECFC   FF         ???
+ECFD   FF         ???
+ECFE   FF         ???
+ECFF   FF         ???
+ED00   FF         ???
+ED01   FF         ???
+ED02   FF         ???
+ED03   FF         ???
+ED04   FF         ???
+ED05   FF         ???
+ED06   FF         ???
+ED07   FF         ???
+ED08   FF         ???
+ED09   FF         ???
+ED0A   FF         ???
+ED0B   FF         ???
+ED0C   FF         ???
+ED0D   FF         ???
+ED0E   FF         ???
+ED0F   FF         ???
+ED10   FF         ???
+ED11   FF         ???
+ED12   FF         ???
+ED13   FF         ???
+ED14   FF         ???
+ED15   FF         ???
+ED16   FF         ???
+ED17   FF         ???
+ED18   FF         ???
+ED19   FF         ???
+ED1A   FF         ???
+ED1B   FF         ???
+ED1C   FF         ???
+ED1D   FF         ???
+ED1E   FF         ???
+ED1F   FF         ???
+ED20   FF         ???
+ED21   FF         ???
+ED22   FF         ???
+ED23   FF         ???
+ED24   FF         ???
+ED25   FF         ???
+ED26   FF         ???
+ED27   FF         ???
+ED28   FF         ???
+ED29   FF         ???
+ED2A   FF         ???
+ED2B   FF         ???
+ED2C   FF         ???
+ED2D   FF         ???
+ED2E   FF         ???
+ED2F   FF         ???
+ED30   FF         ???
+ED31   FF         ???
+ED32   FF         ???
+ED33   FF         ???
+ED34   FF         ???
+ED35   FF         ???
+ED36   FF         ???
+ED37   FF         ???
+ED38   FF         ???
+ED39   FF         ???
+ED3A   FF         ???
+ED3B   FF         ???
+ED3C   FF         ???
+ED3D   FF         ???
+ED3E   FF         ???
+ED3F   FF         ???
+ED40   FF         ???
+ED41   FF         ???
+ED42   FF         ???
+ED43   FF         ???
+ED44   FF         ???
+ED45   FF         ???
+ED46   FF         ???
+ED47   FF         ???
+ED48   FF         ???
+ED49   FF         ???
+ED4A   FF         ???
+ED4B   FF         ???
+ED4C   FF         ???
+ED4D   FF         ???
+ED4E   FF         ???
+ED4F   FF         ???
+ED50   FF         ???
+ED51   FF         ???
+ED52   FF         ???
+ED53   FF         ???
+ED54   FF         ???
+ED55   FF         ???
+ED56   FF         ???
+ED57   FF         ???
+ED58   FF         ???
+ED59   FF         ???
+ED5A   FF         ???
+ED5B   FF         ???
+ED5C   FF         ???
+ED5D   FF         ???
+ED5E   FF         ???
+ED5F   FF         ???
+ED60   FF         ???
+ED61   FF         ???
+ED62   FF         ???
+ED63   FF         ???
+ED64   FF         ???
+ED65   FF         ???
+ED66   FF         ???
+ED67   FF         ???
+ED68   FF         ???
+ED69   FF         ???
+ED6A   FF         ???
+ED6B   FF         ???
+ED6C   FF         ???
+ED6D   FF         ???
+ED6E   FF         ???
+ED6F   FF         ???
+ED70   FF         ???
+ED71   FF         ???
+ED72   FF         ???
+ED73   FF         ???
+ED74   FF         ???
+ED75   FF         ???
+ED76   FF         ???
+ED77   FF         ???
+ED78   FF         ???
+ED79   FF         ???
+ED7A   FF         ???
+ED7B   FF         ???
+ED7C   FF         ???
+ED7D   FF         ???
+ED7E   FF         ???
+ED7F   FF         ???
+ED80   FF         ???
+ED81   FF         ???
+ED82   FF         ???
+ED83   FF         ???
+ED84   FF         ???
+ED85   FF         ???
+ED86   FF         ???
+ED87   FF         ???
+ED88   FF         ???
+ED89   FF         ???
+ED8A   FF         ???
+ED8B   FF         ???
+ED8C   FF         ???
+ED8D   FF         ???
+ED8E   FF         ???
+ED8F   FF         ???
+ED90   FF         ???
+ED91   FF         ???
+ED92   FF         ???
+ED93   FF         ???
+ED94   FF         ???
+ED95   FF         ???
+ED96   FF         ???
+ED97   FF         ???
+ED98   FF         ???
+ED99   FF         ???
+ED9A   FF         ???
+ED9B   FF         ???
+ED9C   FF         ???
+ED9D   FF         ???
+ED9E   FF         ???
+ED9F   FF         ???
+EDA0   FF         ???
+EDA1   FF         ???
+EDA2   FF         ???
+EDA3   FF         ???
+EDA4   FF         ???
+EDA5   FF         ???
+EDA6   FF         ???
+EDA7   FF         ???
+EDA8   FF         ???
+EDA9   FF         ???
+EDAA   FF         ???
+EDAB   FF         ???
+EDAC   FF         ???
+EDAD   FF         ???
+EDAE   FF         ???
+EDAF   FF         ???
+EDB0   FF         ???
+EDB1   FF         ???
+EDB2   FF         ???
+EDB3   FF         ???
+EDB4   FF         ???
+EDB5   FF         ???
+EDB6   FF         ???
+EDB7   FF         ???
+EDB8   FF         ???
+EDB9   FF         ???
+EDBA   FF         ???
+EDBB   FF         ???
+EDBC   FF         ???
+EDBD   FF         ???
+EDBE   FF         ???
+EDBF   FF         ???
+EDC0   FF         ???
+EDC1   FF         ???
+EDC2   FF         ???
+EDC3   FF         ???
+EDC4   FF         ???
+EDC5   FF         ???
+EDC6   FF         ???
+EDC7   FF         ???
+EDC8   FF         ???
+EDC9   FF         ???
+EDCA   FF         ???
+EDCB   FF         ???
+EDCC   FF         ???
+EDCD   FF         ???
+EDCE   FF         ???
+EDCF   FF         ???
+EDD0   FF         ???
+EDD1   FF         ???
+EDD2   FF         ???
+EDD3   FF         ???
+EDD4   FF         ???
+EDD5   FF         ???
+EDD6   FF         ???
+EDD7   FF         ???
+EDD8   FF         ???
+EDD9   FF         ???
+EDDA   FF         ???
+EDDB   FF         ???
+EDDC   FF         ???
+EDDD   FF         ???
+EDDE   FF         ???
+EDDF   FF         ???
+EDE0   FF         ???
+EDE1   FF         ???
+EDE2   FF         ???
+EDE3   FF         ???
+EDE4   FF         ???
+EDE5   FF         ???
+EDE6   FF         ???
+EDE7   FF         ???
+EDE8   FF         ???
+EDE9   FF         ???
+EDEA   FF         ???
+EDEB   FF         ???
+EDEC   FF         ???
+EDED   FF         ???
+EDEE   FF         ???
+EDEF   FF         ???
+EDF0   FF         ???
+EDF1   FF         ???
+EDF2   FF         ???
+EDF3   FF         ???
+EDF4   FF         ???
+EDF5   FF         ???
+EDF6   FF         ???
+EDF7   FF         ???
+EDF8   FF         ???
+EDF9   FF         ???
+EDFA   FF         ???
+EDFB   FF         ???
+EDFC   FF         ???
+EDFD   FF         ???
+EDFE   FF         ???
+EDFF   FF         ???
+EE00   FF         ???
+EE01   FF         ???
+EE02   FF         ???
+EE03   FF         ???
+EE04   FF         ???
+EE05   FF         ???
+EE06   FF         ???
+EE07   FF         ???
+EE08   FF         ???
+EE09   FF         ???
+EE0A   FF         ???
+EE0B   FF         ???
+EE0C   FF         ???
+EE0D   FF         ???
+EE0E   FF         ???
+EE0F   FF         ???
+EE10   FF         ???
+EE11   FF         ???
+EE12   FF         ???
+EE13   FF         ???
+EE14   FF         ???
+EE15   FF         ???
+EE16   FF         ???
+EE17   FF         ???
+EE18   FF         ???
+EE19   FF         ???
+EE1A   FF         ???
+EE1B   FF         ???
+EE1C   FF         ???
+EE1D   FF         ???
+EE1E   FF         ???
+EE1F   FF         ???
+EE20   FF         ???
+EE21   FF         ???
+EE22   FF         ???
+EE23   FF         ???
+EE24   FF         ???
+EE25   FF         ???
+EE26   FF         ???
+EE27   FF         ???
+EE28   FF         ???
+EE29   FF         ???
+EE2A   FF         ???
+EE2B   FF         ???
+EE2C   FF         ???
+EE2D   FF         ???
+EE2E   FF         ???
+EE2F   FF         ???
+EE30   FF         ???
+EE31   FF         ???
+EE32   FF         ???
+EE33   FF         ???
+EE34   FF         ???
+EE35   FF         ???
+EE36   FF         ???
+EE37   FF         ???
+EE38   FF         ???
+EE39   FF         ???
+EE3A   FF         ???
+EE3B   FF         ???
+EE3C   FF         ???
+EE3D   FF         ???
+EE3E   FF         ???
+EE3F   FF         ???
+EE40   FF         ???
+EE41   FF         ???
+EE42   FF         ???
+EE43   FF         ???
+EE44   FF         ???
+EE45   FF         ???
+EE46   FF         ???
+EE47   FF         ???
+EE48   FF         ???
+EE49   FF         ???
+EE4A   FF         ???
+EE4B   FF         ???
+EE4C   FF         ???
+EE4D   FF         ???
+EE4E   FF         ???
+EE4F   FF         ???
+EE50   FF         ???
+EE51   FF         ???
+EE52   FF         ???
+EE53   FF         ???
+EE54   FF         ???
+EE55   FF         ???
+EE56   FF         ???
+EE57   FF         ???
+EE58   FF         ???
+EE59   FF         ???
+EE5A   FF         ???
+EE5B   FF         ???
+EE5C   FF         ???
+EE5D   FF         ???
+EE5E   FF         ???
+EE5F   FF         ???
+EE60   FF         ???
+EE61   FF         ???
+EE62   FF         ???
+EE63   FF         ???
+EE64   FF         ???
+EE65   FF         ???
+EE66   FF         ???
+EE67   FF         ???
+EE68   FF         ???
+EE69   FF         ???
+EE6A   FF         ???
+EE6B   FF         ???
+EE6C   FF         ???
+EE6D   FF         ???
+EE6E   FF         ???
+EE6F   FF         ???
+EE70   FF         ???
+EE71   FF         ???
+EE72   FF         ???
+EE73   FF         ???
+EE74   FF         ???
+EE75   FF         ???
+EE76   FF         ???
+EE77   FF         ???
+EE78   FF         ???
+EE79   FF         ???
+EE7A   FF         ???
+EE7B   FF         ???
+EE7C   FF         ???
+EE7D   FF         ???
+EE7E   FF         ???
+EE7F   FF         ???
+EE80   FF         ???
+EE81   FF         ???
+EE82   FF         ???
+EE83   FF         ???
+EE84   FF         ???
+EE85   FF         ???
+EE86   FF         ???
+EE87   FF         ???
+EE88   FF         ???
+EE89   FF         ???
+EE8A   FF         ???
+EE8B   FF         ???
+EE8C   FF         ???
+EE8D   FF         ???
+EE8E   FF         ???
+EE8F   FF         ???
+EE90   FF         ???
+EE91   FF         ???
+EE92   FF         ???
+EE93   FF         ???
+EE94   FF         ???
+EE95   FF         ???
+EE96   FF         ???
+EE97   FF         ???
+EE98   FF         ???
+EE99   FF         ???
+EE9A   FF         ???
+EE9B   FF         ???
+EE9C   FF         ???
+EE9D   FF         ???
+EE9E   FF         ???
+EE9F   FF         ???
+EEA0   FF         ???
+EEA1   FF         ???
+EEA2   FF         ???
+EEA3   FF         ???
+EEA4   FF         ???
+EEA5   FF         ???
+EEA6   FF         ???
+EEA7   FF         ???
+EEA8   FF         ???
+EEA9   FF         ???
+EEAA   FF         ???
+EEAB   FF         ???
+EEAC   FF         ???
+EEAD   FF         ???
+EEAE   FF         ???
+EEAF   FF         ???
+EEB0   FF         ???
+EEB1   FF         ???
+EEB2   FF         ???
+EEB3   FF         ???
+EEB4   FF         ???
+EEB5   FF         ???
+EEB6   FF         ???
+EEB7   FF         ???
+EEB8   FF         ???
+EEB9   FF         ???
+EEBA   FF         ???
+EEBB   FF         ???
+EEBC   FF         ???
+EEBD   FF         ???
+EEBE   FF         ???
+EEBF   FF         ???
+EEC0   FF         ???
+EEC1   FF         ???
+EEC2   FF         ???
+EEC3   FF         ???
+EEC4   FF         ???
+EEC5   FF         ???
+EEC6   FF         ???
+EEC7   FF         ???
+EEC8   FF         ???
+EEC9   FF         ???
+EECA   FF         ???
+EECB   FF         ???
+EECC   FF         ???
+EECD   FF         ???
+EECE   FF         ???
+EECF   FF         ???
+EED0   FF         ???
+EED1   FF         ???
+EED2   FF         ???
+EED3   FF         ???
+EED4   FF         ???
+EED5   FF         ???
+EED6   FF         ???
+EED7   FF         ???
+EED8   FF         ???
+EED9   FF         ???
+EEDA   FF         ???
+EEDB   FF         ???
+EEDC   FF         ???
+EEDD   FF         ???
+EEDE   FF         ???
+EEDF   FF         ???
+EEE0   FF         ???
+EEE1   FF         ???
+EEE2   FF         ???
+EEE3   FF         ???
+EEE4   FF         ???
+EEE5   FF         ???
+EEE6   FF         ???
+EEE7   FF         ???
+EEE8   FF         ???
+EEE9   FF         ???
+EEEA   FF         ???
+EEEB   FF         ???
+EEEC   FF         ???
+EEED   FF         ???
+EEEE   FF         ???
+EEEF   FF         ???
+EEF0   FF         ???
+EEF1   FF         ???
+EEF2   FF         ???
+EEF3   FF         ???
+EEF4   FF         ???
+EEF5   FF         ???
+EEF6   FF         ???
+EEF7   FF         ???
+EEF8   FF         ???
+EEF9   FF         ???
+EEFA   FF         ???
+EEFB   FF         ???
+EEFC   FF         ???
+EEFD   FF         ???
+EEFE   FF         ???
+EEFF   FF         ???
+EF00   FF         ???
+EF01   FF         ???
+EF02   FF         ???
+EF03   FF         ???
+EF04   FF         ???
+EF05   FF         ???
+EF06   FF         ???
+EF07   FF         ???
+EF08   FF         ???
+EF09   FF         ???
+EF0A   FF         ???
+EF0B   FF         ???
+EF0C   FF         ???
+EF0D   FF         ???
+EF0E   FF         ???
+EF0F   FF         ???
+EF10   FF         ???
+EF11   FF         ???
+EF12   FF         ???
+EF13   FF         ???
+EF14   FF         ???
+EF15   FF         ???
+EF16   FF         ???
+EF17   FF         ???
+EF18   FF         ???
+EF19   FF         ???
+EF1A   FF         ???
+EF1B   FF         ???
+EF1C   FF         ???
+EF1D   FF         ???
+EF1E   FF         ???
+EF1F   FF         ???
+EF20   FF         ???
+EF21   FF         ???
+EF22   FF         ???
+EF23   FF         ???
+EF24   FF         ???
+EF25   FF         ???
+EF26   FF         ???
+EF27   FF         ???
+EF28   FF         ???
+EF29   FF         ???
+EF2A   FF         ???
+EF2B   FF         ???
+EF2C   FF         ???
+EF2D   FF         ???
+EF2E   FF         ???
+EF2F   FF         ???
+EF30   FF         ???
+EF31   FF         ???
+EF32   FF         ???
+EF33   FF         ???
+EF34   FF         ???
+EF35   FF         ???
+EF36   FF         ???
+EF37   FF         ???
+EF38   FF         ???
+EF39   FF         ???
+EF3A   FF         ???
+EF3B   FF         ???
+EF3C   FF         ???
+EF3D   FF         ???
+EF3E   FF         ???
+EF3F   FF         ???
+EF40   FF         ???
+EF41   FF         ???
+EF42   FF         ???
+EF43   FF         ???
+EF44   FF         ???
+EF45   FF         ???
+EF46   FF         ???
+EF47   FF         ???
+EF48   FF         ???
+EF49   FF         ???
+EF4A   FF         ???
+EF4B   FF         ???
+EF4C   FF         ???
+EF4D   FF         ???
+EF4E   FF         ???
+EF4F   FF         ???
+EF50   FF         ???
+EF51   FF         ???
+EF52   FF         ???
+EF53   FF         ???
+EF54   FF         ???
+EF55   FF         ???
+EF56   FF         ???
+EF57   FF         ???
+EF58   FF         ???
+EF59   FF         ???
+EF5A   FF         ???
+EF5B   FF         ???
+EF5C   FF         ???
+EF5D   FF         ???
+EF5E   FF         ???
+EF5F   FF         ???
+EF60   FF         ???
+EF61   FF         ???
+EF62   FF         ???
+EF63   FF         ???
+EF64   FF         ???
+EF65   FF         ???
+EF66   FF         ???
+EF67   FF         ???
+EF68   FF         ???
+EF69   FF         ???
+EF6A   FF         ???
+EF6B   FF         ???
+EF6C   FF         ???
+EF6D   FF         ???
+EF6E   FF         ???
+EF6F   FF         ???
+EF70   FF         ???
+EF71   FF         ???
+EF72   FF         ???
+EF73   FF         ???
+EF74   FF         ???
+EF75   FF         ???
+EF76   FF         ???
+EF77   FF         ???
+EF78   FF         ???
+EF79   FF         ???
+EF7A   FF         ???
+EF7B   FF         ???
+EF7C   FF         ???
+EF7D   FF         ???
+EF7E   FF         ???
+EF7F   FF         ???
+EF80   FF         ???
+EF81   FF         ???
+EF82   FF         ???
+EF83   FF         ???
+EF84   FF         ???
+EF85   FF         ???
+EF86   FF         ???
+EF87   FF         ???
+EF88   FF         ???
+EF89   FF         ???
+EF8A   FF         ???
+EF8B   FF         ???
+EF8C   FF         ???
+EF8D   FF         ???
+EF8E   FF         ???
+EF8F   FF         ???
+EF90   FF         ???
+EF91   FF         ???
+EF92   FF         ???
+EF93   FF         ???
+EF94   FF         ???
+EF95   FF         ???
+EF96   FF         ???
+EF97   FF         ???
+EF98   FF         ???
+EF99   FF         ???
+EF9A   FF         ???
+EF9B   FF         ???
+EF9C   FF         ???
+EF9D   FF         ???
+EF9E   FF         ???
+EF9F   FF         ???
+EFA0   FF         ???
+EFA1   FF         ???
+EFA2   FF         ???
+EFA3   FF         ???
+EFA4   FF         ???
+EFA5   FF         ???
+EFA6   FF         ???
+EFA7   FF         ???
+EFA8   FF         ???
+EFA9   FF         ???
+EFAA   FF         ???
+EFAB   FF         ???
+EFAC   FF         ???
+EFAD   FF         ???
+EFAE   FF         ???
+EFAF   FF         ???
+EFB0   FF         ???
+EFB1   FF         ???
+EFB2   FF         ???
+EFB3   FF         ???
+EFB4   FF         ???
+EFB5   FF         ???
+EFB6   FF         ???
+EFB7   FF         ???
+EFB8   FF         ???
+EFB9   FF         ???
+EFBA   FF         ???
+EFBB   FF         ???
+EFBC   FF         ???
+EFBD   FF         ???
+EFBE   FF         ???
+EFBF   FF         ???
+EFC0   FF         ???
+EFC1   FF         ???
+EFC2   FF         ???
+EFC3   FF         ???
+EFC4   FF         ???
+EFC5   FF         ???
+EFC6   FF         ???
+EFC7   FF         ???
+EFC8   FF         ???
+EFC9   FF         ???
+EFCA   FF         ???
+EFCB   FF         ???
+EFCC   4C 8C E0   JMP $E08C
+EFCF   FF         ???
+
+; version (ASCII)
+EFD0   41 54      EOR ($54,X)
+EFD2   4F         ???
+EFD3   4D 4D 43   EOR $434D
+EFD6   32         ???
+EFD7   20 56 32   JSR $3256
+EFDA   2E 36 20   ROL $2036
+EFDD   45 0D      EOR $0D
+EFDF   0A         ASL A
+EFE0   20 28 43   JSR $4328
+EFE3   29 20      AND #$20
+EFE5   32         ???
+EFE6   30 30      BMI $F018
+EFE8   38         SEC
+EFE9   2D 32 30   AND $3032
+EFEC   31 31      AND ($31),Y
+EFEE   20 20 43   JSR $4320
+EFF1   48         PHA
+EFF2   41 52      EOR ($52,X)
+EFF4   4C 49 45   JMP $4549
+EFF7   20 52 4F   JSR $4F52
+EFFA   42         ???
+EFFB   53         ???
+EFFC   4F         ???
+EFFD   4E 2E 20   LSR $202E
+F000              .END
+
+

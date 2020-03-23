@@ -31,6 +31,9 @@ define(['jsunzip', 'promise'], function (jsunzip) {
                        ~b7 :                                          Shift
                               9   8   7   6   5   4   3   2   1   0
 
+                  &B002 - REPT key
+                       ~b6 :                                          Rept
+
      */
     exports.ATOM = {
 
@@ -39,9 +42,9 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         LEFT: [1, 0],
         UP_DOWN: [2, 0],
         LEFT_RIGHT: [3, 0],
-        CAPSLOCK: [4,0],  //LOCK
+        LOCK: [4,0],  //LOCK
 
-        UP_ARROW: [5,0],
+        UP_ARROW: [5,0],  // big uparrow next to break
         RIGHT_SQUARE_BRACKET: [6,0],
         BACKSLASH: [7,0],
         LEFT_SQUARE_BRACKET: [8,0],
@@ -106,6 +109,7 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         // special codes
         CTRL: [0,6],
         SHIFT: [0,7],
+        REPT: [1,6],
     };
 
     exports.BBC = {
@@ -726,10 +730,12 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         map(keyCodes.SHIFT_RIGHT, ATOM.SHIFT);
 
         // other keys to map to these in "game" layout too
-        map(keyCodes.LEFT, ATOM.LEFT);
-        map(keyCodes.UP, ATOM.UP);
-        map(keyCodes.RIGHT, ATOM.RIGHT);
-        map(keyCodes.DOWN, ATOM.DOWN);
+        // map(keyCodes.LEFT, ATOM.LEFT);
+        // map(keyCodes.UP, ATOM.UP);
+        // map(keyCodes.RIGHT, ATOM.RIGHT);
+        // map(keyCodes.DOWN, ATOM.DOWN);
+        map(keyCodes.WINDOWS, ATOM.REPT);
+
 
         if (keyLayout === "natural") {
 
@@ -739,8 +745,8 @@ define(['jsunzip', 'promise'], function (jsunzip) {
 
             // US Keyboard: has Tilde on <Shift>BACK_QUOTE
             map(keyCodes.BACK_QUOTE, isUKlayout ? ATOM.UNDERSCORE_POUND : ATOM.HAT_TILDE);
-            map(keyCodes.APOSTROPHE, isUKlayout ? ATOM.AT : ATOM.K2, true);
-            map(keyCodes.K2, isUKlayout ? ATOM.K2 : ATOM.AT, true);
+  //          map(keyCodes.APOSTROPHE, isUKlayout ? ATOM.AT : ATOM.K2, true);
+    //        map(keyCodes.K2, isUKlayout ? ATOM.K2 : ATOM.AT, true);
 
             // 1st row
             map(keyCodes.K3, ATOM.UNDERSCORE_POUND, true);
@@ -878,7 +884,7 @@ define(['jsunzip', 'promise'], function (jsunzip) {
             map(keyCodes.COMMA, ATOM.COMMA); // ',' / '<'
             map(keyCodes.PERIOD, ATOM.PERIOD); // '.' / '>'
             map(keyCodes.SLASH, ATOM.SLASH); // '/' / '?'
-            map(keyCodes.WINDOWS, ATOM.SHIFTLOCK); // shift lock mapped to "windows" key
+            // map(keyCodes.WINDOWS, ATOM.SHIFTLOCK); // shift lock mapped to "windows" key
             map(keyCodes.TAB, ATOM.TAB); // tab
             map(keyCodes.ENTER, ATOM.RETURN); // return
             map(keyCodes.DELETE, ATOM.DELETE); // delete
@@ -888,24 +894,28 @@ define(['jsunzip', 'promise'], function (jsunzip) {
             map(keyCodes.SHIFT, ATOM.SHIFT); // shift
             map(keyCodes.ESCAPE, ATOM.ESCAPE);
             map(keyCodes.INSERT, ATOM.UP_ARROW);
+            map(keyCodes.F10, ATOM.CLEAR);
 
             map(keyCodes.CTRL, ATOM.CTRL);
             map(keyCodes.CTRL_LEFT, ATOM.CTRL);
             map(keyCodes.CTRL_RIGHT, ATOM.CTRL);
-            map(keyCodes.TAB, ATOM.LEFT_RIGHT);
-            map(keyCodes.CAPSLOCK, ATOM.CAPSLOCK);
-            map(keyCodes.LEFT, ATOM.LEFT); // arrow left
-            map(keyCodes.UP, ATOM.UP); // arrow up
-            map(keyCodes.RIGHT, ATOM.RIGHT); // arrow right
-            map(keyCodes.DOWN, ATOM.DOWN); // arrow down
+            map(keyCodes.TAB, ATOM.UP_DOWN);
+            // map(keyCodes.CAPSLOCK, ATOM.CAPSLOCK);
+            map(keyCodes.LEFT, ATOM.LEFT_RIGHT,true); // arrow left
+            map(keyCodes.UP, ATOM.UP_DOWN); // arrow up
+            map(keyCodes.RIGHT, ATOM.LEFT_RIGHT); // arrow right
+            map(keyCodes.DOWN, ATOM.UP_DOWN,true); // arrow down
             map(keyCodes.APOSTROPHE, ATOM.LEFT_SQUARE_BRACKET);
             map(keyCodes.HASH, ATOM.RIGHT_SQUARE_BRACKET);
 
             // None of this last group in great locations.
             // But better to have them mapped at least somewhere.
-            map(keyCodes.BACK_QUOTE, ATOM.AT);
+            map(keyCodes.BACK_QUOTE, ATOM.LEFT_RIGHT);
             map(keyCodes.BACKSLASH, ATOM.PIPE_BACKSLASH);
             map(keyCodes.PAGEUP, ATOM.UNDERSCORE_POUND);
+
+            map(keyCodes.ALT_RIGHT, ATOM.LOCK);
+
         }
 
         // TODO: "game" mapping

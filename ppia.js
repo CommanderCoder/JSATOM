@@ -78,6 +78,9 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
 
 
+
+
+
 */
     function ppia(cpu, irq) {
         var self = {
@@ -186,7 +189,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         // the keymap assumes CTRL and SHIFT read from row0
                         // fixup CTRL and SHIFT regardless of the row being read
                         var ctrl_shift = !self.keys[0][7]<<7 + !self.keys[0][6]<<6 ;
-                        r |= (ctrl_shift&0xc);
+                        r |= (ctrl_shift&0xc0);
 
                         return r;
                     case PORTC:
@@ -208,6 +211,10 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         var hzin = self.portcpins & 0x10;
 
                         var casbit = casin?1:0;
+
+
+                        var rept_key = !self.keys[1][6]<<6 ;
+                        r |= (rept_key&0x40);
 
                         // TAPE - 0xfc0a  (every 3.340ms/3340us), -OSBGET Get Byte from Tape subroutine; get a bit and count duration of tape pulse (using FCD2)
                         // TAPE - 0xfcd2  (every 0.033ms/3.3us), -Test state of #B002 tape input pulse subroutine (has there been a change?)

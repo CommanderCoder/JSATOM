@@ -1,5 +1,5 @@
-define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', './adc', './scheduler', './touchscreen', './ppia'],
-    function (utils, opcodesAll, via, Acia, Serial, Tube, Adc, scheduler, TouchScreen, ppia) {
+define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', './adc', './scheduler', './touchscreen', './ppia', './mmc'],
+    function (utils, opcodesAll, via, Acia, Serial, Tube, Adc, scheduler, TouchScreen, ppia, mmc) {
         "use strict";
         var hexword = utils.hexword;
         var signExtend = utils.signExtend;
@@ -648,6 +648,12 @@ Hardware:   PPIA 8255
                     case 0xb008:
                     case 0xb00c:
                         return 0x00;  //TODO: PPI
+                    case 0xb400:
+                    case 0xb404:
+                    case 0xb408:
+                    case 0xb40c:
+                        // MMC
+                        return this.atommc.read(addr); // on atom
                     case 0xb800:  // mirror 0x3f0
                     case 0xb804:
                     case 0xb808:
@@ -851,6 +857,7 @@ Hardware:   PPIA 8255
             this.writeDeviceAtom = function (addr, b) {
                 // only set up a single VIA - reclaiming USERVIA from BBC
                 b |= 0;
+
                 switch (addr & ~0x0003) {
 
 
@@ -860,6 +867,12 @@ Hardware:   PPIA 8255
                     case 0xb008:
                     case 0xb00c:
                         break; // TODO: PPI
+                    case 0xb400:
+                    case 0xb404:
+                    case 0xb408:
+                    case 0xb40c:
+                        // MMC
+                       return this.atommc.write(addr, b); // on atom
                     case 0xb800:
                     case 0xb804:
                     case 0xb808:
@@ -1043,7 +1056,7 @@ Hardware:   PPIA 8255
 
                         var awaiting = [];
 
-                        var romIndex = 1;
+                        var romIndex = 3;
 
                         for (i = 0; i < extraRoms.length; ++i) {
                             romIndex--;
@@ -1126,9 +1139,10 @@ Hardware:   PPIA 8255
                     this.soundChip.setScheduler(this.scheduler);
                     this.sysvia = via.SysVia(this, this.video, this.soundChip, cmos, model.isMaster, config.keyLayout);
                     this.uservia = via.UserVia(this, model.isMaster, config.userPort);
-                    if (model.isAtom)
+                    if (model.isAtom) {
                         this.atomppia = ppia.AtomPPIA(this, this.video, config.keyLayout, this.scheduler, this.soundChip.toneGenerator);
-
+                        this.atommc = mmc.AtomMMC2(this);
+                    }
                     if (config.printerPort)
                         this.uservia.ca2changecallback = config.printerPort.outputStrobe;
                     this.touchScreen = new TouchScreen(this.scheduler);
@@ -1141,8 +1155,10 @@ Hardware:   PPIA 8255
                     this.adconverter = new Adc(this.sysvia, this.scheduler);
                     this.sysvia.reset(hard);
                     this.uservia.reset(hard);
-                    if (model.isAtom)
+                    if (model.isAtom) {
                         this.atomppia.reset(hard);
+                        this.atommc.reset(hard);
+                    }
                 }
                 this.tube.reset(hard);
                 if (hard) {
