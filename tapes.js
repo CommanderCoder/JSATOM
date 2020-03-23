@@ -1,8 +1,11 @@
 define(['utils'], function (utils) {
     "use strict";
 
+
+
     function ATMFile(stream)
     {
+
         /* file format for Atom MMC2 files
         Offset		Purpose
         $00 - $0F	File name - Up-to 12 bytes of name + zero padding
@@ -11,6 +14,12 @@ define(['utils'], function (utils) {
         $14 - $15	Length
 
         Firmware sits in E000 on atomulator and assumes firmware version 2.9
+
+
+To get this to work using standard ATOM would require either: simulating TAPE (so put it into blocks) which would be better as
+a TAP to UEF converter
+
+Or to use the ATOM MMC2 ROM and read files from a folder like it is reading from a FAT file system
 
         */
 
@@ -174,13 +183,13 @@ define(['utils'], function (utils) {
                             // Start bit
                             acia.tone(baseFrequency);
                             wavebits = Array.from(bit0pattern);
-                            console.log("start "+"0".padStart(8, '0') );
+                            // console.log("start "+"0".padStart(8, '0') );
 
                         } else {
                             var bit = (curByte & (1 << (state - 1)));
                             acia.tone(bit ? (2 * baseFrequency) : baseFrequency);
                             wavebits = Array.from(bit?bit1pattern:bit0pattern);
-                            console.log("data "+bit.toString(2).padStart(8, '0') );
+                            // console.log("data "+bit.toString(2).padStart(8, '0') );
 
                         }
                         state++;
@@ -188,7 +197,7 @@ define(['utils'], function (utils) {
                         acia.receive(curByte);
                         acia.tone(2 * baseFrequency); // Stop bit
                         wavebits = Array.from(bit1pattern);
-                        console.log("stop "+"1".padStart(8, '0') );
+                        // console.log("stop "+"1".padStart(8, '0') );
                         if (curChunk.stream.eof()) {
                             state = -1;
                         } else {
@@ -217,7 +226,7 @@ define(['utils'], function (utils) {
                             state = -1;
                         } else {
                             curByte = curChunk.stream.readByte() & ((1 << numDataBits) - 1);
-                            console.log("Sending 0x"+curByte.toString(16)+" = "+String.fromCharCode(curByte));
+                            // console.log("Sending 0x"+curByte.toString(16)+" = "+String.fromCharCode(curByte));
 
                             acia.tone(baseFrequency); // Start bit
                             wavebits = Array.from(bit0pattern);
