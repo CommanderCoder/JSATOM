@@ -21,6 +21,8 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
 
         var availableImages;
         var discImage;
+        var mmcPath = 'mmc/';
+
         var extraRoms = [];
         if (typeof starCat === 'function') {
             availableImages = starCat();
@@ -955,6 +957,15 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             });
         }
 
+        function loadMMCImage(SDimage)
+        {
+            console.log("Dir mmc at /" + mmcPath+SDimage);
+            return processor.atommc.loadSD(mmcPath + SDimage).then(function (SDdata) {
+                console.log("done mmc at " + mmcPath + SDdata);
+              //  return SDdata;
+            });
+        }
+
         function loadTapeImage(tapeImage) {
             var split = splitImage(tapeImage);
             tapeImage = split.image;
@@ -1286,6 +1297,9 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                     processor.fdc.loadDisc(1, disc);
                 }));
                 if (parsedQuery.tape) imageLoads.push(loadTapeImage(parsedQuery.tape));
+
+                if (processor.model.isAtom)
+                   imageLoads.push(loadMMCImage("SDcard.zip"));
 
                 if (parsedQuery.loadBasic) {
                     var needsRun = needsAutoboot === "run";

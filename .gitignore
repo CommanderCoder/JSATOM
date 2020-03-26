@@ -3,3 +3,8 @@
 .DS_Store
 roms/atom/exampleRoms
 node_modules
+AtomSoftwareArchive-10
+AtomSoftwareArchive_20151119_V9
+Atomulator-master
+roms/atommc2-v3.0.0
+mmc/SDcard

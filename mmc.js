@@ -1,4 +1,5 @@
-define(['./utils'], function (utils) {
+// Access an MMC file (zipped)
+define(['./utils', 'jsunzip'], function (utils, jsunzip) {
     "use strict";
 
         const CMD_REG = 0x0,
@@ -80,6 +81,10 @@ define(['./utils'], function (utils) {
      MMC_MCU_BUSY		= 0x01,
      MMC_MCU_READ		= 0x02,
      MMC_MCU_WROTE		= 0x04;
+
+
+
+        const FA_OPEN_EXISTING = 0, FA_READ = 1;
 
 
         /*
@@ -195,14 +200,54 @@ define(['./utils'], function (utils) {
             globalData: [],
             globalIndex: 0,
             globalDataPresent:0,
+            filenum : -1,
 
             WFN_WorkerTest: function()
             {
                 console.log("WFN_WorkerTest" );
             },
+            fileOpen: function(mode)
+            {
+
+                var ret = 0;
+                if (self.filenum == 0) {
+                    console.log("searching "+String.fromCharCode(...self.globalData));
+                    // The scratch file is fixed, so we are backwards compatible with 2.9 firmware
+                    //ret = f_open(&fildata[0], (const char*)globalData, mode);
+                } else {
+                    // If a random access file is being opened, search for the first available FIL
+                    this.filenum = 0;
+                    if (!fildata[1].fs) {
+                        self.filenum = 1;
+                    } else if (!fildata[2].fs) {
+                        self.filenum = 2;
+                    } else if (!fildata[3].fs) {
+                        self.filenum = 3;
+                    }
+                    if (self.filenum > 0) {
+                        // ret = f_open(&fildata[this.filenum], (const char*)globalData, mode);
+                        // if (!ret) {
+                            // No error, so update the return value to indicate the file num
+                            // ret = FILENUM_OFFSET | filenum;
+                        // }
+                    } else {
+                        // All files are open, return too many open files
+                        ret = ERROR_TOO_MANY_OPEN;
+                    }
+                }
+                return STATUS_COMPLETE | ret;
+
+            },
             WFN_FileOpenRead: function()
             {
                 console.log("WFN_FileOpenRead" );
+
+                // var res = self.fileOpen(FA_OPEN_EXISTING|FA_READ);
+                // if (self.filenum < 4) {
+                //     // FILINFO *filinfo = &filinfodata[this.filenum];
+                //     get_fileinfo_special(filinfo);
+                // }
+                // WriteDataPort(STATUS_COMPLETE | res);
             },
             WFN_DirectoryOpen: function()
             {
@@ -226,14 +271,13 @@ define(['./utils'], function (utils) {
                 switch (addr & 0x0f) {
                     case CMD_REG:
                         var received = val & 0xff;
-                        var filenum = 0;
 
                         // File Group 0x10-0x17, 0x30-0x37, 0x50-0x57, 0x70-0x77
                         // filenum = bits 6,5
                         // mask1 = 10011000 (test for file group command)
                         // mask2 = 10011111 (remove file number)
                         if ((received & 0x98) == 0x10) {
-                            filenum = (received >> 5) & 3;
+                            self.filenum = (received >> 5) & 3;
                             received &= 0x9F;
                         }
 
@@ -242,11 +286,11 @@ define(['./utils'], function (utils) {
                         // mask1 = 11110000 (test for data group command)
                         // mask2 = 11110011 (remove file number)
                         if ((received & 0xf0) == 0x20) {
-                            filenum = (received >> 2) & 3;
+                            self.filenum = (received >> 2) & 3;
                             received &= 0xF3;
                         }
 
-                        console.log("CMD_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16) + " filenum : " + filenum);
+                        console.log("CMD_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16) + " filenum : " + self.filenum);
 
                         this.WriteDataPort(STATUS_BUSY);
                         this.MCUstatus = MMC_MCU_BUSY;
@@ -344,6 +388,7 @@ define(['./utils'], function (utils) {
                     }
                     else if (received == CMD_INIT_WRITE)
                     {
+                        console.log("CMD_INIT_WRITE");
                         // all data write requests must send CMD_INIT_WRITE here before poking data at
                         // WRITE_DATA_REG
                         // globalDataPresent is a flag to indicate whether data is present in the bfr.
@@ -483,8 +528,26 @@ define(['./utils'], function (utils) {
                 return val;
                 },
 
+                loadSD: function(file) {
 
-    };
+                    return utils.loadData(file).then(function (data) {
+                        var unzip = new jsunzip.JSUnzip();
+                        console.log("Attempting to unzip");
+                        var result = unzip.open(data);
+                        if (!result.status) {
+                            throw new Error("Error unzipping ", result.error);
+                        }
+                        var uncompressed = null;
+                        var loadedFile;
+                        for (var f in unzip.files) {
+                            console.log("Skipping file", f);
+                        }
+                    });
+                }
+            }
+
+
+
         return self;
     }
 
