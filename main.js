@@ -960,9 +960,9 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         function loadMMCImage(SDimage)
         {
             console.log("Dir mmc at /" + mmcPath+SDimage);
-            return processor.atommc.loadSD(mmcPath + SDimage).then(function (SDdata) {
-                console.log("done mmc at " + mmcPath + SDdata);
-              //  return SDdata;
+            return processor.atommc.loadSD(mmcPath + SDimage).then(function (SDresult) {
+                console.log("done mmc at "+SDresult.names );
+
             });
         }
 
@@ -1068,7 +1068,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         }
 
         var gdAuthed = false;
-        var googleDrive = new GoogleDriveLoader();
+        var googleDrive = null;//new GoogleDriveLoader();
 
         function gdAuth(imm) {
             return googleDrive.authorize(imm)
@@ -1133,12 +1133,12 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         }
 
         $('.if-drive-available').hide();
-        googleDrive.initialise().then(function (available) {
-            if (available) {
-                $('.if-drive-available').show();
-                gdAuth(true);
-            }
-        });
+        // googleDrive.initialise().then(function (available) {
+        //     if (available) {
+        //         $('.if-drive-available').show();
+        //         gdAuth(true);
+        //     }
+        // });
         var gdModal = $('#google-drive');
         $('#open-drive-link').on('click', function () {
             if (gdAuthed) {

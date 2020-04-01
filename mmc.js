@@ -80,7 +80,13 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
     //
      MMC_MCU_BUSY		= 0x01,
      MMC_MCU_READ		= 0x02,
-     MMC_MCU_WROTE		= 0x04;
+     MMC_MCU_WROTE		= 0x04,
+
+
+
+
+            VSN_MAJ =2,
+    VSN_MIN =10;
 
 
 
@@ -186,6 +192,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
 
     function atommc2(cpu) {
+
         var self = {
             reset: function (hard) {
 
@@ -201,6 +208,11 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
             globalIndex: 0,
             globalDataPresent:0,
             filenum : -1,
+            worker:null,
+
+            MMCdata: null,
+            dfn : 0,
+            currfile: null,
 
             WFN_WorkerTest: function()
             {
@@ -210,30 +222,39 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
             {
 
                 var ret = 0;
-                if (self.filenum == 0) {
-                    console.log("searching "+String.fromCharCode(...self.globalData));
+                if (this.filenum == 0) {
+                    var fname = String.fromCharCode(...this.globalData.slice(0,-1));
+                    console.log("searching " + fname);
                     // The scratch file is fixed, so we are backwards compatible with 2.9 firmware
+
                     //ret = f_open(&fildata[0], (const char*)globalData, mode);
-                } else {
-                    // If a random access file is being opened, search for the first available FIL
-                    this.filenum = 0;
-                    if (!fildata[1].fs) {
-                        self.filenum = 1;
-                    } else if (!fildata[2].fs) {
-                        self.filenum = 2;
-                    } else if (!fildata[3].fs) {
-                        self.filenum = 3;
+                    ret = 4;//FR_NO_FILE
+                    var a = self.MMCdata.names.indexOf("menu/menu.bas");
+                    a = self.MMCdata.names.indexOf(fname );
+                    if (a != -1) {
+                        currfile = self.MMCData.uFiles[a];
+                        ret = 0;//FR_OK
                     }
-                    if (self.filenum > 0) {
-                        // ret = f_open(&fildata[this.filenum], (const char*)globalData, mode);
-                        // if (!ret) {
-                            // No error, so update the return value to indicate the file num
-                            // ret = FILENUM_OFFSET | filenum;
-                        // }
-                    } else {
-                        // All files are open, return too many open files
-                        ret = ERROR_TOO_MANY_OPEN;
-                    }
+                // } else {
+                //     // If a random access file is being opened, search for the first available FIL
+                //     this.filenum = 0;
+                //     if (!fildata[1].fs) {
+                //         self.filenum = 1;
+                //     } else if (!fildata[2].fs) {
+                //         self.filenum = 2;
+                //     } else if (!fildata[3].fs) {
+                //         self.filenum = 3;
+                //     }
+                //     if (self.filenum > 0) {
+                //         // ret = f_open(&fildata[this.filenum], (const char*)globalData, mode);
+                //         // if (!ret) {
+                //             // No error, so update the return value to indicate the file num
+                //             // ret = FILENUM_OFFSET | filenum;
+                //         // }
+                //     } else {
+                //         // All files are open, return too many open files
+                //         ret = ERROR_TOO_MANY_OPEN;
+                //     }
                 }
                 return STATUS_COMPLETE | ret;
 
@@ -242,292 +263,352 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
             {
                 console.log("WFN_FileOpenRead" );
 
-                // var res = self.fileOpen(FA_OPEN_EXISTING|FA_READ);
+                var res = self.fileOpen(FA_OPEN_EXISTING|FA_READ);
                 // if (self.filenum < 4) {
                 //     // FILINFO *filinfo = &filinfodata[this.filenum];
                 //     get_fileinfo_special(filinfo);
                 // }
-                // WriteDataPort(STATUS_COMPLETE | res);
+                self.WriteDataPort(STATUS_COMPLETE | res);
             },
             WFN_DirectoryOpen: function()
             {
-                console.log("WFN_DirectoryOpen" );
+                console.log("WFN_DirectoryOpen : STATUS_OK" );
+
+                // GetWildcard(); // into globaldata
+
+                // globaldata is the wildcard for the getting the director
+                // res = f_opendir(&dir, (const char*)globalData);
+                self.dfn = 0;
+
+                // if (FR_OK != res)
+                // {
+                //     WriteDataPort(STATUS_COMPLETE | res);
+                //     return;
+                // }
+
+                self.WriteDataPort(STATUS_OK);
+
             },
+            WFN_DirectoryRead:function() {
+                while (1) {
+
+                    if (self.MMCdata === undefined || self.MMCdata.names[self.dfn] === undefined || self.MMCdata.names.length == 0) {
+                        // done
+                        var res = 0; // no error just empty
+                        self.WriteDataPort(STATUS_COMPLETE | res);
+                        console.log("WFN_DirectoryRead STATUS_COMPLETE");
+                        return;
+                    }
+
+                    var str = '';
+                    // check for dir
+                    // if (attr[self.dfn] == 'dir')
+                    // {
+                    //     str += '<';
+                    // }
+
+                    str+=self.MMCdata.names[self.dfn];
+
+                    // if (attr[self.dfn] == 'dir')
+                    // {
+                    //     str+='>';
+                    // }
+
+                    console.log("WFN_DirectoryRead STATUS_OK  " + str);
+                    self.globalData = str+"\0";
+                    self.WriteDataPort(STATUS_OK);
+                    self.globalData = self.globalData.split('');
+                    self.dfn+=1;
+                    return;
+
+                }
+            }
+            ,
+            WFN_SetCWDirectory:function()
+            {
+                console.log("WFN_SetCWDirectory" );
+                //this.WriteDataPort(STATUS_COMPLETE | f_chdir((const XCHAR*)globalData));
+                this.WriteDataPort(STATUS_COMPLETE);
+            }
+                ,
 
 
             WriteDataPort: function(b)
             {
                 self.MMCtoAtom = b;
+                this.MCUStatus &= ~MMC_MCU_BUSY;
+                this.MCUStatus |= MMC_MCU_WROTE;
             },
             ReadDataPort: function()
             {
+                this.MCUStatus &= ~MMC_MCU_READ;
+                this.MCUStatus |= MMC_MCU_WROTE;
+
                 return self.MMCtoAtom;
             },
 
+            lastaddr: 0,
             write: function (addr, val) {
-                console.log("WriteMMC 0x"+addr.toString(16)+" <- 0x"+val.toString(16));
-                var worker = null;
-
-                switch (addr & 0x0f) {
-                    case CMD_REG:
-                        var received = val & 0xff;
-
-                        // File Group 0x10-0x17, 0x30-0x37, 0x50-0x57, 0x70-0x77
-                        // filenum = bits 6,5
-                        // mask1 = 10011000 (test for file group command)
-                        // mask2 = 10011111 (remove file number)
-                        if ((received & 0x98) == 0x10) {
-                            self.filenum = (received >> 5) & 3;
-                            received &= 0x9F;
-                        }
-
-                        // Data Group 0x20-0x23, 0x24-0x27, 0x28-0x2B, 0x2C-0x2F
-                        // filenum = bits 3,2
-                        // mask1 = 11110000 (test for data group command)
-                        // mask2 = 11110011 (remove file number)
-                        if ((received & 0xf0) == 0x20) {
-                            self.filenum = (received >> 2) & 3;
-                            received &= 0xF3;
-                        }
-
-                        console.log("CMD_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16) + " filenum : " + self.filenum);
-
-                        this.WriteDataPort(STATUS_BUSY);
-                        this.MCUstatus = MMC_MCU_BUSY;
-
-                        // Directory group, moved here 2011-05-29 PHS.
-                        //
-                        if (received == CMD_DIR_OPEN)
-                        {
-                            // reset the directory reader
-                            //
-                            // when 0x3f is read back from this register it is appropriate to
-                            // start sending cmd 1s to get items.
-                            //
-                            worker = this.WFN_DirectoryOpen;
-                        }
-                        else if (received == CMD_DIR_READ)
-                        {
-                            // get next directory entry
-                            //
-                            worker = this.WFN_DirectoryRead;
-                        }
-                        else if (received == CMD_DIR_CWD)
-                        {
-                            // set CWD
-                            //
-                            worker = this.WFN_SetCWDirectory;
-                        }
-
-                            // File group.
-                        //
-                        else if (received == CMD_FILE_CLOSE)
-                        {
-                            // close the open file, flushing any unwritten data
-                            //
-                            worker = this.WFN_FileClose;
-                        }
-                        else if (received == CMD_FILE_OPEN_READ)
-                        {
-                            // open the file with name in global data buffer
-                            //
-                            worker = this.WFN_FileOpenRead;
-                        }
-                    else if (received == CMD_FILE_OPEN_WRITE)
-                    {
-                        // open the file with name in global data buffer for write
-                        //
-                        worker = this.WFN_FileOpenWrite;
-                    }
-
-// SP9 START
-
-                    else if (received == CMD_FILE_OPEN_RAF)
-                    {
-                        // open the file with name in global data buffer for write/append
-                        //
-                        worker = WFN_FileOpenRAF;
-                    }
-
-// SP9 END
-
-                    else if (received == CMD_FILE_DELETE)
-                    {
-                        // delete the file with name in global data buffer
-                        //
-                        worker = WFN_FileDelete;
-                    }
-
-// SP9 START
-
-                    else if (received == CMD_FILE_GETINFO)
-                    {
-                        // return file's status byte
-                        //
-                        worker = this.WFN_FileGetInfo;
-                    }
-                    else if (received == CMD_FILE_SEEK)
-                    {
-                        // seek to a location within the file
-                        //
-                        worker = WFN_FileSeek;
-                    }
-
-// SP9 END
-
-                    else if (received == CMD_INIT_READ)
-                    {
-                        // All data read requests must send CMD_INIT_READ before beggining reading
-                        // data from READ_DATA_PORT. After execution of this command the first byte
-                        // of data may be read from the READ_DATA_PORT.
-                        //
-                        this.WriteDataPort(this.globalData[0]);
-                        this.globalIndex = 1;
-                        // LatchedAddress
-                        addr=READ_DATA_REG;
-                    }
-                    else if (received == CMD_INIT_WRITE)
-                    {
-                        console.log("CMD_INIT_WRITE");
-                        // all data write requests must send CMD_INIT_WRITE here before poking data at
-                        // WRITE_DATA_REG
-                        // globalDataPresent is a flag to indicate whether data is present in the bfr.
-                        //
-                        this.globalIndex = 0;
-                        this.globalDataPresent = 0;
-                    }
-                    else if (received == CMD_READ_BYTES)
-                    {
-                        // Replaces READ_BYTES_REG
-                        // Must be previously written to latch reg.
-                        this.globalAmount = this.byteValueLatch;
-                        this.worker = WFN_FileRead;
-                    }
-                    else if (received == CMD_WRITE_BYTES)
-                    {
-                        // replaces WRITE_BYTES_REG
-                        // Must be previously written to latch reg.
-                        this.globalAmount = this.byteValueLatch;
-                        this.worker = WFN_FileWrite;
-                    }
-
-                        //
-                    // Exec a packet in the data buffer.
-                    else if (received == CMD_EXEC_PACKET)
-                    {
-                        worker = WFN_ExecuteArbitrary;
-                    }
-                        else if (received == CMD_GET_FW_VER) // read firmware version
-                        {
-                            this.WriteDataPort(VSN_MAJ<<4|VSN_MIN);
-                        }
-                        else if (received == CMD_GET_BL_VER) // read bootloader version
-                        {
-                            this.WriteDataPort(blVersion);
-                        }
-                        else if (received == CMD_GET_CFG_BYTE) // read config byte
-                        {
-                            this.WriteDataPort(this.configByte);
-                        }
-                        else if (received == CMD_SET_CFG_BYTE) // write config byte
-                        {
-                            this.configByte = byteValueLatch;
-
-                            WriteEEPROM(EE_SYSFLAGS, this.configByte);
-                            this.WriteDataPort(STATUS_OK);
-                        }
-                        else if (received == CMD_READ_AUX) // read porta - latch & aux pin on dongle
-                        {
-                            this.WriteDataPort(this.LatchedAddress);
-                        }
-
-                        else if (received == CMD_GET_HEARTBEAT) {
-                            console.log("heartbeat 0x"+self.heartbeat.toString(16));
-                            this.WriteDataPort(self.heartbeat);
-                            self.heartbeat ^= 0xff;
-                        }
-                            //
-                            // Utility commands.
-                        // Moved here 2011-05-29 PHS
-                        else if (received == CMD_GET_CARD_TYPE) {
-                            // get card type - it's a slowcmd despite appearance
-                            // disk_initialize(0);
-                            //#define CT_MMC 0x01 /* MMC ver 3 */
-                            this.WriteDataPort(0x01);
-                        } else if (received == CMD_GET_CFG_BYTE) // read config byte
-                        {
-                            this.WriteDataPort(this.configByte);
-                        }
-                        break;
-                    case READ_DATA_REG: {
-                        var received = val & 0xff;
-                        console.log("write READ_DATA_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16) );
-                        var q = this.globalIndex;
-                        var dd = this.globalData[q];
-                        this.WriteDataPort(dd);
-                        ++this.globalIndex;
-
-                        break;
-                    }
-
-                    case WRITE_DATA_REG: {
-                        var received = val & 0xff;
-                        console.log("WRITE_DATA_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16) );
-
-                        this.globalData[this.globalIndex] = received;
-                        ++this.globalIndex;
-
-                        this.globalDataPresent = 1;
-                        break;
-                    }
-
-                    case LATCH_REG: {
-                        var received = val & 0xff;
-                        console.log("LATCH_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16) );
-                        this.byteValueLatch = received;
-                        this.WriteDataPort(byteValueLatch);
-                        break;
-                    }
-                    case STATUS_REG: {
-                        // does nothing
-                        var received = val & 0xff;
-                        console.log("STATUS_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16) );
-                    }
-                }
-
-                if (worker)
-                    worker();
-
-                        //CMD_GET_CFG_BYTE
+                console.log("WriteMMC 0x" + addr.toString(16) + " <- 0x" + val.toString(16));
+                self.lastaddr = addr;
+                self.at_process(addr, val, true);
             },
             read: function (addr) {
+                // the get the value from the MMC as it is now
+                var Current = self.MMCtoAtom;
+                var val = Current & 0xff;
+                var reg = addr & 0x0f;
+                var stat = this.MCUStatus;
 
-                var val = this.ReadDataPort();
+                this.MCUStatus &= ~MMC_MCU_READ;
+                // this.MCUStatus &= ~MMC_MCU_WROTE;
 
-                // console.log("ReadMMCz 0x"+addr.toString(16)+" -> 0x"+val.toString(16));
+                // ignore the current addr; use the last write address
+                addr = self.lastaddr;
 
-                switch (addr & 0x0f) {
-                    case READ_DATA_REG: {
-                        console.log("read READ_DATA_REG 0x" + (addr & 0x0f).toString(16) + " -> received 0x" + received.toString(16));
+                var cmd = {0x00:"CMD_REG",0x01:"LATCH_REG"		,0x02:"READ_DATA_REG"		,0x03:"WRITE_DATA_REG"	, 0x04:"STATUS_REG"};
+                var status = {0x4f:"STATUS_OK",0x40:"STATUS_COMPLETE"		,0x60:"STATUS_EOF"		,0x80:"STATUS_BUSY"	};
+                if (reg === STATUS_REG) {
+                    console.log("ReadMMC STATUS_REG : 0x" + (addr & 0x0f).toString(16) + " -> val 0x"+stat.toString(16) );
+                    // status REG from MCUStatus
+                    return stat;
+                } else if (val in status)
+                    console.log("ReadMMC "+cmd[reg]+" -> "+status[val]);
+                else
+                    console.log("ReadMMC "+cmd[reg]+" -> 0x"+val.toString(16));
 
-                        var q = this.globalIndex;
-                        var dd = this.globalData[q];
-                        this.WriteDataPort(dd);
-                        ++this.globalIndex;
 
-                        break;
+                self.at_process(addr, val, false);
+
+                return Current;
+            },
+            at_process: function(addr,val,write)
+            {
+                // console.log("at_process "+write+" 0x"+addr.toString(16)+" <- 0x"+val.toString(16));
+
+                this.worker = null;
+
+                this.MCUStatus |= MMC_MCU_READ;
+
+                if (write === false)
+                {
+                    this.MCUStatus &= ~MMC_MCU_READ;
+                    // IGNORE addr for 'read' it is just the last addr
+                   switch (addr & 0x0f) {
+                       case READ_DATA_REG: {
+                            var received = val & 0xff;
+                            var q = this.globalIndex;
+                            var dd = 0;
+                            if (q < this.globalData.length)
+                                dd = this.globalData[q].charCodeAt(0)|0;
+                            console.log("read READ_DATA_REG 0x" + dd.toString(16) + ", index " + q);
+                            this.WriteDataPort(dd);
+                            ++this.globalIndex;
+
+                            break;
+                       }
+
+                   }
+                }
+                else {
+                    switch (addr & 0x0f) {
+                        case CMD_REG:
+                            var received = val & 0xff;
+
+                            // File Group 0x10-0x17, 0x30-0x37, 0x50-0x57, 0x70-0x77
+                            // filenum = bits 6,5
+                            // mask1 = 10011000 (test for file group command)
+                            // mask2 = 10011111 (remove file number)
+                            if ((received & 0x98) == 0x10) {
+                                self.filenum = (received >> 5) & 3;
+                                received &= 0x9F;
+                            }
+
+                            // Data Group 0x20-0x23, 0x24-0x27, 0x28-0x2B, 0x2C-0x2F
+                            // filenum = bits 3,2
+                            // mask1 = 11110000 (test for data group command)
+                            // mask2 = 11110011 (remove file number)
+                            if ((received & 0xf0) == 0x20) {
+                                self.filenum = (received >> 2) & 3;
+                                received &= 0xF3;
+                            }
+
+                            // console.log("CMD_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16) + " filenum : " + self.filenum);
+
+                            this.WriteDataPort(STATUS_BUSY);
+                            this.MCUStatus |= MMC_MCU_BUSY;
+
+                            // Directory group, moved here 2011-05-29 PHS.
+                            //
+                            if (received == CMD_DIR_OPEN) {
+                                // reset the directory reader
+                                //
+                                // when 0x3f is read back from this register it is appropriate to
+                                // start sending cmd 1s to get items.
+                                //
+                                this.worker = this.WFN_DirectoryOpen;
+                            } else if (received == CMD_DIR_READ) {
+                                // get next directory entry
+                                //
+                                this.worker = this.WFN_DirectoryRead;
+                            } else if (received == CMD_DIR_CWD) {
+                                // set CWD
+                                //
+                                this.worker = this.WFN_SetCWDirectory;
+                            }
+
+                                // File group.
+                            //
+                            else if (received == CMD_FILE_CLOSE) {
+                                // close the open file, flushing any unwritten data
+                                //
+                                this.worker = this.WFN_FileClose;
+                            } else if (received == CMD_FILE_OPEN_READ) {
+                                // open the file with name in global data buffer
+                                //
+                                this.worker = this.WFN_FileOpenRead;
+                            } else if (received == CMD_FILE_OPEN_WRITE) {
+                                // open the file with name in global data buffer for write
+                                //
+                                this.worker = this.WFN_FileOpenWrite;
+                            }
+
+// SP9 START
+
+                            else if (received == CMD_FILE_OPEN_RAF) {
+                                // open the file with name in global data buffer for write/append
+                                //
+                                this.worker = WFN_FileOpenRAF;
+                            }
+
+// SP9 END
+
+                            else if (received == CMD_FILE_DELETE) {
+                                // delete the file with name in global data buffer
+                                //
+                                this.worker = WFN_FileDelete;
+                            }
+
+// SP9 START
+
+                            else if (received == CMD_FILE_GETINFO) {
+                                // return file's status byte
+                                //
+                                this.worker = this.WFN_FileGetInfo;
+                            } else if (received == CMD_FILE_SEEK) {
+                                // seek to a location within the file
+                                //
+                                this.worker = WFN_FileSeek;
+                            }
+
+// SP9 END
+
+                            else if (received == CMD_INIT_READ) {
+                                // All data read requests must send CMD_INIT_READ before beggining reading
+                                // data from READ_DATA_PORT. After execution of this command the first byte
+                                // of data may be read from the READ_DATA_PORT.
+                                //
+                                console.log("CMD_INIT_READ: READ_DATA_REG 0x" + (this.globalData[0].charCodeAt(0)).toString(16) + ", index " + 0);
+                                this.WriteDataPort(this.globalData[0].charCodeAt(0));
+                                this.globalIndex = 1;
+                                // LatchedAddress
+                                self.lastaddr = READ_DATA_REG;
+                            } else if (received == CMD_INIT_WRITE) {
+                                console.log("CMD_INIT_WRITE");
+                                // all data write requests must send CMD_INIT_WRITE here before poking data at
+                                // WRITE_DATA_REG
+                                // globalDataPresent is a flag to indicate whether data is present in the bfr.
+                                //
+                                this.globalData = [];
+                                this.globalIndex = 0;
+                                this.globalDataPresent = 0;
+                            } else if (received == CMD_READ_BYTES) {
+                                // Replaces READ_BYTES_REG
+                                // Must be previously written to latch reg.
+                                this.globalAmount = this.byteValueLatch;
+                                this.worker = WFN_FileRead;
+                            } else if (received == CMD_WRITE_BYTES) {
+                                // replaces WRITE_BYTES_REG
+                                // Must be previously written to latch reg.
+                                this.globalAmount = this.byteValueLatch;
+                                this.worker = WFN_FileWrite;
+                            }
+
+                                //
+                            // Exec a packet in the data buffer.
+                            else if (received == CMD_EXEC_PACKET) {
+                                this.worker = WFN_ExecuteArbitrary;
+                            } else if (received == CMD_GET_FW_VER) // read firmware version
+                            {
+                                this.WriteDataPort(VSN_MAJ << 4 | VSN_MIN);
+                            } else if (received == CMD_GET_BL_VER) // read bootloader version
+                            {
+                                this.WriteDataPort(1);//(blVersion);
+                            } else if (received == CMD_GET_CFG_BYTE) // read config byte
+                            {
+                                console.log("CMD_REG:CMD_GET_CFG_BYTE -> 0x" + this.configByte.toString(16));
+                                this.WriteDataPort(this.configByte);
+                            } else if (received == CMD_SET_CFG_BYTE) // write config byte
+                            {
+                                this.configByte = byteValueLatch;
+
+                                console.log("CMD_REG:CMD_SET_CFG_BYTE -> 0x" + STATUS_OK.toString(16));
+//                                WriteEEPROM(EE_SYSFLAGS, this.configByte);
+                                this.WriteDataPort(STATUS_OK);
+                            } else if (received == CMD_READ_AUX) // read porta - latch & aux pin on dongle
+                            {
+                                this.WriteDataPort(this.LatchedAddress);
+                            } else if (received == CMD_GET_HEARTBEAT) {
+                                console.log("CMD_REG:CMD_GET_HEARTBEAT -> 0x" + self.heartbeat.toString(16));
+                                this.WriteDataPort(self.heartbeat);
+                                self.heartbeat ^= 0xff;
+                            }
+                                //
+                                // Utility commands.
+                            // Moved here 2011-05-29 PHS
+                            else if (received == CMD_GET_CARD_TYPE) {
+                                console.log("CMD_REG:CMD_GET_CARD_TYPE -> 0x01");
+                                // get card type - it's a slowcmd despite appearance
+                                // disk_initialize(0);
+                                //#define CT_MMC 0x01 /* MMC ver 3 */
+                                this.WriteDataPort(0x01);
+                            }
+                            break;
+
+                        case WRITE_DATA_REG: {
+                            var received = val & 0xff;
+
+                            console.log("WRITE_DATA_REG  <- " + this.globalIndex + ", received 0x" + received.toString(16));
+
+                            this.globalData[this.globalIndex] = received;
+                            ++this.globalIndex;
+
+                            this.globalDataPresent = 1;
+                            break;
+                        }
+
+                        case LATCH_REG: {
+                            var received = val & 0xff;
+                            console.log("LATCH_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16));
+                            this.byteValueLatch = received;
+                            this.WriteDataPort(byteValueLatch);
+                            break;
+                        }
+                        case STATUS_REG: {
+                            // does nothing
+                            var received = val & 0xff;
+                            console.log("STATUS_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16));
+                        }
                     }
-                    case STATUS_REG: {
-                        val = 0;
-                        console.log("read STATUS_REG 0x" + (addr & 0x0f).toString(16) + " -> val 0x" + val.toString(16) );
+
+                    if (this.worker) {
+                        console.log("worker : at_process "+write);
+                        this.worker();
                     }
 
                 }
 
-
-                return val;
-                },
-
+            },
                 loadSD: function(file) {
 
                     return utils.loadData(file).then(function (data) {
@@ -537,11 +618,27 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                         if (!result.status) {
                             throw new Error("Error unzipping ", result.error);
                         }
-                        var uncompressed = null;
-                        var loadedFile;
+                        var uncompressedFiles = [];
+                        var loadedFiles = [];
+                        var knownExtensions = {
+                            'bas': true,
+                            'asm': true
+                        };
+
                         for (var f in unzip.files) {
-                            console.log("Skipping file", f);
+                            var validname = f.match(/^[a-z\/_]+\.[a-z]+/i);
+                            var match = f.match(/.*\.([a-z]+)/i);
+                            if (!validname || !match || !knownExtensions[match[1].toLowerCase()]) {
+                                // console.log("Skipping file", f);
+                                continue;
+                            }
+                            // console.log("Adding file", f);
+                            uncompressedFiles.push(unzip.read(f));
+                            loadedFiles.push(f);
                         }
+
+                        self.MMCdata = {uFiles: uncompressedFiles, names: loadedFiles};
+                        return self.MMCdata;
                     });
                 }
             }
