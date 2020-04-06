@@ -227,7 +227,8 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                     var fname = String.fromCharCode(...this.globalData.slice(0,-1)).split('\0')[0];
                     console.log("searching " + fname);
                     // The scratch file is fixed, so we are backwards compatible with 2.9 firmware
-
+                    this.fildata = new Uint8Array();
+                    this.fildataIndex = 0;
                     //ret = f_open(&fildata[0], (const char*)globalData, mode);
                     ret = 4;//FR_NO_FILE
                     var a = self.MMCdata.names.indexOf(fname );
@@ -668,16 +669,12 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                         }
                         var uncompressedFiles = [];
                         var loadedFiles = [];
-                        var knownExtensions = {
-                            'bas': true,
-                            'asm': true
-                        };
 
                         for (var f in unzip.files) {
-                            var validname = f.match(/^[a-z\/_]+\.[a-z]+/i);
-                            var match = f.match(/.*\.([a-z]+)/i);
-                            if (!validname || !match || !knownExtensions[match[1].toLowerCase()]) {
-                                // console.log("Skipping file", f);
+                            var match = f.match(/^[a-z\.\/]+/i);
+                            console.log("m "+match);
+                            if (!match ) {
+                                console.log("Skipping file", f);
                                 continue;
                             }
                             // console.log("Adding file", f);
