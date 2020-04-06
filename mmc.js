@@ -204,7 +204,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
             MCUstatus: MMC_MCU_BUSY,
             configByte: 0,
             byteValueLatch:0,
-            globalData: [],
+            globalData: new Uint8Array(256),
             globalIndex: 0,
             globalDataPresent:0,
             filenum : -1,
@@ -212,7 +212,8 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
             MMCdata: null,
             dfn : 0,
-            currfile: null,
+            fildata: null,
+            fildataIndex: 0,
 
             WFN_WorkerTest: function()
             {
@@ -223,16 +224,15 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
                 var ret = 0;
                 if (this.filenum == 0) {
-                    var fname = String.fromCharCode(...this.globalData.slice(0,-1));
+                    var fname = String.fromCharCode(...this.globalData.slice(0,-1)).split('\0')[0];
                     console.log("searching " + fname);
                     // The scratch file is fixed, so we are backwards compatible with 2.9 firmware
 
                     //ret = f_open(&fildata[0], (const char*)globalData, mode);
                     ret = 4;//FR_NO_FILE
-                    var a = self.MMCdata.names.indexOf("menu/menu.bas");
-                    a = self.MMCdata.names.indexOf(fname );
+                    var a = self.MMCdata.names.indexOf(fname );
                     if (a != -1) {
-                        currfile = self.MMCData.uFiles[a];
+                        this.fildata = self.MMCdata.uFiles[a].data;
                         ret = 0;//FR_OK
                     }
                 // } else {
@@ -261,7 +261,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
             },
             WFN_FileOpenRead: function()
             {
-                console.log("WFN_FileOpenRead" );
+                console.log("WFN_FileOpenRead "+ this.filenum);
 
                 var res = self.fileOpen(FA_OPEN_EXISTING|FA_READ);
                 // if (self.filenum < 4) {
@@ -270,6 +270,15 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                 // }
                 self.WriteDataPort(STATUS_COMPLETE | res);
             },
+
+            WFN_FileClose: function()
+        {
+            console.log("WFN_FileClose "+ this.filenum);
+            // FIL *fil = &fildata[filenum];
+            // WriteDataPort(STATUS_COMPLETE | f_close(fil));
+            self.WriteDataPort(STATUS_COMPLETE);
+
+        },
             WFN_DirectoryOpen: function()
             {
                 console.log("WFN_DirectoryOpen : STATUS_OK" );
@@ -315,9 +324,8 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                     // }
 
                     console.log("WFN_DirectoryRead STATUS_OK  " + str);
-                    self.globalData = str+"\0";
                     self.WriteDataPort(STATUS_OK);
-                    self.globalData = self.globalData.split('');
+                    self.globalData = new TextEncoder("utf-8").encode(str+"\0");
                     self.dfn+=1;
                     return;
 
@@ -331,7 +339,47 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                 this.WriteDataPort(STATUS_COMPLETE);
             }
                 ,
+            WFN_FileSeek:function() {
+                console.log("WFN_FileSeek");
+            },
+            WFN_FileRead:function() {
+                if (this.globalAmount == 0)
+                {
+                    this.globalAmount = 256;
+                }
 
+                var read = Math.min(this.fildata.length, this.globalAmount);
+                var fildataEnd = this.fildataIndex+read;
+                var data = this.fildata.slice(this.fildataIndex, fildataEnd);
+               // console.log("WFN_FileRead "+data.toString());
+                console.log("WFN_FileRead "+this.fildataIndex + " .read "+ read + " .datalen "+ data.length);
+
+                //fildata
+                //int ret;
+                var ret;
+                //FIL *fil = &fildata[this.filenum];
+                //UINT read;
+                //ret = f_read(fil, globalData, globalAmount, &read);
+                //fil = &fildata[filenum];
+                ret = 0;
+
+                this.globalData = data;
+                this.fildataIndex = fildataEnd;
+
+                if (this.filenum > 0 && ret == 0 &&  this.globalAmount != read) {
+                    this.WriteDataPort(STATUS_EOF); // normal file
+                } else {
+                    // scratch file
+                    this.WriteDataPort(STATUS_COMPLETE | ret);
+                }
+
+            },
+            WFN_FileWrite:function() {
+                console.log("WFN_FileWrite");
+            },
+            WFN_ExecuteArbitrary:function() {
+                console.log("WFN_ExecuteArbitrary");
+            },
 
             WriteDataPort: function(b)
             {
@@ -361,7 +409,6 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                 var stat = this.MCUStatus;
 
                 this.MCUStatus &= ~MMC_MCU_READ;
-                // this.MCUStatus &= ~MMC_MCU_WROTE;
 
                 // ignore the current addr; use the last write address
                 addr = self.lastaddr;
@@ -400,7 +447,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                             var q = this.globalIndex;
                             var dd = 0;
                             if (q < this.globalData.length)
-                                dd = this.globalData[q].charCodeAt(0)|0;
+                                dd = this.globalData[q]|0;
                             console.log("read READ_DATA_REG 0x" + dd.toString(16) + ", index " + q);
                             this.WriteDataPort(dd);
                             ++this.globalIndex;
@@ -498,7 +545,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                             } else if (received == CMD_FILE_SEEK) {
                                 // seek to a location within the file
                                 //
-                                this.worker = WFN_FileSeek;
+                                this.worker = this.WFN_FileSeek;
                             }
 
 // SP9 END
@@ -508,8 +555,8 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                                 // data from READ_DATA_PORT. After execution of this command the first byte
                                 // of data may be read from the READ_DATA_PORT.
                                 //
-                                console.log("CMD_INIT_READ: READ_DATA_REG 0x" + (this.globalData[0].charCodeAt(0)).toString(16) + ", index " + 0);
-                                this.WriteDataPort(this.globalData[0].charCodeAt(0));
+                                console.log("CMD_INIT_READ: READ_DATA_REG 0x" + this.globalData[0].toString(16) + ", index " + 0);
+                                this.WriteDataPort(this.globalData[0]);
                                 this.globalIndex = 1;
                                 // LatchedAddress
                                 self.lastaddr = READ_DATA_REG;
@@ -519,25 +566,25 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                                 // WRITE_DATA_REG
                                 // globalDataPresent is a flag to indicate whether data is present in the bfr.
                                 //
-                                this.globalData = [];
+                                this.globalData = new Uint8Array(256);
                                 this.globalIndex = 0;
                                 this.globalDataPresent = 0;
                             } else if (received == CMD_READ_BYTES) {
                                 // Replaces READ_BYTES_REG
                                 // Must be previously written to latch reg.
                                 this.globalAmount = this.byteValueLatch;
-                                this.worker = WFN_FileRead;
+                                this.worker = this.WFN_FileRead;
                             } else if (received == CMD_WRITE_BYTES) {
                                 // replaces WRITE_BYTES_REG
                                 // Must be previously written to latch reg.
                                 this.globalAmount = this.byteValueLatch;
-                                this.worker = WFN_FileWrite;
+                                this.worker = this.WFN_FileWrite;
                             }
 
                                 //
                             // Exec a packet in the data buffer.
                             else if (received == CMD_EXEC_PACKET) {
-                                this.worker = WFN_ExecuteArbitrary;
+                                this.worker = this.WFN_ExecuteArbitrary;
                             } else if (received == CMD_GET_FW_VER) // read firmware version
                             {
                                 this.WriteDataPort(VSN_MAJ << 4 | VSN_MIN);
@@ -581,6 +628,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                             console.log("WRITE_DATA_REG  <- " + this.globalIndex + ", received 0x" + received.toString(16));
 
                             this.globalData[this.globalIndex] = received;
+
                             ++this.globalIndex;
 
                             this.globalDataPresent = 1;
@@ -591,7 +639,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                             var received = val & 0xff;
                             console.log("LATCH_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16));
                             this.byteValueLatch = received;
-                            this.WriteDataPort(byteValueLatch);
+                            this.WriteDataPort(this.byteValueLatch);
                             break;
                         }
                         case STATUS_REG: {
