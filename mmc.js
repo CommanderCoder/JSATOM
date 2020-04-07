@@ -197,7 +197,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
             reset: function (hard) {
 
                 this.configByte = 0x00; //eeprom[EE_SYSFLAGS];
-
+                this.CWD = "";
             },
             MMCtoAtom: STATUS_BUSY,
             heartbeat: 0x55,
@@ -225,6 +225,8 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                 var ret = 0;
                 if (this.filenum == 0) {
                     var fname = String.fromCharCode(...this.globalData.slice(0,-1)).split('\0')[0];
+                    if (this.CWD.length > 0)
+                        fname = this.CWD+"/"+fname;
                     console.log("searching " + fname);
                     // The scratch file is fixed, so we are backwards compatible with 2.9 firmware
                     this.fildata = new Uint8Array();
@@ -310,6 +312,14 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                         return;
                     }
 
+                    var fname = self.MMCdata.names[self.dfn];
+                    var dirmatch = fname.match('/^'+this.CWD+'\/.+/i');
+                    if (!dirmatch)
+                    {
+                        self.dfn+=1;
+                        continue;
+                    }
+
                     var str = '';
                     // check for dir
                     // if (attr[self.dfn] == 'dir')
@@ -327,16 +337,21 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                     console.log("WFN_DirectoryRead STATUS_OK  " + str);
                     self.WriteDataPort(STATUS_OK);
                     self.globalData = new TextEncoder("utf-8").encode(str+"\0");
+
                     self.dfn+=1;
                     return;
 
                 }
             }
             ,
+            CWD:"",
             WFN_SetCWDirectory:function()
             {
-                console.log("WFN_SetCWDirectory" );
+                var dirname = String.fromCharCode(...this.globalData.slice(0,-1)).split('\0')[0];
+
+                console.log("WFN_SetCWDirectory "+dirname);
                 //this.WriteDataPort(STATUS_COMPLETE | f_chdir((const XCHAR*)globalData));
+                this.CWD+=dirname;
                 this.WriteDataPort(STATUS_COMPLETE);
             }
                 ,
@@ -398,7 +413,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
             lastaddr: 0,
             write: function (addr, val) {
-                console.log("WriteMMC 0x" + addr.toString(16) + " <- 0x" + val.toString(16));
+                // console.log("WriteMMC 0x" + addr.toString(16) + " <- 0x" + val.toString(16));
                 self.lastaddr = addr;
                 self.at_process(addr, val, true);
             },
@@ -414,16 +429,17 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                 // ignore the current addr; use the last write address
                 addr = self.lastaddr;
 
-                var cmd = {0x00:"CMD_REG",0x01:"LATCH_REG"		,0x02:"READ_DATA_REG"		,0x03:"WRITE_DATA_REG"	, 0x04:"STATUS_REG"};
-                var status = {0x4f:"STATUS_OK",0x40:"STATUS_COMPLETE"		,0x60:"STATUS_EOF"		,0x80:"STATUS_BUSY"	};
+                // var cmd = {0x00:"CMD_REG",0x01:"LATCH_REG"		,0x02:"READ_DATA_REG"		,0x03:"WRITE_DATA_REG"	, 0x04:"STATUS_REG"};
+                // var status = {0x4f:"STATUS_OK",0x40:"STATUS_COMPLETE"		,0x60:"STATUS_EOF"		,0x80:"STATUS_BUSY"	};
                 if (reg === STATUS_REG) {
-                    console.log("ReadMMC STATUS_REG : 0x" + (addr & 0x0f).toString(16) + " -> val 0x"+stat.toString(16) );
+                //     console.log("ReadMMC STATUS_REG : 0x" + (addr & 0x0f).toString(16) + " -> val 0x"+stat.toString(16) );
                     // status REG from MCUStatus
                     return stat;
-                } else if (val in status)
-                    console.log("ReadMMC "+cmd[reg]+" -> "+status[val]);
-                else
-                    console.log("ReadMMC "+cmd[reg]+" -> 0x"+val.toString(16));
+                }
+                // else if (val in status)
+                    // console.log("ReadMMC "+cmd[reg]+" -> "+status[val]);
+                // else
+                //     console.log("ReadMMC "+cmd[reg]+" -> 0x"+val.toString(16));
 
 
                 self.at_process(addr, val, false);
@@ -449,7 +465,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                             var dd = 0;
                             if (q < this.globalData.length)
                                 dd = this.globalData[q]|0;
-                            console.log("read READ_DATA_REG 0x" + dd.toString(16) + ", index " + q);
+                            // console.log("read READ_DATA_REG 0x" + dd.toString(16) + ", index " + q);
                             this.WriteDataPort(dd);
                             ++this.globalIndex;
 
@@ -626,7 +642,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                         case WRITE_DATA_REG: {
                             var received = val & 0xff;
 
-                            console.log("WRITE_DATA_REG  <- " + this.globalIndex + ", received 0x" + received.toString(16));
+                            // console.log("WRITE_DATA_REG  <- " + this.globalIndex + ", received 0x" + received.toString(16));
 
                             this.globalData[this.globalIndex] = received;
 
@@ -638,7 +654,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
                         case LATCH_REG: {
                             var received = val & 0xff;
-                            console.log("LATCH_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16));
+                            // console.log("LATCH_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16));
                             this.byteValueLatch = received;
                             this.WriteDataPort(this.byteValueLatch);
                             break;
@@ -646,7 +662,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                         case STATUS_REG: {
                             // does nothing
                             var received = val & 0xff;
-                            console.log("STATUS_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16));
+                            // console.log("STATUS_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16));
                         }
                     }
 
@@ -672,7 +688,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
                         for (var f in unzip.files) {
                             var match = f.match(/^[a-z\.\/]+/i);
-                            console.log("m "+match);
+                            // console.log("m "+match);
                             if (!match ) {
                                 console.log("Skipping file", f);
                                 continue;

@@ -328,6 +328,7 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 this.pc = this.readmem(0xfffc) | (this.readmem(0xfffd) << 8);
                 this.p.i = true;
                 this.tube.reset(hard);
+
             };
 
             this.readmem = function (offset) {
@@ -1160,10 +1161,12 @@ Hardware:   PPIA 8255
                     this.uservia.reset(hard);
                     if (model.isAtom) {
                         this.atomppia.reset(hard);
-                        this.atommc.reset(hard);
                     }
                 }
                 this.tube.reset(hard);
+                if (model.isAtom) {
+                    this.atommc.reset(hard);
+                }
                 if (hard) {
                     this.targetCycles = 0;
                     this.currentCycles = 0;

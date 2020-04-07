@@ -792,6 +792,7 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
                 regs7 = 0x40;
             }
 
+            mode |= (this.ppia.portcpins & 0x08); // CSS value
 
             this.regs[9] = regs9;
 
@@ -878,7 +879,7 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
 
                        if ((this.dispEnabled & EVERYTHINGENABLED) === EVERYTHINGENABLED) {
                            if ((mode & 0x10 ) == 0) // MODE_AG - bit 4; 0x10 is the AG bit
-                               // TODO: Add in the INV, INTEXT, CSS modifiers to mode
+                               // TODO: Add in the INTEXT modifiers to mode (if necessary)
                                this.video6847.blitChar(this.fb32, dat, offset, this.pixelsPerChar, mode);
                            else
                                this.video6847.blitPixels(this.fb32, dat, offset, mode);

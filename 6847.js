@@ -24,7 +24,7 @@ Port C - #B002
          0          Tape output
          1          Enable 2.4 kHz to cassette output
          2          Loudspeaker
-         3          Not used
+         3          Not used / CSS
 
     Input bits:       Function:
          4          2.4 kHz input
@@ -133,9 +133,22 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         this.levelDEW = false;
         this.levelDISPTMG = false;
 
+        // 8 colours (alpha on MSB)
+        //
         this.collook = utils.makeFast32(new Uint32Array([
-            0xff000000, 0xff0000ff, 0xff00ff00, 0xff00ffff,
-            0xffff0000, 0xffff00ff, 0xffffff00, 0xffffffff]));
+            0xff000000, 0xff003f00, 0xff003f3f, 0xff3f0000,
+            0xff00003f, 0xff3f3f3f, 0xff3f3f00, 0xff3f003f,
+            0xff00203f]));
+        // { 0,  0,  0  }, /*Black 0*/
+        // { 0,  63, 0  }, /*Green 1*/
+        // { 63, 63, 0  }, /*Yellow 2*/
+        // { 0,  0,  63 }, /*Blue 3 */
+        // { 63, 0,  0  }, /*Red 4 */
+        // { 63, 63, 63 }, /*Buff 5*/
+        // { 0,  63, 63 }, /*Cyan 6*/
+        // { 63, 0,  63 }, /*Magenta 7*/
+        // { 63, 32,  0  }, /*Orange 8 - actually red on the Atom*/
+
 
         this.init = function() {
             this.curGlyphs = fontData.makeCharsAtom();
@@ -194,7 +207,9 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         // bitpattern from data is either 4 or 8 pixels in raw graphics
         // either white and black
         // or 3 colours and black (in pairs of bits)
+        // that is: all graphics modes are 1bpp or 2bpp giving 2 colours or 4 colours
         mode |= 0;
+        var css = (mode & 0x08) >>> 2;
 
         var bitdef = data;
         var pixelsPerBit = 4;
@@ -293,10 +308,13 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
             var cval = (bitdef>>>j)&0x03;
 
             // get just one bit
-            if (bpp == 1)
+            if (bpp == 1) {
                 cval &= 0x01;
+            }
 
-            fb32[destOffset + n] = fb32[destOffset + n + 1024] = (cval!=0)?colour:0xff005500;
+            colour = this.collook[cval | css]<<2;
+
+            fb32[destOffset + n] = fb32[destOffset + n + 1024] = colour;
         }
 
 
@@ -307,17 +325,25 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
     Video6847.prototype.blitChar = function ( buf, data, destOffset, numPixels, mode)
     {
         var scanline = this.scanlineCounter;
+        var css = (mode & 0x08) >>> 1;
+        var chr = data&0x7f;
 
-        // invert the  char if bit 7 is set
+        // 0 - 63 is alphachars green  (0x00-0x3f)
+        // 64-127 is alphagraphics yellow (0x40-0x7f) bit 7 set (0x40)
+        // 128 - 191 is alphachars inverted green (0x80-0xbf)
+        // 192-255 is alphagraphics red (0xc0-0xff) bit 7 set (0x40)
+
+        // invert the  char if bit 7 is set and bit 6 is not
         var inv = false;
-        if ((data&0x80)==0x80)
+        if ((data&0xC0) == 0x80)
         {
-            data &= 0x7f;
             inv = true;
         }
 
+        var agmode = (data & 0x40);
+
         //bitpattern for chars is in rows; each char is 12 rows deep
-        var chardef = this.curGlyphs[data  * 12 + scanline];
+        var chardef = this.curGlyphs[chr  * 12 + scanline];
 
         if (inv)
             chardef = ~chardef;
@@ -333,9 +359,18 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         for (i = 0; i < numPixels; ++i) {
             var n = numPixels-1 - i; // pixels in reverse order
             var j = i / pixelsPerBit;
+            var fgcol = this.collook[css?4:1];
+
+            if (agmode) // alphagraphics
+            {
+                // 2 or 4 - yellow/red
+                fgcol = this.collook[1+(data>>>6 | css)];
+            }
+
+            var colour = ((chardef>>>j)&0x1)?fgcol:this.collook[0];
             fb32[destOffset + n] =
                 fb32[destOffset + n + 1024 ] =  // two lines
-                    ((chardef>>>j)&0x1)?0xff00dd00:0xff005500; //white  - see 'collook'
+                    colour<<2;
         }
 
     }
