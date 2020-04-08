@@ -680,28 +680,27 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
 
 
             // regs1  //32bpr
-            var regs0 = 0x3f, regs1 = 0x20, regs2 = 0x31; // horizontals
+            var regs0 , regs1 , regs2 ; // horizontals
             this.regs[3] = 0x24;  //2 HEIGHT... 4 WIDTH
 
-            var regs4 = 0x14, regs5 = 0x00, regs6 = 0x10, regs7 = 0x12;  // verticals
+            var regs4 , regs5, regs6 , regs7 ;  // verticals
 
-            // //regs4 ; // vertical position
-            // //regs5 ; // offset from top of each scanline
-            var regs9 = 0x0b; // this is the number of LINES per character
+            var regs9 ; // this is the number of LINES per character
 
             // // in mode 1111 this should be 1
             var mode = (this.ppia.portapins & 0xf0);
             if (mode == 0xf0)  // 4
             {
-                regs9 = 0x0; //1  - scanlines per char
+                regs9 = 0x0; //1  - scanlines per char    // 9	Maximum Raster Address
 
-                regs0 = 0x3f;
-                regs1 = 0x20; //32bpr
-                regs2 = 0x31;
-
-                regs4 = 0xe0;
-                regs6 = 0xc0; //192 LINES
-                regs7 = 0xc0;
+                regs0 = 0x3f;            // 0	Horizontal Total
+                regs1 = 0x20; //32bpr   // 1	Horizontal Displayed
+                regs2 = 0x2c;   //<<<<    // 2	Horizontal Sync Position
+// 3	Horizontal and Vertical Sync Widths
+                regs4 = 0xe0;       // 4	Vertical Total
+                regs5 = 0x1f; //<<<<<  // 5	Vertical Total Adjust
+                regs6 = 0xc0; //192 LINES // 6	Vertical Displayed
+                regs7 = 0xc0;  // 7	Vertical Sync position
 
                 // want 256 pixels -
 
@@ -712,7 +711,7 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
             {
                 regs0 = 0x3b;
                 regs1 = 0x10; //16bpr
-                regs2 = 0x31;
+                // regs2 = 0x31;
                 this.regs[3] = 0x28;  //2 HEIGHT... 8 WIDTH
 
                 this.pixelsPerChar = 8;  // for blitChar
@@ -720,76 +719,126 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
 
                 regs9 = 0x0; //1  - scanlines per char
 
-                regs4 = 0xe0;
-                regs6 = 0xc0; // 192 LINES
-                regs7 = 0xc0;
+                regs0 = 0x3f;            // 0	Horizontal Total
+                regs1 = 0x10; //16bpr  // 1	Horizontal Displayed
+                regs2 = 0x33;   //<<<<    // 2	Horizontal Sync Position
+
+                regs4 = 0xe0;       // 4	Vertical Total
+                regs5 = 0x1f; //<<<<<  // 5	Vertical Total Adjust
+                regs6 = 0xc0; //192 LINES // 6	Vertical Displayed
+                regs7 = 0xc0;  // 7	Vertical Sync position
+
             } else if (mode == 0x70) //2
             {
                 regs9 = 0x1; //2  - scanlines per char
 
                 regs0 = 0x33;
                 regs1 = 0x10; //16bpr
-                regs2 = 0x29;
+                // regs2 = 0x29;
                 this.regs[3] = 0x28;  //2 HEIGHT... 8 WIDTH
 
 
                 this.pixelsPerChar = 8;  // for blitChar
                 this.halfClock = true;
 
+                regs0 = 0x3f;            // 0	Horizontal Total
+                regs1 = 0x10;   //16bpr  // 1	Horizontal Displayed
+                regs2 = 0x33;   //<<<<    // 2	Horizontal Sync Position
 
-                regs4 = 0x6b;
-                regs6 = 0x60; // 96 LINES
-                regs7 = 0x60;
+                regs4 = 0x70;//<<<<       // 4	Vertical Total
+                regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
+                regs6 = 0x60; // 96 LINES // 6	Vertical Displayed
+                regs7 = 0x60;  // 7	Vertical Sync position
+
             } else if (mode == 0x30) //1
             {
                 regs9 = 0x2; //3  - scanlines per char
-                regs0 = 0x33;
-                regs1 = 0x10; //16bpr
-                regs2 = 0x29;
+                // regs2 = 0x29;
                 this.regs[3] = 0x28;  //2 HEIGHT... 8 WIDTH
 
 
                 this.pixelsPerChar = 8;  // for blitChar
                 this.halfClock = true;
 
-                regs4 = 0x4b;
-                regs6 = 0x40; // 64 LINES
-                regs7 = 0x40;
+                regs0 = 0x3f;            // 0	Horizontal Total
+                regs1 = 0x10;   //16bpr  // 1	Horizontal Displayed
+                regs2 = 0x33;   //<<<<    // 2	Horizontal Sync Position
+
+                regs4 = 0x4a;//<<<<       // 4	Vertical Total
+                regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
+                regs6 = 0x40; // 64 LINES // 6	Vertical Displayed
+                regs7 = 0x40;  // 7	Vertical Sync position
             } else if (mode == 0xd0) // 4a
             {
                 regs9 = 0x0; //1  - scanlines per char
 
-                regs4 = 0xcf;
-                regs6 = 0xc0; // 192 LINES
-                regs7 = 0xc0;
+                regs0 = 0x3f;            // 0	Horizontal Total
+                regs1 = 0x20;   //32bpr  // 1	Horizontal Displayed
+                regs2 = 0x2c;   //<<<<    // 2 	Horizontal Sync Position
+
+                regs4 = 0xe0;       // 4	Vertical Total
+                regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
+                regs6 = 0xc0; //192 LINES // 6	Vertical Displayed
+                regs7 = 0xc0;  // 7	Vertical Sync position
             } else if (mode == 0x90) //3a
             {
                 regs9 = 0x1; //2  - scanlines per char
 
-                regs4 = 0x6f;
-                regs6 = 0x60; // 96 LINES
-                regs7 = 0x60;
+                regs0 = 0x3f;            // 0	Horizontal Total
+                regs1 = 0x20; //32bpr   // 1	Horizontal Displayed
+                regs2 = 0x2c;   //<<<<    // 2	Horizontal Sync Position
+
+                regs4 = 0x70;//<<<<       // 4	Vertical Total
+                regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
+                regs6 = 0x60; // 96 LINES // 6	Vertical Displayed
+                regs7 = 0x60;  // 7	Vertical Sync position
             } else if (mode == 0x50) //2a
             {
                 regs9 = 0x2; //3  - scanlines per char
 
-                regs4 = 0x4f;
-                regs6 = 0x40; // 64 LINES
-                regs7 = 0x40;
+                regs0 = 0x3f;            // 0	Horizontal Total
+                regs1 = 0x20; //32bpr   // 1	Horizontal Displayed
+                regs2 = 0x2c;   //<<<<    // 2	Horizontal Sync Position
+
+                regs4 = 0x4a;//<<<<       // 4	Vertical Total
+                regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
+                regs6 = 0x40; // 64 LINES // 6	Vertical Displayed
+                regs7 = 0x40;  // 7	Vertical Sync position
             } else if (mode == 0x10) //1a
             {
                 regs9 = 0x2; //3  - scanlines per char
-                regs0 = 0x3f;
-                regs1 = 0x10; //16bpr
-                regs2 = 0x31;
+                regs0 = 0x3f;            // 0	Horizontal Total
+                regs1 = 0x10;   //16bpr  // 1	Horizontal Displayed
+                regs2 = 0x35;   //<<<<    // 2	Horizontal Sync Position
                 this.regs[3] = 0x24;
                 this.pixelsPerChar = 32;  // for blitChar
                 this.halfClock = true;
 
+                regs4 = 0x4a;//<<<<       // 4	Vertical Total
+                regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
+                regs6 = 0x40; // 64 LINES // 6	Vertical Displayed
+                regs7 = 0x40;  // 7	Vertical Sync position
+            } else
+            {
+                // for text mode 0
 
-                regs4 = 0x4f;
-                regs6 = 0x40; // 64 LINES
-                regs7 = 0x40;
+                regs9 = 0x0b; //13  - scanlines per char
+                regs0 = 0x3f;            // 0	Horizontal Total
+                regs1 = 0x20;   //32bpr  // 1	Horizontal Displayed
+                regs2 = 0x2c;   //<<<<    // 2	Horizontal Sync Position
+
+                this.pixelsPerChar = 16;  // 16 for blitChar
+                this.halfClock = false; //  for blitChar
+
+                regs4 = 0x14;//<<<<       // 4	Vertical Total
+                //regs5 ; // offset from top of each scanline
+                regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
+                regs6 = 0x10; // 64 LINES // 6	Vertical Displayed
+                regs7 = 0x12;  // 7	Vertical Sync position
+
+
+                this.regs[3] = 0x24;  //2 HEIGHT... 4 WIDTH
+
             }
 
             mode |= (this.ppia.portcpins & 0x08); // CSS value
