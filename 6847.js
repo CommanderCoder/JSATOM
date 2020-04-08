@@ -118,6 +118,12 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 	 MODE_INTEXT  = 0x02;
 	 MODE_INV     = 0x01;
 
+
+	 for bits
+
+	 CG1, CG2, CG3, CG6, RG6 are 2bpp
+	 RG1, RG2, RG3 are 1bpp
+
 */
 
     const MODE_AG = 0x80,
@@ -204,6 +210,7 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
     Video6847.prototype.blitPixels = function ( buf, data, destOffset, mode)
     {
         var scanline = this.scanlineCounter;
+        var css = (mode & 0x08) >>> 2;
         // bitpattern from data is either 4 or 8 pixels in raw graphics
         // either white and black
         // or 3 colours and black (in pairs of bits)
@@ -215,60 +222,48 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         var pixelsPerBit = 4;
         var bpp = 2;
         var colour = 0xffffffff; //white  - see 'collook'  // alpha, blue, green, red
-        if (mode == 0xf0) //4
-        {
-            pixelsPerBit = 2;
-            bpp = 1;
-            colour = 0xff00ff00;
-        }
-        else if (mode == 0xb0)  //3
-        {
-            pixelsPerBit = 4;
-            bpp = 1;
-            colour = 0xff0000ff;
+     if (mode == 0x10)  //1a - 4 colour mode
+    {
+        pixelsPerBit = 4;
+        bpp = 2;
+     }
+     else if (mode == 0x50) //2a - 4 colour mode
+     {
+         pixelsPerBit = 2;
+         bpp = 2;
 
-        }
-        else if (mode == 0x70) //2
-        {
-            pixelsPerBit = 4;
-            bpp = 1;
-            colour = 0xffff0000;
-
-        }
-        else if (mode == 0x30) //1
-        {
-            pixelsPerBit = 4;
-            bpp = 1;
-            colour = 0xffff00ff;
-
-        }
-        else if (mode == 0xd0) //4a
+     }
+     else if (mode == 0x90) //3a - 4 colour mode
+     {
+         pixelsPerBit = 2;
+         bpp = 2;
+     }
+     else if (mode == 0xd0) //4a - 4 colour mode
         {
             pixelsPerBit = 2;
             bpp = 2;
-            colour = 0xffff0000;
+        }
+     else if (mode == 0x30) //1 - resolution mode
+     {
+         pixelsPerBit = 4;
+         bpp = 1;
+     }
+     else if (mode == 0x70) //2 - resolution mode
+     {
+         pixelsPerBit = 4;
+         bpp = 1;
+     }
+    else if (mode == 0xb0)  //3 - resolution mode
+    {
+        pixelsPerBit = 4;
+        bpp = 1;
+    }
+     else   if (mode == 0xf0) //4 - resolution mode
+     {
+         pixelsPerBit = 2;
+         bpp = 1;
+     }
 
-        }
-        else if (mode == 0x90) //3a
-        {
-            pixelsPerBit = 1;
-            bpp = 1;
-            colour = 0xffffffff;
-
-        }
-        else if (mode == 0x50) //2a
-        {
-            pixelsPerBit = 1;
-            bpp = 1;
-            colour = 0xffffffff;
-
-        }
-        else if (mode == 0x10)  //1a
-        {
-            pixelsPerBit = 1;
-            bpp = 1;
-            colour = 0xffffff00;
-        }
 // MODE NEED TO CHANGE THE RASTER SCAN
         // currently 32 x 16 - 256 x 192 (with 12 lines per row)
 
@@ -302,19 +297,46 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
             var n = (numPixels) - 1 - i; // pixels in reverse order
 
             // get bits in pairs or singles
-            var j = i / pixelsPerBit;
+            var j = Math.floor(i / pixelsPerBit);
 
-            // get both bits
-            var cval = (bitdef>>>j)&0x03;
 
+            // { 0,  0,  0  }, /*Black 0*/
+            // { 0,  63, 0  }, /*Green 1*/
+            // { 63, 63, 0  }, /*Yellow 2*/
+            // { 0,  0,  63 }, /*Blue 3 */
+            // { 63, 0,  0  }, /*Red 4 */
+            // { 63, 63, 63 }, /*Buff 5*/
+            // { 0,  63, 63 }, /*Cyan 6*/
+            // { 63, 0,  63 }, /*Magenta 7*/
+            // { 63, 32,  0  }, /*Orange 8 - actually red on the Atom*/
+var brighten = 4;
             // get just one bit
             if (bpp == 1) {
-                cval &= 0x01;
+                // get a bit
+                var cval = (bitdef>>>j)&0x1;
+                // - green / buff  & black
+                colour = (cval!=0) ? this.collook[(css | 1)] : this.collook[0];
+
+                colour <<= brighten;
+
+                fb32[destOffset + n] = fb32[destOffset + n + 1024] = colour;
+
+            }
+            else
+            {
+                //var cval = (bitdef>>>(j&0xe))&0x3;
+                var cval = (bitdef>>>(j&0xe))&0x3;
+
+                // 2 or 4 - green/yellow/blue/red
+                colour = (cval!=0) ? this.collook[1+(cval | (css<<1)) ] : this.collook[0];
+
+                colour <<= brighten;
+
+                fb32[destOffset + n] = fb32[destOffset + n + 1024] = colour;
+            //    fb32[destOffset + n+1] = fb32[destOffset + n+1 + 1024] = colour;
+           //     i++;
             }
 
-            colour = this.collook[cval | css]<<2;
-
-            fb32[destOffset + n] = fb32[destOffset + n + 1024] = colour;
         }
 
 
