@@ -162,13 +162,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                             console.log("hzout");
                         }
 
-
-                        // if (self.portcpins & 0x04) {
-                        //     console.log("spk "+(val)+ " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
-                        // }
-                        // else {
-                        //     console.log("spk "+(val)+ " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
-                        // }
+                        //     console.log("spk "+(self.portcpins & 0x04)+ " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
 
                         // console.log("write portc "+self.latchc);
                         self.recalculatePortCPins();

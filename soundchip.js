@@ -261,17 +261,18 @@ define(['./utils'], function (utils) {
             speakerBuffer[i] = 0.0;
         }
 
-        var speakerStep = 0;
-        var speakerTime = (1 / sampleRate) * speakerBufferSize;
+        var lastMicroCycle = 0;
+        var speakerTime = 0;
 
         function speakerChannel(channel, out, offset, length) {
             // the JS AudioContext has a 2048 byte buffer
 
             for (var i = 0; i < length; ++i) {
-                out[i + offset] += speakerBuffer[(speakerTime+i) & (speakerBufferSize - 1)];
-//                speakerTime += 1;
+
+                out[i + offset] += speakerBuffer[speakerTime & (speakerBufferSize - 1)];
+                speakerTime++;
             }
-//            while (speakerTime > speakerBufferSize) speakerTime -= speakerBufferSize;
+            while (speakerTime > speakerBufferSize) speakerTime -= speakerBufferSize;
         };
 
         this.updateSpeaker = function(value, microCycle)
@@ -295,15 +296,17 @@ define(['./utils'], function (utils) {
              */
 
             // calculate the number of buffer values to fill
-            var length = microCycle - speakerTime;
+            var length = microCycle - lastMicroCycle;
+            if (length < 0) console.log("large difference " + length );
+
             while (length < 0) length += 1 * 1000000;  // add seconds to get it positive
 
             //convert length to samples at samplerate
             length *= samplesPerCycle;
-            var sampleTime = speakerTime * samplesPerCycle;
+            var sampleTime = lastMicroCycle * samplesPerCycle;
 
             if (length >= speakerBufferSize) {
-                console.log("speaker buffer too small " + samplesPerCycle + " " + length + "/"+speakerBufferSize);
+                console.log("speaker buffer too small " + sampleTime + " " + length + "/"+speakerBufferSize);
                return;
             }
 
@@ -313,9 +316,9 @@ define(['./utils'], function (utils) {
                 speakerBuffer[(i + sampleTime) & (speakerBufferSize - 1)] = bit;
             }
 
-            speakerTime = microCycle;
+            lastMicroCycle = microCycle;
             // add the current value
-            sampleTime = speakerTime * samplesPerCycle;
+            sampleTime = lastMicroCycle * samplesPerCycle;
             speakerBuffer[sampleTime] = value?1.0:0.0;
         };
 

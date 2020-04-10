@@ -210,7 +210,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
             filenum : -1,
             worker:null,
 
-            MMCdata: null,
+            MMCdata:undefined,
             dfn : 0,
             fildata: null,
             fildataIndex: 0,
@@ -225,6 +225,9 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
             },
             fileOpen: function(mode)
             {
+                // no data available
+                if (self.MMCdata === undefined)
+                    return 4; // no file
 
                 var ret = 0;
                 if (this.filenum == 0) {
@@ -296,11 +299,16 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                 // res = f_opendir(&dir, (const char*)globalData);
                 self.dfn = 0;
 
-                // if (FR_OK != res)
-                // {
-                //     WriteDataPort(STATUS_COMPLETE | res);
-                //     return;
-                // }
+                var res = 0; // FR_OK
+                if (self.MMCdata === undefined)
+                    res = 4; //FR_ERROR
+
+                 // if (self.FR_OK != res)
+                if (0 != res)
+                {
+                    self.WriteDataPort(STATUS_COMPLETE | res);
+                    return;
+                }
 
                 self.WriteDataPort(STATUS_OK);
 
