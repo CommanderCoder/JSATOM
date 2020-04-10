@@ -1144,7 +1144,7 @@ Hardware:   PPIA 8255
                     this.sysvia = via.SysVia(this, this.video, this.soundChip, cmos, model.isMaster, config.keyLayout);
                     this.uservia = via.UserVia(this, model.isMaster, config.userPort);
                     if (model.isAtom) {
-                        this.atomppia = ppia.AtomPPIA(this, this.video, config.keyLayout, this.scheduler, this.soundChip.toneGenerator);
+                        this.atomppia = ppia.AtomPPIA(this, this.video, config.keyLayout, this.scheduler, this.soundChip);
                         this.atommc = mmc.AtomMMC2(this);
                     }
                     if (config.printerPort)

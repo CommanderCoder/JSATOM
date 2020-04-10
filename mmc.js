@@ -215,6 +215,10 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
             fildata: null,
             fildataIndex: 0,
 
+            TRISB:0,
+            PORTB:0,
+            LATB:0,
+
             WFN_WorkerTest: function()
             {
                 console.log("WFN_WorkerTest" );
@@ -637,6 +641,59 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                                 //#define CT_MMC 0x01 /* MMC ver 3 */
                                 this.WriteDataPort(0x01);
                             }
+
+                            // support for PORTs but really doing nothing!
+                            else if (received == CMD_GET_PORT_DDR) // get portb direction register
+                            {
+                                this.WriteDataPort(this.TRISB);
+                            }
+                            else if (received == CMD_SET_PORT_DDR) // set portb direction register
+                            {
+                                this.TRISB = this.byteValueLatch;
+
+                                // this.WriteEEPROM(EE_PORTBTRIS, this.byteValueLatch);
+                                this.WriteDataPort(STATUS_OK);
+                            }
+                            else if (received == CMD_READ_PORT) // read portb
+                            {
+
+                                // SP3 JOYSTICK SUPPORT
+                                //
+                                // if (joyst)
+                                // {
+                                //     JOYSTICK = 255;
+                                //     poll_joystick();
+                                //
+                                //     if (joy_right)
+                                //         JOYSTICK ^= 1;
+                                //     if (joy_left)
+                                //         JOYSTICK ^= 2;
+                                //     if (joy_down)
+                                //         JOYSTICK ^= 4;
+                                //     if (joy_up)
+                                //         JOYSTICK ^= 8;
+                                //     if (joy[0].button[0].b) // Fire
+                                //         JOYSTICK ^= 16;
+                                //
+                                //     WriteDataPort(JOYSTICK);
+                                // }
+                                // else
+                                {
+                                    this.WriteDataPort(this.PORTB);
+                                }
+
+                                // END SP3
+
+                            }
+                            else if (received == CMD_WRITE_PORT) // write port B value
+                            {
+                                this.LATB = this.byteValueLatch;
+
+                                // this.WriteEEPROM(EE_PORTBVALU, byteValueLatch);
+                                this.WriteDataPort(STATUS_OK);
+                            }
+
+
                             break;
 
                         case WRITE_DATA_REG: {

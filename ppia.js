@@ -88,6 +88,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
             portapins:0, portbpins:0, portcpins: 0,
             cr:0,
             processor:cpu,
+            speaker:0,
 
             reset: function (hard) {
                 //http://members.casema.nl/hhaydn/8255_pin.html
@@ -154,11 +155,21 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         //00001111 - 0x0F -- only write to the bottom 4 bits
                         self.latchc = (self.portcpins & 0xF0) | (val & 0x0F);
 
-                        if (self.portcpins & 0x01)
+                        if (self.portcpins & 0x01) {
                             console.log("casout");
+                        }
                         if (self.portcpins & 0x02) {
                             console.log("hzout");
                         }
+
+
+                        // if (self.portcpins & 0x04) {
+                        //     console.log("spk "+(val)+ " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
+                        // }
+                        // else {
+                        //     console.log("spk "+(val)+ " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
+                        // }
+
                         // console.log("write portc "+self.latchc);
                         self.recalculatePortCPins();
                         break;
@@ -288,7 +299,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
         return self;
     }
 
-    function atomppia(cpu, video, initialLayout, scheduler, toneGen) {
+    function atomppia(cpu, video, initialLayout, scheduler, soundChip) {
         var self = ppia(cpu, 0x01);
 
         self.keys = [];
@@ -387,15 +398,13 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
         };
 
         self.portBUpdated = function () {
-            // v = self.latchb
-            // fMode(nMode, v & 8 ? 1 : 0) :
         };
 
         self.portCUpdated = function () {
-            // v = self.latchc;
-        //    fMode(v >> 4, nPal)
 
-        };
+            self.speaker = (self.portcpins & 0x04)>>>2;
+            soundChip.updateSpeaker(!!(self.speaker), self.processor.currentCycles);
+     };
 
         self.drivePortA = function () {
             self.updateKeys();
@@ -416,8 +425,8 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
         // set by TAPE
         self.tone = function (freq) {
-            if (!freq) toneGen.mute();
-            else toneGen.tone(freq);
+            if (!freq) soundChip.toneGenerator.mute();
+            else soundChip.toneGenerator.tone(freq);
         };
 
         // set by TAPE
@@ -558,7 +567,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
             if (self.tape) {
                 console.log("stopping tape");
 
-                toneGen.mute();
+                soundChip.toneGenerator.mute();
                 self.runTapeTask.cancel();
                 self.setTapeCarrier(false);
 
