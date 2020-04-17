@@ -78,10 +78,8 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
 
 
+             */
 
-
-
-*/
     function ppia(cpu, irq) {
         var self = {
             latcha:0, latchb:0, latchc:0,
@@ -301,11 +299,11 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
             self.keys[i] = new Uint8Array(16);
         }
 
-        self.setKeyLayoutA = function (map) {
+        self.setKeyLayoutAtom = function (map) {
             self.keycodeToRowCol = utils.getKeyMapAtom(map);
         };
 
-        self.setKeyLayoutA(initialLayout);
+        self.setKeyLayoutAtom(initialLayout);
 
         self.keyboardEnabled = true;
 
@@ -397,7 +395,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
         self.portCUpdated = function () {
 
             self.speaker = (self.portcpins & 0x04)>>>2;
-            soundChip.updateSpeaker(!!(self.speaker), self.processor.currentCycles);
+            soundChip.updateSpeaker(!!(self.speaker), self.processor.currentCycles, self.processor.cycleSeconds);
      };
 
         self.drivePortA = function () {

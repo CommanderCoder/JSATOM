@@ -328,7 +328,6 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 this.pc = this.readmem(0xfffc) | (this.readmem(0xfffd) << 8);
                 this.p.i = true;
                 this.tube.reset(hard);
-
             };
 
             this.readmem = function (offset) {
@@ -515,14 +514,14 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     // For special Master opcode access at 0xc000 - 0xdfff,
                     // it's more involved.
                     if (bitY) {
-                        // If 0xc000 is mapped as RAM, the Master opcode access
-                        // is disabled; follow what normal access does.
-                        this.memLook[i + 256] = this.memLook[i];
+                       // If 0xc000 is mapped as RAM, the Master opcode access
+                       // is disabled; follow what normal access does.
+                       this.memLook[i + 256] = this.memLook[i];
                     } else {
-                        // Master opcode access enabled; bit E determines whether
-                        // it hits shadow RAM or normal RAM. This is independent
-                        // of bit X.
-                        this.memLook[i + 256] = bitE ? 0x8000 : 0;
+                       // Master opcode access enabled; bit E determines whether
+                       // it hits shadow RAM or normal RAM. This is independent
+                       // of bit X.
+                       this.memLook[i + 256] = bitE ? 0x8000 : 0;
                     }
                 }
                 // The "Y" bit pages in HAZEL at c000->dfff. HAZEL is mapped in our RAM
@@ -599,48 +598,6 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 return (addr >= 0xfc00 && addr < 0xff00 && (addr < 0xfe00 || this.FEslowdown[(addr >>> 5) & 7]));
             };
 
-            /*
-            http://mdfs.net/Docs/Comp/Acorn/Atom/atap25.htm
-
-            25.5 Input/Output Port Allocations
-            The 8255 Programmable Peripheral Interface Adapter contains three 8-bit ports, and all but one of these lines is used by the ATOM.
-
-            Port A - #B000
-                   Output bits:      Function:
-                        0 - 3      Keyboard row
-                        4 - 7      Graphics mode
-
-            Port B - #B001
-                   Input bits:       Function:
-                        0 - 5      Keyboard column
-                          6        CTRL key (low when pressed)
-                          7        SHIFT keys {low when pressed)
-
-            Port C - #B002
-                   Output bits:      Function:
-                        0          Tape output
-                        1          Enable 2.4 kHz to cassette output
-                        2          Loudspeaker
-                        3          Not used
-
-                   Input bits:       Function:
-                        4          2.4 kHz input
-                        5          Cassette input
-                        6          REPT key (low when pressed)
-                        7          60 Hz sync signal (low during flyback)
-            The port C output lines, bits 0 to 3, may be used for user applications when the cassette interface is not being used.
-
-
-Hardware:   PPIA 8255
-
-    output  b000    0 - 3 keyboard row, 4 - 7 graphics mode
-            b002    0 cas output, 1 enable 2.4kHz, 2 buzzer, 3 colour set
-
-    input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
-            b002    4 2.4kHz input, 5 cas input, 6 REPT key, 7 60 Hz input
-
- */
-
 
             this.readDeviceAtom = function (addr) {
                 // only set up a single VIA - reclaiming USERVIA from BBC
@@ -668,10 +625,6 @@ Hardware:   PPIA 8255
             };
 
             this.readDevice = function (addr) {
-                if (model.isAtom) {
-                    return this.readDeviceAtom(addr);
-                }
-
                 if (model.isMaster && (this.acccon & 0x40)) {
                     // TST bit of ACCCON
                     return this.ramRomOs[this.osOffset + (addr & 0x3fff)];
@@ -786,7 +739,14 @@ Hardware:   PPIA 8255
                     if (this._debugRead) this._debugRead(addr, res, offset);
                     return res | 0;
                 } else {
-                    res = this.readDevice(addr);
+                    if (model.isAtom) {
+                        res = this.readDeviceAtom(addr);
+                    }
+                    else
+                    {
+                        res = this.readDevice(addr);
+                    }
+
                     if (this._debugRead) this._debugRead(addr, res, 0);
                     return res | 0;
                 }
@@ -797,18 +757,19 @@ Hardware:   PPIA 8255
                     var offset = this.memLook[this.memStatOffset + (addr >>> 8)];
                     return this.ramRomOs[offset + addr];
                 } else {
-                    return this.peekDevice(addr);
+                    if (model.isAtom) {
+                        return this.peekDeviceAtom(addr);
+                    }
+                    else {
+                        return 0xff;// TODO; peekDevice -- this.peekDevice(addr);
+                    }
                 }
             };
 
-            this.peekDevice = function (addr) {
+            this.peekDeviceAtom = function (addr) {
                 // TODO: just show the memory - should really do a form of readDevice
-                if (model.isAtom) {
-                    var offset = this.memLook[this.memStatOffset + (addr >>> 8)];
-                    return this.ramRomOs[offset + addr];
-                }
-
-                return 0xff;
+                var offset = this.memLook[this.memStatOffset + (addr >>> 8)];
+                return this.ramRomOs[offset + addr];
             };
 
             this.writemem = function (addr, b) {
@@ -1005,6 +966,10 @@ Hardware:   PPIA 8255
                 console.log("Loading ROM from " + name);
                 var ramRomOs = this.ramRomOs;
                 return utils.loadData(name).then(function (data) {
+                    if (/\.zip/i.test(name)) {
+                        data = utils.unzipRomImage(data).data;
+                    }
+
                     var len = data.length;
                     if (len !== 16384 && len !== 8192 && len !== 4096) {
                         throw new Error("Broken rom file");
@@ -1024,14 +989,12 @@ Hardware:   PPIA 8255
                 var capturedThis = this;
                 return utils.loadData(os).then(function (data) {
                     var len = data.length;
-
                     if (!model.isAtom) //NOT Atom
                     {
                         if (len < 0x4000 || (len & 0x3fff)) throw new Error("Broken ROM file (length=" + len + ")");
                         for (i = 0; i < 0x4000; ++i) {
                             ramRomOs[capturedThis.osOffset + i] = data[i];
                         }
-
                         var numExtraBanks = (len - 0x4000) / 0x4000;
                         var romIndex = 16 - numExtraBanks;
                         for (i = 0; i < numExtraBanks; ++i) {
@@ -1041,7 +1004,6 @@ Hardware:   PPIA 8255
                                 ramRomOs[destBase + j] = data[srcBase + j];
                             }
                         }
-
                         var awaiting = [];
 
                         for (i = 0; i < extraRoms.length; ++i) {
@@ -1164,9 +1126,6 @@ Hardware:   PPIA 8255
                     }
                 }
                 this.tube.reset(hard);
-                if (model.isAtom) {
-                    this.atommc.reset(hard);
-                }
                 if (hard) {
                     this.targetCycles = 0;
                     this.currentCycles = 0;
@@ -1177,14 +1136,17 @@ Hardware:   PPIA 8255
                 this.p.i = true;
                 this.nmi = false;
                 this.halted = false;
+                if (model.isAtom) {
+                    this.atommc.reset(hard);
+                }
                 this.video.reset(this, this.sysvia, this.atomppia, hard);
                 if (hard) this.soundChip.reset(hard);
             };
 
             this.updateKeyLayout = function () {
                 this.sysvia.setKeyLayout(config.keyLayout);
-                if (isAtom)
-                    this.atomppia.setKeyLayout(config.keyLayout);
+                if (model.isAtom)
+                    this.atomppia.setKeyLayoutAtom(config.keyLayout);
             };
 
             this.polltimeAddr = function (cycles, addr) {
@@ -1229,8 +1191,9 @@ Hardware:   PPIA 8255
                 this.uservia.polltime(cycles);
                 this.scheduler.polltime(cycles);
                 this.tube.execute(cycles);
-                if (model.isAtom)
+                if (model.isAtom) {
                     this.atomppia.polltime(cycles);
+                }
             };
 
             if (this.cpuMultiplier === 1 && this.videoCyclesBatch === 0) {

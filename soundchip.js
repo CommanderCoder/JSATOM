@@ -1,10 +1,9 @@
 define(['./utils'], function (utils) {
     "use strict";
 
-    function SoundChip(sampleRate) {
-//        var cpuFreq = 1 / (2 * 1000 * 1000); // TODO hacky here
-//ATOM has 1Mhz processor
-        var cpuFreq = 1 / (1 * 1000 * 1000); // TODO hacky here
+    function SoundChip(sampleRate, cpuSpeed) {
+//ATOM has 1Mhz processor , BBC has 2Mhz processer
+        var cpuFreq = 1 / cpuSpeed;
 
         // 4MHz input signal. Internal divide-by-8
         var soundchipFreq = 4000000.0 / 8;
@@ -261,6 +260,7 @@ define(['./utils'], function (utils) {
             speakerBuffer[i] = 0.0;
         }
 
+        var lastSecond = 0;
         var lastMicroCycle = 0;
         var speakerTime = 0;
 
@@ -275,31 +275,19 @@ define(['./utils'], function (utils) {
             while (speakerTime > speakerBufferSize) speakerTime -= speakerBufferSize;
         };
 
-        this.updateSpeaker = function(value, microCycle)
+        this.updateSpeaker = function(value, microCycle, seconds)
         {
             catchUp();
 
             // value - true for 1, false for 0
 
-            // tonegenerator is a square wave generater using 'vol' and 'reg' to define the size and frequency
-            // the emulator will read 'chunks' of data from the generator which need to be there to represent the sound
-            // This update will fill a buffer that the emulator can read
-
-
-            /*
-            speakerChannels reads bits at 'sampleRate'
-            updatespeaker will give the microCycle this call is made
-            everything between last call and this will be the last value
-
-
-
-             */
-
             // calculate the number of buffer values to fill
+            var t = seconds - lastSecond;
+            lastSecond = t;
             var length = microCycle - lastMicroCycle;
-            if (length < 0) console.log("large difference " + length );
-
-            while (length < 0) length += 1 * 1000000;  // add seconds to get it positive
+            if (length+t/cpuFreq < 0) console.log("more than one second since last updateSpeaker " + length + ">"+seconds+ ":"+microCycle +"<" );
+            // console.log(" second since last updateSpeaker >"+seconds+ ":"+microCycle +"<" );
+            while (length < 0) length += 1 / cpuFreq;  // add seconds to get it positive
 
             //convert length to samples at samplerate
             length *= samplesPerCycle;

@@ -21,8 +21,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
 
         var availableImages;
         var discImage;
-        var mmcPath = 'mmc/';
-
+        var SDCard = "SDcard.zip";  // in the MMC directory
         var extraRoms = [];
         if (typeof starCat === 'function') {
             availableImages = starCat();
@@ -222,7 +221,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             audioContext.onstatechange = function () {
                 if (audioContext.state === "running") $audioWarningNode.fadeOut();
             };
-            soundChip = new SoundChip.SoundChip(audioContext.sampleRate);
+            soundChip = new SoundChip.SoundChip(audioContext.sampleRate, cpuSpeed);
             // NB must be assigned to some kind of object else it seems to get GC'd by
             // Safari...
             soundChip.jsAudioNode = audioContext.createScriptProcessor(2048, 0, 1);
@@ -783,11 +782,11 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             var nextKeyMillis = 0;
             processor.atomppia.disableKeyboard();
 
+            // ATOM: not sure what to do about the LOCK key
             // // assumes lock is ON so toggle it on (then off) before starting the send..
             // if (checkCapsAndShiftLocks) {
             //     var toggleKey = null;
-            //     if (!processor.sysvia.capsLockLight) toggleKey = ATOM.CAPSLOCK;
-            //     else if (processor.sysvia.shiftLockLight) toggleKey = ATOM.SHIFTLOCK;
+            //     if (!processor.sysvia.capsLockLight) toggleKey = utils.ATOM.LOCK;
             //     if (toggleKey) {
             //         keysToSend.unshift(toggleKey);
             //         keysToSend.push(toggleKey);
@@ -795,17 +794,19 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             // }
 
             var sendCharHook = processor.debugInstruction.add(function nextCharHookAtom() {
+                var debounceTime = 200;
                 var millis = processor.cycleSeconds * 1000 + processor.currentCycles / (clocksPerSecond / 1000);
                 if (millis < nextKeyMillis) {
                     return;
                 }
 
                 if (lastChar && lastChar !== utils.ATOM.SHIFT) {
+                    console.log("<"+lastChar+"> "+millis);
                     processor.atomppia.keyToggleRaw(lastChar);
 
                     //debounce every key on atom
                     lastChar = undefined;
-                    nextKeyMillis = millis + 60;
+                    nextKeyMillis = millis + debounceTime;
                     return;
                 }
 
@@ -817,12 +818,12 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 }
 
                 var ch = keysToSend[0];
-                var debounce = lastChar === ch && lastChar[0] === ch[0] && lastChar[1] === ch[1];
+                var debounce = lastChar === ch;//lastChar !== undefined && ch === undefined && lastChar[0] === ch[0] && lastChar[1] === ch[1];
                 lastChar = ch;
-                var clocksPerMilli = clocksPerSecond / 1000;
+                // var clocksPerMilli = clocksPerSecond / 1000;
                 if (debounce) {
                     lastChar = undefined;
-                    nextKeyMillis = millis + 30;
+                    nextKeyMillis = millis + debounceTime;
                     return;
                 }
 
@@ -831,6 +832,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                     time = lastChar;
                     lastChar = undefined;
                 } else {
+                    console.log(">"+lastChar+"< "+millis);
                     processor.atomppia.keyToggleRaw(lastChar);
                 }
 
@@ -959,10 +961,10 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
 
         function loadMMCImage(SDimage)
         {
-            console.log("Dir mmc at /" + mmcPath+SDimage);
-            return processor.atommc.loadSD(mmcPath + SDimage).then(function (SDresult) {
-                console.log("done mmc at "+SDresult.names );
-
+            console.log("Dir mmc at mmc/" + SDimage);
+            return processor.atommc.loadSD("mmc/" + SDimage).then(function (SDresult) {
+                // console.log("done mmc with "+SDresult.names );
+                console.log("done mmc" );
             });
         }
 
@@ -1298,17 +1300,11 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 }));
                 if (parsedQuery.tape) imageLoads.push(loadTapeImage(parsedQuery.tape));
 
-                if (processor.model.isAtom)
-                   imageLoads.push(loadMMCImage("SDcard.zip"));
+                if (processor.model.isAtom) imageLoads.push(loadMMCImage(SDCard));
 
-                if (parsedQuery.loadBasic) {
-                    var needsRun = needsAutoboot === "run";
-                    needsAutoboot = "";
-                    imageLoads.push(utils.loadData(parsedQuery.loadBasic).then(function (data) {
-                        var prog = String.fromCharCode.apply(null, data);
-                        return tokeniser.create().then(function (t) {
-                            return t.tokenise(prog);
-                        });
+                function insertBasic(getBasicPromise,needsRun){
+                    imageLoads.push(getBasicPromise.then(function (prog) {
+                        return tokeniser.create().then(function (t) { return t.tokenise(prog); });
                     }).then(function (tokenised) {
                         var idleAddr = processor.model.isMaster ? 0xe7e6 : 0xe581;
                         var hook = processor.debugInstruction.add(function (addr) {
@@ -1331,6 +1327,22 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                             }
                         });
                     }));
+                }
+
+                if (parsedQuery.loadBasic) {
+                    var needsRun = needsAutoboot === "run";
+                    needsAutoboot = "";
+                    insertBasic(new Promise(function(resolve,reject){
+                        utils.loadData(parsedQuery.loadBasic).then(function (data) {
+                            resolve(String.fromCharCode.apply(null, data));
+                        });
+                    }),needsRun);
+                }
+
+                if (parsedQuery.embedBasic) {
+                    insertBasic(new Promise(function(resolve,reject){
+                        resolve(parsedQuery.embedBasic);
+                    }),true);
                 }
 
                 return Promise.all(imageLoads);
@@ -1435,8 +1447,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 if (this.cycles) {
                     var thisMHz = this.cycles / this.time / 1000;
                     this.v.text(thisMHz.toFixed(1));
-                    var clocksPerSecond = processor.model.isAtom ? 1 * 1000 * 1000 : 2 * 1000 * 1000;
-                    if (this.cycles >= 10 * clocksPerSecond) {
+                    if (this.cycles >= 10 * cpuSpeed) {
                         this.cycles = this.time = 0;
                     }
                     var colour = "white";

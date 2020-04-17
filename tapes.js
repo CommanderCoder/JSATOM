@@ -1,41 +1,18 @@
 define(['utils'], function (utils) {
     "use strict";
 
-
-
-    function ATMFile(stream)
-    {
-
-        /* file format for Atom MMC2 files
-        Offset		Purpose
-        $00 - $0F	File name - Up-to 12 bytes of name + zero padding
-        $10 - $11	Load address
-        $12 - $13	Exec address
-        $14 - $15	Length
-
-        Firmware sits in E000 on atomulator and assumes firmware version 2.9
-
-
-To get this to work using standard ATOM would require either: simulating TAPE (so put it into blocks) which would be better as
-a TAP to UEF converter
-
-Or to use the ATOM MMC2 ROM and read files from a folder like it is reading from a FAT file system
-
-        */
-
-    }
-
-
-
     function UefTape(stream) {
         var self = this;
 
         var dummyData, state, count, curByte, numDataBits, parity;
         var numParityBits, numStopBits, carrierBefore, carrierAfter;
+
+        var baseFrequency = 1200;
+        var baudMultiplier = 1;
         var shortWave = 0;
         var wavebits=[];
-        const bit1pattern = [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1];
         const bit0pattern = [0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1];
+        const bit1pattern = [0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1];
         // FOR 0:  a 0 needs sending for 2*208us then 1 for 2*208ms - 4 times
         // FOR 1:  a 0 needs sending for 208ms then 1 for 208us - 8 times
 
@@ -58,8 +35,6 @@ Or to use the ATOM MMC2 ROM and read files from a folder like it is reading from
             if (major !== 0x00) throw "Unsupported UEF version " + major + "." + minor;
         };
 
-        self.cpuSpeed = 1 * 1000 * 1000;
-
         self.rewind();
 
         function readChunk() {
@@ -72,8 +47,6 @@ Or to use the ATOM MMC2 ROM and read files from a folder like it is reading from
         }
 
         var curChunk = readChunk();
-        var baseFrequency = 1200;
-        var baudMultiplier = 1;
 
         function secsToClocks(secs) {
             return (self.cpuSpeed * secs) | 0;
@@ -126,19 +99,11 @@ Or to use the ATOM MMC2 ROM and read files from a folder like it is reading from
             return parity;
         }
 
-        self.lastChunkId = 0;
-
         self.poll = function (acia) {
             if (!curChunk) return;
 
-            self.processor = acia.processor;
-
-            var clocksPerSecond = (1 * 1000 * 1000) | 0;
-            var millis = self.processor.cycleSeconds * 1000 + self.processor.currentCycles / (clocksPerSecond / 1000);
-            var t = millis - self.lasttime;
-            self.lasttime = millis;
-
-
+            var isAtom = (acia.processor === undefined) ? false : acia.processor.model.isAtom;
+            self.cpuSpeed = isAtom ? 1 * 1000 * 1000 : 2 * 1000 * 1000;
 
             if (wavebits.length > 0)
             {
@@ -161,10 +126,8 @@ Or to use the ATOM MMC2 ROM and read files from a folder like it is reading from
                 curChunk = readChunk();
             }
 
-
             var gap;
-            self.lastChunkId = curChunk.id;
-            switch (self.lastChunkId) {
+            switch (curChunk.id) {
                 case 0x0000:
                     console.log("Origin: " + curChunk.stream.readNulString());
                     break;
@@ -175,28 +138,23 @@ Or to use the ATOM MMC2 ROM and read files from a folder like it is reading from
                         state = 0;
                         curByte = curChunk.stream.readByte();
                         acia.tone(baseFrequency); // Start bit
-                        // wavebits = Array.from(bit0pattern);
                         // console.log("start "+"0".padStart(8, '0') );
-
                     } else if (state < 9) {
                         if (state === 0) {
                             // Start bit
                             acia.tone(baseFrequency);
-                            wavebits = Array.from(bit0pattern);
                             // console.log("start "+"0".padStart(8, '0') );
-
+                            if (isAtom) wavebits = Array.from(bit0pattern);
                         } else {
                             var bit = (curByte & (1 << (state - 1)));
                             acia.tone(bit ? (2 * baseFrequency) : baseFrequency);
-                            wavebits = Array.from(bit?bit1pattern:bit0pattern);
                             // console.log("data "+bit.toString(2).padStart(8, '0') );
-
+                            if (isAtom) wavebits = Array.from(bit?bit1pattern:bit0pattern);
                         }
                         state++;
                     } else {
                         acia.receive(curByte);
                         acia.tone(2 * baseFrequency); // Stop bit
-                        wavebits = Array.from(bit1pattern);
                         // console.log("stop "+"1".padStart(8, '0') );
                         if (curChunk.stream.eof()) {
                             state = -1;
@@ -204,20 +162,21 @@ Or to use the ATOM MMC2 ROM and read files from a folder like it is reading from
                             state = 0;
                             curByte = curChunk.stream.readByte();
                         }
+                        if (isAtom) wavebits = Array.from(bit1pattern);
                     }
-                    return 0;//cycles(1);
+                    return isAtom?0:cycles(1);
                 case 0x0104: // Defined data
                     acia.setTapeCarrier(false);
                     if (state === -1) {
                         numDataBits = curChunk.stream.readByte();
                         parity = curChunk.stream.readByte();
                         numStopBits = curChunk.stream.readByte() & 0xff;
-                        if (numStopBits & 0x80) // negative
+                        numParityBits = parity !== 0x4E ? 1 : 0; // 'N' value in condition
+                        if (isAtom && numStopBits & 0x80) // negative
                         {
                             numStopBits = Math.abs(numStopBits-256);
                             shortWave = 1;
                         }
-                        numParityBits = parity !== 0x4E ? 1 : 0; // 'N' value in condition
                         console.log("Defined data with " + numDataBits + String.fromCharCode(parity) + (shortWave?'-':'') + numStopBits);
                         state = 0;
                     }
@@ -227,54 +186,40 @@ Or to use the ATOM MMC2 ROM and read files from a folder like it is reading from
                         } else {
                             curByte = curChunk.stream.readByte() & ((1 << numDataBits) - 1);
                             // console.log("Sending 0x"+curByte.toString(16)+" = "+String.fromCharCode(curByte));
-
                             acia.tone(baseFrequency); // Start bit
-                            wavebits = Array.from(bit0pattern);
-                           // FOR 0:  a 0 needs sending for 2*198ms then 1 for 2*198ms - 4 times
-
                             // console.log("start "+"0".padStart(8, '0') );
                             state++;
+                            if (isAtom) wavebits = Array.from(bit0pattern);
                         }
                     } else if (state < (1 + numDataBits)) {
                         var bit = (curByte & (1 << (state - 1)));
                         acia.tone(bit ? (2 * baseFrequency) : baseFrequency);
-                        wavebits = Array.from(bit?bit1pattern:bit0pattern);
-
-                        // FOR 0:  a 0 needs sending for 2*208us then 1 for 2*208ms - 4 times
-                        // FOR 1:  a 0 needs sending for 208ms then 1 for 208us - 8 times
                         // console.log("data "+bit.toString(2).padStart(8, '0') );
-
                         state++;
+                        if (isAtom) wavebits = Array.from(bit?bit1pattern:bit0pattern);
                     } else if (state < (1 + numDataBits + numParityBits)) {
                         var bit = parityOf(curByte);
                         if (parity === 0x4E) bit = !bit;
                         acia.tone(bit ? (2 * baseFrequency) : baseFrequency);
-                        wavebits = Array.from(bit?bit1pattern:bit0pattern);
-
-                        // FOR 0:  a 0 needs sending for 2*208us then 1 for 2*208us - 4 times
-                        // FOR 1:  a 0 needs sending for 208us then 1 for 208us - 8 times
-
                         // console.log("parity "+bit.toString(2).padStart(8, '0') );
-
                         state++;
+                        if (isAtom) wavebits = Array.from(bit?bit1pattern:bit0pattern);
                     } else if (state < (1 + numDataBits + numParityBits + numStopBits)) {
                         acia.tone(2 * baseFrequency); // Stop bits
-                        wavebits = Array.from(bit1pattern);
-                        // FOR 1:  a 0 needs sending for 208us then 1 for 208us - 8 times
                         // console.log("stop "+"1".padStart(8, '0') );
                         state++;
+                        if (isAtom) wavebits = Array.from(bit1pattern);
                     } else if (state < (1 + numDataBits + numParityBits + numStopBits + shortWave)) {
                         acia.tone(2 * baseFrequency); // Extra short wave - one cycle bits
-                        wavebits = Array.from(bit1pattern);
-                        // FOR 1:  a 0 needs sending for 208us then 1 for 208us - 8 times
                         // console.log("short "+"1".padStart(8, '0') );
                         state++;
+                        if (isAtom) wavebits = Array.from(bit1pattern);
                     } else {
                         acia.receive(curByte);
                         state = 0;
                         return 0;
                     }
-                    return 0;//cycles(1);
+                    return isAtom?0:cycles(1);
                 case 0x0111: // Carrier tone with dummy data
                     if (state === -1) {
                         state = 0;
@@ -311,15 +256,15 @@ Or to use the ATOM MMC2 ROM and read files from a folder like it is reading from
                     if (state === -1) {
                         state = 0;
                         count = curChunk.stream.readInt16();
-                        count /= 16;
+                        if (isAtom) count /= 16;
                         console.log("Carrier tone for ", count);
                     }
                     acia.setTapeCarrier(true);
                     acia.tone(2 * baseFrequency);
-                    wavebits = Array.from(bit1pattern);
                     count--;
                     if (count <= 0) state = -1;
-                    return 0;//cycles(1);
+                    if (isAtom) wavebits = Array.from(bit1pattern);
+                    return isAtom?0:cycles(1);
                 case 0x0113:
                     baseFrequency = curChunk.stream.readFloat32();
                     console.log("Frequency change ", baseFrequency);
@@ -328,15 +273,15 @@ Or to use the ATOM MMC2 ROM and read files from a folder like it is reading from
                     acia.setTapeCarrier(false);
                     gap = 1 / (2 * curChunk.stream.readInt16() * baseFrequency);
                     console.log("Tape gap of " + gap + "s");
-                    wavebits = Array.from(bit0pattern);
                     acia.tone(0);
+                    if (isAtom) wavebits = Array.from(bit0pattern);
                     return secsToClocks(gap);
                 case 0x0116:
                     acia.setTapeCarrier(false);
                     gap = curChunk.stream.readFloat32();
                     console.log("Tape gap of " + gap + "s");
-                    wavebits = Array.from(bit0pattern);
                     acia.tone(0);
+                    if (isAtom) wavebits = Array.from(bit0pattern);
                     return secsToClocks(gap);
                 case 0x0117:
                     var baud = curChunk.stream.readInt16();

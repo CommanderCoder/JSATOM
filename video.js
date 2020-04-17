@@ -62,7 +62,6 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
         this.ulaPal = utils.makeFast32(new Uint32Array(16));
         this.actualPal = new Uint8Array(16);
         this.teletext = new Teletext();
-        this.video6847 = new Video6847();
         this.cursorOn = false;
         this.cursorOff = false;
         this.cursorOnThisFrame = false;
@@ -82,7 +81,7 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
         this.reset = function (cpu, via, ppia, hard) {
             this.cpu = cpu;
             this.sysvia = via;
-            this.ppia = ppia;
+            this.video6847.reset(cpu, ppia, hard);
             if (via) via.cb2changecallback = this.cb2changed.bind(this);
         };
 
@@ -108,6 +107,10 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
                 fb32.fill(0);
             }
         };
+
+
+        this.video6847 = new Video6847(this);
+
 
         this.paintAndClear = function() {
             if (this.dispEnabled & FRAMESKIPENABLE) {
@@ -271,28 +274,6 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
             }
         };
 
-        // atom video memory is 0x8000->0x9fff (8k but only bottom 6k used)
-        this.readVideoMemAtom = function () {
-            var memAddr = this.addr & 0x1fff; //6k
-            memAddr |= 0x8000;
-            return this.cpu.videoRead(memAddr);
-
-        };
-
-        this.endOfFrameAtom = function () {
-            var regs13 = 0, regs12 = 0x80;
-            this.vertCounter = 0;
-            this.firstScanline = true;
-            this.nextLineStartAddr = (regs13 | (regs12 << 8)) & 0x1FFF;
-            this.lineStartAddr = this.nextLineStartAddr;
-            this.dispEnableSet(VDISPENABLE);
-            this.lastRenderWasEven = this.isEvenRender;
-            this.isEvenRender = !(this.frameCount & 1);
-            if (!this.inVSync) {
-                this.doEvenFrameLogic = false;
-            }
-        };
-
         this.endOfFrame = function () {
             this.vertCounter = 0;
             this.firstScanline = true;
@@ -308,14 +289,6 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
             }
         };
 
-        this.endofCharacterLineAtom = function () {
-            this.vertCounter = (this.vertCounter + 1) & 0xff;  //0x7f - 127 / 0xff - 255
-
-            this.scanlineCounter = 0;
-            this.hadVSyncThisRow = false;
-            this.dispEnableSet(SCANLINEDISPENABLE);
-        };
-
         this.endOfCharacterLine = function () {
             this.vertCounter = (this.vertCounter + 1) & 0x7f;
 
@@ -325,75 +298,6 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
             this.cursorOn = false;
             this.cursorOff = false;
         };
-
-        this.endofScanlineAtom = function() {
-
-            var regs8 = 0x00; //  0x93
-             var regs9 = this.regs[9]; //scanlines per char
-
-            this.firstScanline = false;
-
-            this.vpulseCounter = (this.vpulseCounter + 1) & 0x0F;
-
-            // Pre-counter increment compares and logic.
-            var r9Hit = (this.scanlineCounter === regs9);  //0x12 - regs[9]
-            if (r9Hit) {
-                // An R9 hit always loads a new character row address, even if
-                // we're in vertical adjust!
-                // Note that an R9 hit inside vertical adjust does not further
-                // increment the vertical counter, but entry into vertical
-                // adjust does.
-                this.lineStartAddr = this.nextLineStartAddr;
-            }
-
-            this.scanlineCounter = (this.scanlineCounter + 1) & 0x1f;
-
-            // Reset scanline if necessary.
-            if (!this.inVertAdjust && r9Hit) {
-                this.endofCharacterLineAtom();
-            }
-
-
-            if (this.endOfMainLatched && !this.endOfVertAdjustLatched) {
-                this.inVertAdjust = true;
-            }
-
-            var endOfFrame = false;
-
-            if (this.endOfFrameLatched) {
-                endOfFrame = true;
-            }
-
-            if (this.endOfVertAdjustLatched) {
-                this.inVertAdjust = false;
-                // The "dummy raster" is inserted at the very end of frame,
-                // after vertical adjust, for even interlace frames.
-                // Testing indicates interlace is checked here, a clock before
-                // it is entered or not.
-                // Like vertical adjust, C4=R4+1.
-                if (!!(regs8 & 1) && this.doEvenFrameLogic) {  //0x93 - regs[8]
-                    this.inDummyRaster = true;
-                    this.endOfFrameLatched = true;
-                } else {
-                    endOfFrame = true;
-                }
-            }
-
-            if (endOfFrame) {
-                this.endOfMainLatched = false;
-                this.endOfVertAdjustLatched = false;
-                this.endOfFrameLatched = false;
-                this.inDummyRaster = false;
-
-                this.endofCharacterLineAtom();
-                this.endOfFrameAtom();
-            }
-
-            this.addr = this.lineStartAddr;
-        };
-
-
-
 
         this.endOfScanline = function () {
             // End of scanline is the most complicated and quirky area of the
@@ -495,37 +399,6 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
             this.teletext.setRA0(!!(externalScanline & 1));
         };
 
-        this.handleHSyncAtom = function () {
-            var regs3 = this.regs[3];
-            this.hpulseWidth = regs3&0xf;
-            this.vpulseWidth = (regs3&0xf0)>>>4;
-
-            this.hpulseCounter = (this.hpulseCounter + 1) & 0x0F;
-            if (this.hpulseCounter === (this.hpulseWidth >>> 1)) { //0x4 - hpulsewidth
-                // Start at -8 because the +8 is added before the pixel render.
-
-                this.bitmapX = -8;
-
-                // Half-clock horizontal movement
-                if (this.hpulseWidth & 1) {  //0x4 - hpulsewidth
-                    this.bitmapX -= 4;
-                }
-
-                // The CRT vertical beam speed is constant, so this is actually
-                // an approximation that works if hsyncs are spaced evenly.
-                this.bitmapY += 2;
-
-                // If no VSync occurs this frame, go back to the top and force a repaint
-                if (this.bitmapY >= 768) {
-                    // Arbitrary moment when TV will give up and start flyback in the absence of an explicit VSync signal
-                    this.paintAndClear();
-                }
-            }
-            else if (this.hpulseCounter === (regs3 & 0x0F)) { //regs[3]  -  0x24  (VERT and HORIZ - 4 bit each)
-                this.inHSync = false;
-            }
-        };
-
         this.handleHSync = function () {
             this.hpulseCounter = (this.hpulseCounter + 1) & 0x0F;
             if (this.hpulseCounter === (this.hpulseWidth >>> 1)) {
@@ -570,7 +443,6 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
             var mask = (HDISPENABLE | VDISPENABLE | USERDISPENABLE);
             var disptmg = ((this.dispEnabled & mask) === mask);
             this.teletext.setDISPTMG(disptmg);
-            this.video6847.setDISPTMG(disptmg);
         };
 
         this.dispEnableSet = function (flag) {
@@ -661,347 +533,11 @@ define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils
     //     &26 &00
     //     &20(32) &22
     //     &01 &07 &67 &08
-
-
-        // ATOM uses 6847 chip
-        this.polltimeAtom = function (clocks) {
-
-            this.dispEnableSet(USERDISPENABLE);
-
-            // var regs0 = 0x40, regs1 = 0x20, regs2 = 0x22; // horizontals
-            // var regs4 = 0x12; // vertical position
-            // var regs5 = 0x03; // offset from top of each scanline
-            // var regs6 = 0x10, regs7 = 0x10;
-            // var regs9 = 0x0b;
-
-            // for text mode 0
-            this.pixelsPerChar = 16;  // 16 for blitChar
-            this.halfClock = false; // true for blitChar
-
-
-            // regs1  //32bpr
-            var regs0 , regs1 , regs2 ; // horizontals
-            this.regs[3] = 0x24;  //2 HEIGHT... 4 WIDTH
-
-            var regs4 , regs5, regs6 , regs7 ;  // verticals
-
-            var regs9 ; // this is the number of LINES per character
-
-            // // in mode 1111 this should be 1
-            var mode = (this.ppia.portapins & 0xf0);
-            if (mode == 0xf0)  // 4
-            {
-                regs9 = 0x0; //1  - scanlines per char    // 9	Maximum Raster Address
-
-                regs0 = 0x3f;            // 0	Horizontal Total
-                regs1 = 0x20; //32bpr   // 1	Horizontal Displayed
-                regs2 = 0x2c;   //<<<<    // 2	Horizontal Sync Position
-// 3	Horizontal and Vertical Sync Widths
-                regs4 = 0xe0;       // 4	Vertical Total
-                regs5 = 0x1f; //<<<<<  // 5	Vertical Total Adjust
-                regs6 = 0xc0; //192 LINES // 6	Vertical Displayed
-                regs7 = 0xc0;  // 7	Vertical Sync position
-
-                // want 256 pixels -
-
-                this.pixelsPerChar = 8;
-                this.halfClock = false;
-
-            } else if (mode == 0xb0) //3
-            {
-                regs0 = 0x3b;
-                regs1 = 0x10; //16bpr
-                // regs2 = 0x31;
-                this.regs[3] = 0x28;  //2 HEIGHT... 8 WIDTH
-
-                this.pixelsPerChar = 8;  // for blitChar
-                this.halfClock = true;
-
-                regs9 = 0x0; //1  - scanlines per char
-
-                regs0 = 0x3f;            // 0	Horizontal Total
-                regs1 = 0x10; //16bpr  // 1	Horizontal Displayed
-                regs2 = 0x33;   //<<<<    // 2	Horizontal Sync Position
-
-                regs4 = 0xe0;       // 4	Vertical Total
-                regs5 = 0x1f; //<<<<<  // 5	Vertical Total Adjust
-                regs6 = 0xc0; //192 LINES // 6	Vertical Displayed
-                regs7 = 0xc0;  // 7	Vertical Sync position
-
-            } else if (mode == 0x70) //2
-            {
-                regs9 = 0x1; //2  - scanlines per char
-
-                regs0 = 0x33;
-                regs1 = 0x10; //16bpr
-                // regs2 = 0x29;
-                this.regs[3] = 0x28;  //2 HEIGHT... 8 WIDTH
-
-
-                this.pixelsPerChar = 8;  // for blitChar
-                this.halfClock = true;
-
-                regs0 = 0x3f;            // 0	Horizontal Total
-                regs1 = 0x10;   //16bpr  // 1	Horizontal Displayed
-                regs2 = 0x33;   //<<<<    // 2	Horizontal Sync Position
-
-                regs4 = 0x70;//<<<<       // 4	Vertical Total
-                regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
-                regs6 = 0x60; // 96 LINES // 6	Vertical Displayed
-                regs7 = 0x60;  // 7	Vertical Sync position
-
-            } else if (mode == 0x30) //1
-            {
-                regs9 = 0x2; //3  - scanlines per char
-                // regs2 = 0x29;
-                this.regs[3] = 0x28;  //2 HEIGHT... 8 WIDTH
-
-
-                this.pixelsPerChar = 8;  // for blitChar
-                this.halfClock = true;
-
-                regs0 = 0x3f;            // 0	Horizontal Total
-                regs1 = 0x10;   //16bpr  // 1	Horizontal Displayed
-                regs2 = 0x33;   //<<<<    // 2	Horizontal Sync Position
-
-                regs4 = 0x4a;//<<<<       // 4	Vertical Total
-                regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
-                regs6 = 0x40; // 64 LINES // 6	Vertical Displayed
-                regs7 = 0x40;  // 7	Vertical Sync position
-            } else if (mode == 0xd0) // 4a
-            {
-                regs9 = 0x0; //1  - scanlines per char
-
-                regs0 = 0x3f;            // 0	Horizontal Total
-                regs1 = 0x20;   //32bpr  // 1	Horizontal Displayed
-                regs2 = 0x2c;   //<<<<    // 2 	Horizontal Sync Position
-
-                regs4 = 0xe0;       // 4	Vertical Total
-                regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
-                regs6 = 0xc0; //192 LINES // 6	Vertical Displayed
-                regs7 = 0xc0;  // 7	Vertical Sync position
-            } else if (mode == 0x90) //3a
-            {
-                regs9 = 0x1; //2  - scanlines per char
-
-                regs0 = 0x3f;            // 0	Horizontal Total
-                regs1 = 0x20; //32bpr   // 1	Horizontal Displayed
-                regs2 = 0x2c;   //<<<<    // 2	Horizontal Sync Position
-
-                regs4 = 0x70;//<<<<       // 4	Vertical Total
-                regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
-                regs6 = 0x60; // 96 LINES // 6	Vertical Displayed
-                regs7 = 0x60;  // 7	Vertical Sync position
-            } else if (mode == 0x50) //2a
-            {
-                regs9 = 0x2; //3  - scanlines per char
-
-                regs0 = 0x3f;            // 0	Horizontal Total
-                regs1 = 0x20; //32bpr   // 1	Horizontal Displayed
-                regs2 = 0x2c;   //<<<<    // 2	Horizontal Sync Position
-
-                regs4 = 0x4a;//<<<<       // 4	Vertical Total
-                regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
-                regs6 = 0x40; // 64 LINES // 6	Vertical Displayed
-                regs7 = 0x40;  // 7	Vertical Sync position
-            } else if (mode == 0x10) //1a
-            {
-                regs9 = 0x2; //3  - scanlines per char
-                regs0 = 0x3f;            // 0	Horizontal Total
-                regs1 = 0x10;   //16bpr  // 1	Horizontal Displayed
-                regs2 = 0x35;   //<<<<    // 2	Horizontal Sync Position
-                this.regs[3] = 0x24;
-                this.pixelsPerChar = 32;  // for blitChar
-                this.halfClock = true;
-
-                regs4 = 0x4a;//<<<<       // 4	Vertical Total
-                regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
-                regs6 = 0x40; // 64 LINES // 6	Vertical Displayed
-                regs7 = 0x40;  // 7	Vertical Sync position
-            } else
-            {
-                // for text mode 0
-
-                regs9 = 0x0b; //13  - scanlines per char
-                regs0 = 0x3f;            // 0	Horizontal Total
-                regs1 = 0x20;   //32bpr  // 1	Horizontal Displayed
-                regs2 = 0x2c;   //<<<<    // 2	Horizontal Sync Position
-
-                this.pixelsPerChar = 16;  // 16 for blitChar
-                this.halfClock = false; //  for blitChar
-
-                regs4 = 0x14;//<<<<       // 4	Vertical Total
-                //regs5 ; // offset from top of each scanline
-                regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
-                regs6 = 0x10; // 64 LINES // 6	Vertical Displayed
-                regs7 = 0x12;  // 7	Vertical Sync position
-
-
-                this.regs[3] = 0x24;  //2 HEIGHT... 4 WIDTH
-
-            }
-
-            mode |= (this.ppia.portcpins & 0x08); // CSS value
-
-            this.regs[9] = regs9;
-
-
-            while (clocks--) {
-                this.oddClock = !this.oddClock;
-                // Advance CRT beam.
-                this.bitmapX += 16;
-
-                if (this.halfClock && !this.oddClock) {
-                    continue;
-                }
-
-
-                // Handle HSync
-                if (this.inHSync)
-                    this.handleHSyncAtom();
-
-                // Handle delayed display enable due to skew
-                var displayEnablePos = this.displayEnableSkew + (this.teletextMode ? 2 : 0);
-                if (this.horizCounter === displayEnablePos) {
-                    this.dispEnableSet(SKEWDISPENABLE);
-                }
-
-                // Latch next line screen address in case we are in the last line of a character row
-                if (this.horizCounter === regs1)  //regs[1]  0x28
-                    this.nextLineStartAddr = this.addr;
-
-                // Handle end of horizontal displayed.
-                // Make sure to account for display enable skew.
-                // Also, the last scanline character never displays.
-                if ((this.horizCounter === regs1 + displayEnablePos) ||  //0x28 - regs[1]
-                    (this.horizCounter === regs0 + displayEnablePos)) {  //0x3f - regs[0]
-                    this.dispEnableClear(HDISPENABLE | SKEWDISPENABLE);
-                }
-
-                // Initiate HSync.
-                if (this.horizCounter === regs2 && !this.inHSync) {  //0x33 - regs[2]
-                    this.inHSync = true;
-                    this.hpulseCounter = 0;
-                }
-
-                var vSyncEnding = false;
-                var vSyncStarting = false;
-                if (this.inVSync &&
-                    this.vpulseCounter === this.vpulseWidth) {  // vpulseWidth
-                    vSyncEnding = true;
-                    this.inVSync = false;
-                }
-                if (this.vertCounter === regs7 &&  //0x1c - regs[7]
-                    !this.inVSync &&
-                    !this.hadVSyncThisRow ) {
-                    vSyncStarting = true;
-                    this.inVSync = true;
-                }
-
-                if (vSyncStarting && !vSyncEnding) {
-                    this.hadVSyncThisRow = true;
-                    this.vpulseCounter = 0;
-                    this.paintAndClear();
-                }
-
-                if (vSyncStarting || vSyncEnding) {
-                    this.ppia.setVBlankInt(this.inVSync);
-                    // this.sysvia.setVBlankInt(this.inVSync);
-                    // this.teletext.setDEW(this.inVSync);
-                    this.video6847.setDEW(this.inVSync);
-
-                }
-
-                // once the whole of the Vertical and Horizontal is complete then do this
-                var insideBorder = (this.dispEnabled & (HDISPENABLE | VDISPENABLE)) === (HDISPENABLE | VDISPENABLE);
-                if (insideBorder)
-                {
-                    // read from video memory - uses this.addr
-                    var dat = this.readVideoMemAtom();
-
-                    //
-                    // Render data depending on display enable state.
-                    if (this.bitmapX >= 0 && this.bitmapX < 1024 && this.bitmapY < 625) {
-                        var doubledLines = false;
-                        var offset = this.bitmapY;
-                        offset = (offset * 1024) + this.bitmapX;
-
-                       if ((this.dispEnabled & EVERYTHINGENABLED) === EVERYTHINGENABLED) {
-                           if ((mode & 0x10 ) == 0) // MODE_AG - bit 4; 0x10 is the AG bit
-                               // TODO: Add in the INTEXT modifiers to mode (if necessary)
-                               this.video6847.blitChar(this.fb32, dat, offset, this.pixelsPerChar, mode);
-                           else
-                               this.video6847.blitPixels(this.fb32, dat, offset, mode);
-                       }
-                    }
-                }
-
-                // CRTC MA always increments, inside display border or not.
-                // maximum 8k on ATOM
-                this.addr = (this.addr + 1) & 0x1fff;
-
-
-                // The Hitachi 6845 decides to end (or never enter) vertical
-                // adjust here, one clock after checking whether to enter
-                // vertical adjust.
-                // In a normal frame, this is C0=2.
-                if (this.checkVertAdjust) {
-                    this.checkVertAdjust = false;
-                    if (this.endOfMainLatched) {
-                        if (this.vertAdjustCounter === regs5) {  /// regs[5] - 0x02
-                            this.endOfVertAdjustLatched = true;
-                        }
-                        this.vertAdjustCounter++;
-                        this.vertAdjustCounter &= 0x1f;
-                    }
-                }
-
-                if (this.horizCounter === 1) {
-                    if (this.vertCounter === regs4 &&  // end of vertical  //0x16 - regs[4]
-                        this.scanlineCounter === regs9) {  // end of last scanline on vertical too  //0x12 - regs[9]
-                        this.endOfMainLatched = true;
-                        this.vertAdjustCounter = 0;
-
-                    }
-                    // The very next cycle (be it on this same scanline or the
-                    // next) is used for checking the vertical adjust counter.
-                    this.checkVertAdjust = true;
-
-                }
-
-
-                //256 pixels across which is 32 bytes - 256 bits
-                if (this.horizCounter === regs0) {  //0x3f - regs[0]
-                    this.endofScanlineAtom();  // update this.addr in here from this.lineStartAddr
-                    this.horizCounter = 0;
-                    this.dispEnableSet(HDISPENABLE);
-                } else {
-                    this.horizCounter = (this.horizCounter + 1) & 0xff;
-                }
-            }
-
-            var r6Hit = (this.vertCounter === regs6);
-            if (r6Hit &&
-                !this.firstScanline &&
-                (this.dispEnabled & VDISPENABLE)) {
-                this.dispEnableClear(VDISPENABLE);
-                // Perhaps surprisingly, this happens here. Both cursor
-                // blink and interlace cease if R6 > R4.
-                this.frameCount++;
-            }
-            var r7Hit = (this.vertCounter === regs7); //0x1c - regs[7]
-            if (r6Hit || r7Hit) {
-                this.doEvenFrameLogic = !!(this.frameCount & 1);
-            }
-        };
-
-
         ////////////////////
         // Main drawing routine
         this.polltime = function (clocks) {
             if (this.isAtom)
-                return this.polltimeAtom(clocks);
-
+                return this.video6847.polltime(clocks);
             while (clocks--) {
                 this.oddClock = !this.oddClock;
                 // Advance CRT beam.
