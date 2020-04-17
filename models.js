@@ -1,12 +1,13 @@
 define(['./fdc'], function (fdc) {
     "use strict";
 
-    function Model(name, synonyms, os, nmos, isMaster, swram, fdc, tube) {
+    function Model(name, synonyms, os, nmos, isMaster, swram, fdc, tube, isAtom) {
         this.name = name;
         this.synonyms = synonyms;
         this.os = os;
         this.nmos = nmos;
         this.isMaster = isMaster;
+        this.isAtom = isAtom;
         this.Fdc = fdc;
         this.swram = swram;
         this.isTest = false;
@@ -34,6 +35,7 @@ define(['./fdc'], function (fdc) {
             true, false, beebSwram, fdc.WD1770),
         new Model("BBC Master 128", ["Master"], ["master/mos3.20"], false, true, masterSwram, fdc.WD1770),
         new Model("BBC Master Turbo", ["MasterTurbo"], ["master/mos3.20"], false, true, masterSwram, fdc.WD1770, tube65c02),
+        new Model("Acorn ATOM", ["ATOM"], ["atom/Atom_Kernel_E.rom", "atom/ATMMC3E.rom", "atom/D.rom", "atom/Atom_Basic.rom"], true, false, beebSwram, fdc.I8271, null, true),
     ];
 
     function findModel(name) {

@@ -1,8 +1,10 @@
 define(['./utils'], function (utils) {
     "use strict";
 
-    function SoundChip(sampleRate) {
-        var cpuFreq = 1 / (2 * 1000 * 1000); // TODO hacky here
+    function SoundChip(sampleRate, cpuSpeed) {
+//ATOM has 1Mhz processor , BBC has 2Mhz processer
+        var cpuFreq = 1 / cpuSpeed;
+
         // 4MHz input signal. Internal divide-by-8
         var soundchipFreq = 4000000.0 / 8;
         // Square wave changes every time a counter hits zero. Thus a full wave
@@ -248,6 +250,66 @@ define(['./utils'], function (utils) {
                 activeTask.ensureScheduled(true, minCyclesWELow);
             }
         };
+
+        //ATOM
+        generators[3] = speakerChannel;
+
+        var speakerBufferSize = 8192;
+        var speakerBuffer = [];
+        for (i = 0; i < speakerBufferSize; ++i) {
+            speakerBuffer[i] = 0.0;
+        }
+
+        var lastSecond = 0;
+        var lastMicroCycle = 0;
+        var speakerTime = 0;
+
+        function speakerChannel(channel, out, offset, length) {
+            // the JS AudioContext has a 2048 byte buffer
+
+            for (var i = 0; i < length; ++i) {
+
+                out[i + offset] += speakerBuffer[speakerTime & (speakerBufferSize - 1)];
+                speakerTime++;
+            }
+            while (speakerTime > speakerBufferSize) speakerTime -= speakerBufferSize;
+        };
+
+        this.updateSpeaker = function(value, microCycle, seconds)
+        {
+            catchUp();
+
+            // value - true for 1, false for 0
+
+            // calculate the number of buffer values to fill
+            var t = seconds - lastSecond;
+            lastSecond = t;
+            var length = microCycle - lastMicroCycle;
+            if (length+t/cpuFreq < 0) console.log("more than one second since last updateSpeaker " + length + ">"+seconds+ ":"+microCycle +"<" );
+            // console.log(" second since last updateSpeaker >"+seconds+ ":"+microCycle +"<" );
+            while (length < 0) length += 1 / cpuFreq;  // add seconds to get it positive
+
+            //convert length to samples at samplerate
+            length *= samplesPerCycle;
+            var sampleTime = lastMicroCycle * samplesPerCycle;
+
+            if (length >= speakerBufferSize) {
+                console.log("speaker buffer too small " + sampleTime + " " + length + "/"+speakerBufferSize);
+               return;
+            }
+
+            // fill the buffer with the last value that was sent
+            var bit = speakerBuffer[sampleTime];
+            for (var i = 0; i < length; ++i) {
+                speakerBuffer[(i + sampleTime) & (speakerBufferSize - 1)] = bit;
+            }
+
+            lastMicroCycle = microCycle;
+            // add the current value
+            sampleTime = lastMicroCycle * samplesPerCycle;
+            speakerBuffer[sampleTime] = value?1.0:0.0;
+        };
+
         this.reset = function (hard) {
             if (!hard) return;
             for (var i = 0; i < 4; ++i) {

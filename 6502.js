@@ -1,5 +1,5 @@
-define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', './adc', './scheduler', './touchscreen'],
-    function (utils, opcodesAll, via, Acia, Serial, Tube, Adc, scheduler, TouchScreen) {
+define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', './adc', './scheduler', './touchscreen', './ppia', './mmc'],
+    function (utils, opcodesAll, via, Acia, Serial, Tube, Adc, scheduler, TouchScreen, ppia, mmc) {
         "use strict";
         var hexword = utils.hexword;
         var signExtend = utils.signExtend;
@@ -439,9 +439,13 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
             this.memStatOffsetByIFetchBank = new Uint32Array(16);  // helps in master map of LYNNE for non-opcode read/writes
             this.memStatOffset = 0;
             this.memStat = new Uint8Array(512);
+            //: 6502 can only address 64K at a time so the rest has to be paged in.
             this.memLook = new Int32Array(512);  // Cannot be unsigned as we use negative offsets
+            // assume 128k + 16 x 16k x 17   : MASTER has 128K RAM and 128K ROM + the 128K ROM SLOTS and an extra slot?
             this.ramRomOs = new Uint8Array(128 * 1024 + 17 * 16 * 16384);
+            // assume 128k
             this.romOffset = 128 * 1024;
+            // assume 16 x 16k
             this.osOffset = this.romOffset + 16 * 16 * 1024;
             this.romsel = 0;
             this.acccon = 0;
@@ -455,7 +459,7 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
             this.resetLine = true;
             this.cpuMultiplier = config.cpuMultiplier;
             this.videoCyclesBatch = config.videoCyclesBatch | 0;
-            this.peripheralCyclesPerSecond = 2 * 1000 * 1000;
+            this.peripheralCyclesPerSecond = this.model.isAtom ? 1 * 1000 * 1000 : 2 * 1000 * 1000;
             this.getPrevPc = function (index) {
                 if (!this.tracing) throw new Error("Tracing not enabled");
                 return this.oldPcArray[(this.oldPcIndex - index) & 0xff];
@@ -537,6 +541,16 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 addr &= 0xffff;
                 var res = this.ramRomOs[addr];
                 if (this._debugRead) this._debugRead(addr, 0, res);
+
+
+                // DEBUGGING TAPE READ ON ACORN ATOM
+        if (addr == 0x00c0 && this.pc == 0xfc1e)
+            // console.log("0x"+this.pc.toString(16)+" >> 0x"+ res.toString(16) +" << at " + this.cycleSeconds + "seconds, " + this.currentCycles + "cycles } ");
+            console.log("  "+ res.toString(16) +" : "+String.fromCharCode(res));
+
+        if (addr == 0x00dc && this.pc == 0xfc29)
+            console.log("0x"+this.pc.toString(16)+" >> 0x"+ res.toString(16) +" << at " + this.cycleSeconds + "seconds, " + this.currentCycles + "cycles } ");
+
                 return res | 0;
             };
             this.writememZpStack = function (addr, b) {
@@ -582,6 +596,32 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
             this.is1MHzAccess = function (addr) {
                 addr &= 0xffff;
                 return (addr >= 0xfc00 && addr < 0xff00 && (addr < 0xfe00 || this.FEslowdown[(addr >>> 5) & 7]));
+            };
+
+
+            this.readDeviceAtom = function (addr) {
+                // only set up a single VIA - reclaiming USERVIA from BBC
+                addr &= 0xffff;
+                switch (addr & ~0x0003) {
+                    case 0xb000:  // mirror 0x3fc
+                    case 0xb004:
+                        return this.atomppia.read(addr); // on atom is 6847
+                    case 0xb008:
+                    case 0xb00c:
+                        return 0x00;  //TODO: PPI
+                    case 0xb400:
+                    case 0xb404:
+                    case 0xb408:
+                    case 0xb40c:
+                        // MMC
+                        return this.atommc.read(addr); // on atom
+                    case 0xb800:  // mirror 0x3f0
+                    case 0xb804:
+                    case 0xb808:
+                    case 0xb80c:
+                        return this.uservia.read(addr);
+                }
+                return addr >>> 8;
             };
 
             this.readDevice = function (addr) {
@@ -699,7 +739,14 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     if (this._debugRead) this._debugRead(addr, res, offset);
                     return res | 0;
                 } else {
-                    res = this.readDevice(addr);
+                    if (model.isAtom) {
+                        res = this.readDeviceAtom(addr);
+                    }
+                    else
+                    {
+                        res = this.readDevice(addr);
+                    }
+
                     if (this._debugRead) this._debugRead(addr, res, 0);
                     return res | 0;
                 }
@@ -710,8 +757,19 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     var offset = this.memLook[this.memStatOffset + (addr >>> 8)];
                     return this.ramRomOs[offset + addr];
                 } else {
-                    return 0xff;// TODO; peekDevice -- this.peekDevice(addr);
+                    if (model.isAtom) {
+                        return this.peekDeviceAtom(addr);
+                    }
+                    else {
+                        return 0xff;// TODO; peekDevice -- this.peekDevice(addr);
+                    }
                 }
+            };
+
+            this.peekDeviceAtom = function (addr) {
+                // TODO: just show the memory - should really do a form of readDevice
+                var offset = this.memLook[this.memStatOffset + (addr >>> 8)];
+                return this.ramRomOs[offset + addr];
             };
 
             this.writemem = function (addr, b) {
@@ -723,9 +781,71 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     this.ramRomOs[offset + addr] = b;
                     return;
                 }
-                if (addr < 0xfc00 || addr >= 0xff00) return;
-                this.writeDevice(addr, b);
+                if (!model.isAtom) {  // NOT ATOM
+                    if (addr < 0xfc00 || addr >= 0xff00) return;
+                    this.writeDevice(addr, b);
+                } else {
+                    if (addr < 0xb000 || addr >= 0xc000) return; // not an ATOM device outside this range
+                    return this.writeDeviceAtom(addr, b);
+                }
             };
+
+            // http://mdfs.net/Docs/Comp/Acorn/Atom/MemoryMap
+            /*
+            B000    PPIA I/O Device
+                  &B000 b7-b4: 6847 video mode
+                  &B000 b3-b0: keyboard matix row, defaults to 0 so &B001 reads
+                          Escape. Setting &B000 to 10 (or anything larger than 9)
+                          "disables" background escape checking.
+
+                  &B001 - keyboard matrix column:
+                       ~b0 : SPC  [   \   ]   ^  LCK <-> ^-v Lft Rgt
+                       ~b1 : Dwn Up  CLR ENT CPY DEL  0   1   2   3
+                       ~b2 :  4   5   6   7   8   9   :   ;   <   =
+                       ~b3 :  >   ?   @   A   B   C   D   E   F   G
+                       ~b4 :  H   I   J   K   L   M   N   O   P   Q
+                       ~b5 :  R   S   T   U   V   W   X   Y   Z  ESC
+                       ~b6 :                                          Ctrl
+                       ~b7 :                                          Shift
+                              9   8   7   6   5   4   3   2   1   0
+
+                  &B002 - various I/O
+                       ~b0 -> CASOUT
+                       ~b1 -> CASOUT
+                       ~b2 -> Speaker
+                       ~b3 -> VDU CSS
+                       ~b4 <- CAS
+                       ~b5 <- CASIN
+                       ~b6 <- REPEAT key
+                       ~b7 <- VSync
+             */
+            this.writeDeviceAtom = function (addr, b) {
+                // only set up a single VIA - reclaiming USERVIA from BBC
+                b |= 0;
+
+                switch (addr & ~0x0003) {
+
+
+                    case 0xb000:
+                    case 0xb004:
+                        return this.atomppia.write(addr, b); // on atom is 6847
+                    case 0xb008:
+                    case 0xb00c:
+                        break; // TODO: PPI
+                    case 0xb400:
+                    case 0xb404:
+                    case 0xb408:
+                    case 0xb40c:
+                        // MMC
+                       return this.atommc.write(addr, b); // on atom
+                    case 0xb800:
+                    case 0xb804:
+                    case 0xb808:
+                    case 0xb80c:
+                        return this.uservia.write(addr, b);
+                }
+            };
+
             this.writeDevice = function (addr, b) {
                 b |= 0;
                 switch (addr & ~0x0003) {
@@ -851,7 +971,7 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     }
 
                     var len = data.length;
-                    if (len !== 16384 && len !== 8192) {
+                    if (len !== 16384 && len !== 8192 && len !== 4096) {
                         throw new Error("Broken rom file");
                     }
                     for (var i = 0; i < len; ++i) {
@@ -869,24 +989,47 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 var capturedThis = this;
                 return utils.loadData(os).then(function (data) {
                     var len = data.length;
-                    if (len < 0x4000 || (len & 0x3fff)) throw new Error("Broken ROM file (length=" + len + ")");
-                    for (i = 0; i < 0x4000; ++i) {
-                        ramRomOs[capturedThis.osOffset + i] = data[i];
-                    }
-                    var numExtraBanks = (len - 0x4000) / 0x4000;
-                    var romIndex = 16 - numExtraBanks;
-                    for (i = 0; i < numExtraBanks; ++i) {
-                        var srcBase = 0x4000 + 0x4000 * i;
-                        var destBase = capturedThis.romOffset + (romIndex + i) * 0x4000;
-                        for (var j = 0; j < 0x4000; ++j) {
-                            ramRomOs[destBase + j] = data[srcBase + j];
+                    if (!model.isAtom) //NOT Atom
+                    {
+                        if (len < 0x4000 || (len & 0x3fff)) throw new Error("Broken ROM file (length=" + len + ")");
+                        for (i = 0; i < 0x4000; ++i) {
+                            ramRomOs[capturedThis.osOffset + i] = data[i];
                         }
-                    }
-                    var awaiting = [];
+                        var numExtraBanks = (len - 0x4000) / 0x4000;
+                        var romIndex = 16 - numExtraBanks;
+                        for (i = 0; i < numExtraBanks; ++i) {
+                            var srcBase = 0x4000 + 0x4000 * i;
+                            var destBase = capturedThis.romOffset + (romIndex + i) * 0x4000;
+                            for (var j = 0; j < 0x4000; ++j) {
+                                ramRomOs[destBase + j] = data[srcBase + j];
+                            }
+                        }
+                        var awaiting = [];
 
-                    for (i = 0; i < extraRoms.length; ++i) {
-                        romIndex--;
-                        awaiting.push(capturedThis.loadRom(extraRoms[i], capturedThis.romOffset + romIndex * 0x4000));
+                        for (i = 0; i < extraRoms.length; ++i) {
+                            romIndex--;
+                            awaiting.push(capturedThis.loadRom(extraRoms[i], capturedThis.romOffset + romIndex * 0x4000));
+                        }
+                    } else {
+                        //Load 4K ATOM OS into 0xc000 + 0x3000 (i.e 0xf000)
+                        if (len < 0x1000 || (len & 0x0fff)) throw new Error("Broken ROM file (length=" + len + ")");
+                        for (i = 0; i < 0x4000; ++i) {
+                            ramRomOs[capturedThis.osOffset + i] = 0x00;
+                        }
+                        for (i = 0; i < 0x1000; ++i) {
+                            ramRomOs[capturedThis.osOffset + i] = data[i];
+                        }
+
+                        var awaiting = [];
+
+                        var romIndex = 3;
+
+                        for (i = 0; i < extraRoms.length; ++i) {
+                            romIndex--;
+                            //0x1000 - 4kb rom
+                            awaiting.push(capturedThis.loadRom(extraRoms[i], capturedThis.romOffset + romIndex * 0x1000));
+                        }
+
                     }
                     return Promise.all(awaiting);
                 });
@@ -908,13 +1051,36 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                         this.memStatOffsetByIFetchBank[0xd] = 256;
                     }
                     if (!model.isTest) {
+
+                        // up 0x7fff : 1 means RAM
                         for (i = 0; i < 128; ++i) this.memStat[i] = this.memStat[256 + i] = 1;
+                        // 0x8000 onwards : 2 means ROM
                         for (i = 128; i < 256; ++i) this.memStat[i] = this.memStat[256 + i] = 2;
+
+                        // MemLook is for shadow memory and rom/os offsets since these are 'paged in' (I think)
                         for (i = 0; i < 128; ++i) this.memLook[i] = this.memLook[256 + i] = 0;
                         for (i = 128; i < 192; ++i) this.memLook[i] = this.memLook[256 + i] = this.romOffset - 0x8000;
                         for (i = 192; i < 256; ++i) this.memLook[i] = this.memLook[256 + i] = this.osOffset - 0xc000;
 
-                        for (i = 0xfc; i < 0xff; ++i) this.memStat[i] = this.memStat[256 + i] = 0;
+                        if (!model.isAtom) //NOT Atom
+                        {
+                            //0xfc00 to 0xfeff
+                            for (i = 0xfc; i < 0xff; ++i) this.memStat[i] = this.memStat[256 + i] = 0;
+                        } else {
+                            // ROMS are different on ATOM - using 0x8000 onwards for video memory
+                            //0x8000 -> 0xbfff
+                            for (i = 128; i < 192; ++i) this.memLook[i] = this.memLook[256 + i] = 0; // just usual address
+                            //0xc000 -> 0xefff
+                            for (i = 192; i < 240; ++i) this.memLook[i] = this.memLook[256 + i] = this.romOffset - 0xc000;
+                            //0xf000 -> 0xffff
+                            for (i = 240; i < 256; ++i) this.memLook[i] = this.memLook[256 + i] = this.osOffset - 0xf000;
+
+
+                            for (i = 0; i < 0xa0; ++i) this.memStat[i] = this.memStat[256 + i] = 1; // up 0x9fff : 1 means RAM
+                            for (i = 0xa0; i < 0xb0; ++i) this.memStat[i] = this.memStat[256 + i] = 2; // 0xA000 onwards : 2 means ROM
+                            for (i = 0xb0; i < 0xc0; ++i) this.memStat[i] = this.memStat[256 + i] = 0;  //0xb000 to 0xbfff  : 0 means DEVICE/PERIPHERAL/IO
+                            for (i = 0xc0; i < 0x100; ++i) this.memStat[i] = this.memStat[256 + i] = 2; // 0xC000 onwards : 2 means ROM
+                        }
                     } else {
                         // Test sets everything as RAM.
                         for (i = 0; i < 256; ++i) {
@@ -939,6 +1105,10 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     this.soundChip.setScheduler(this.scheduler);
                     this.sysvia = via.SysVia(this, this.video, this.soundChip, cmos, model.isMaster, config.keyLayout);
                     this.uservia = via.UserVia(this, model.isMaster, config.userPort);
+                    if (model.isAtom) {
+                        this.atomppia = ppia.AtomPPIA(this, this.video, config.keyLayout, this.scheduler, this.soundChip);
+                        this.atommc = mmc.AtomMMC2(this);
+                    }
                     if (config.printerPort)
                         this.uservia.ca2changecallback = config.printerPort.outputStrobe;
                     this.touchScreen = new TouchScreen(this.scheduler);
@@ -951,6 +1121,9 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     this.adconverter = new Adc(this.sysvia, this.scheduler);
                     this.sysvia.reset(hard);
                     this.uservia.reset(hard);
+                    if (model.isAtom) {
+                        this.atomppia.reset(hard);
+                    }
                 }
                 this.tube.reset(hard);
                 if (hard) {
@@ -963,12 +1136,17 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 this.p.i = true;
                 this.nmi = false;
                 this.halted = false;
-                this.video.reset(this, this.sysvia, hard);
+                if (model.isAtom) {
+                    this.atommc.reset(hard);
+                }
+                this.video.reset(this, this.sysvia, this.atomppia, hard);
                 if (hard) this.soundChip.reset(hard);
             };
 
             this.updateKeyLayout = function () {
                 this.sysvia.setKeyLayout(config.keyLayout);
+                if (model.isAtom)
+                    this.atomppia.setKeyLayoutAtom(config.keyLayout);
             };
 
             this.polltimeAddr = function (cycles, addr) {
@@ -1000,6 +1178,8 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 this.uservia.polltime(cycles);
                 this.scheduler.polltime(cycles);
                 this.tube.execute(cycles);
+                if (model.isAtom)
+                    this.atomppia.polltime(cycles);
             };
 
             // Faster, but more limited version
@@ -1011,6 +1191,9 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 this.uservia.polltime(cycles);
                 this.scheduler.polltime(cycles);
                 this.tube.execute(cycles);
+                if (model.isAtom) {
+                    this.atomppia.polltime(cycles);
+                }
             };
 
             if (this.cpuMultiplier === 1 && this.videoCyclesBatch === 0) {
@@ -1027,9 +1210,10 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 // that from both, to keep the domain low (while accumulating seconds). Take care to preserve the bottom
                 // bit though; as that encodes whether we're on an even or odd bus cycle.
                 var smaller = Math.min(this.targetCycles, this.currentCycles) & 0xfffffffe;
-                if (smaller >= 2 * 1000 * 1000) {
-                    this.targetCycles -= 2 * 1000 * 1000;
-                    this.currentCycles -= 2 * 1000 * 1000;
+                var clocksPerSecond = this.model.isAtom ? 1 * 1000 * 1000 : 2 * 1000 * 1000;
+                if (smaller >= clocksPerSecond) {
+                    this.targetCycles -= clocksPerSecond;
+                    this.currentCycles -= clocksPerSecond;
                     this.cycleSeconds++;
                 }
                 // Any tracing or debugging means we need to run the potentially slower version: the debug read or

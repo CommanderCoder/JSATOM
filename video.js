@@ -1,4 +1,4 @@
-define(['./teletext', './utils'], function (Teletext, utils) {
+define(['./teletext', './6847', './utils'], function (Teletext, Video6847, utils) {
     "use strict";
     const VDISPENABLE = 1 << 0,
         HDISPENABLE = 1 << 1,
@@ -8,12 +8,18 @@ define(['./teletext', './utils'], function (Teletext, utils) {
         FRAMESKIPENABLE = 1 << 5,
         EVERYTHINGENABLED = VDISPENABLE | HDISPENABLE | SKEWDISPENABLE | SCANLINEDISPENABLE | USERDISPENABLE | FRAMESKIPENABLE;
 
-    function Video(isMaster, fb32_param, paint_ext_param) {
-        this.isMaster = isMaster;
+
+    // BBC and MASTER has 6845  - https://wikivisually.com/wiki/Motorola_6845
+    // ATOM has 6847 - https://wikivisually.com/wiki/Motorola_6847
+
+    function Video(model, fb32_param, paint_ext_param) {
+        this.isMaster = model.isMaster;
+        this.isAtom = model.isAtom;
         this.fb32 = utils.makeFast32(fb32_param);
         this.collook = utils.makeFast32(new Uint32Array([
             0xff000000, 0xff0000ff, 0xff00ff00, 0xff00ffff,
             0xffff0000, 0xffff00ff, 0xffffff00, 0xffffffff]));
+        // BBC Screen HIMEM for modes 0,1,2,3,4,5,6,7  are at 0x30, 0x030, 0x30, 0x40, 0x58, 0x58, 0x60, 0x7b
         this.screenAddrAdd = new Uint16Array([0x4000, 0x3000, 0x6000, 0x5800]);
         this.cursorTable = new Uint8Array([0x00, 0x00, 0x00, 0x80, 0x40, 0x20, 0x20]);
         this.cursorFlashMask = new Uint8Array([0x00, 0x00, 0x08, 0x10]);
@@ -72,9 +78,10 @@ define(['./teletext', './utils'], function (Teletext, utils) {
 
         this.paint_ext = paint_ext_param;
 
-        this.reset = function (cpu, via, hard) {
+        this.reset = function (cpu, via, ppia, hard) {
             this.cpu = cpu;
             this.sysvia = via;
+            this.video6847.reset(cpu, ppia, hard);
             if (via) via.cb2changecallback = this.cb2changed.bind(this);
         };
 
@@ -100,6 +107,10 @@ define(['./teletext', './utils'], function (Teletext, utils) {
                 fb32.fill(0);
             }
         };
+
+
+        this.video6847 = new Video6847(this);
+
 
         this.paintAndClear = function() {
             if (this.dispEnabled & FRAMESKIPENABLE) {
@@ -408,6 +419,7 @@ define(['./teletext', './utils'], function (Teletext, utils) {
                     // Arbitrary moment when TV will give up and start flyback in the absence of an explicit VSync signal
                     this.paintAndClear();
                 }
+                // regs[3]: Horizontal and Vertical Sync Widths
             } else if (this.hpulseCounter === (this.regs[3] & 0x0F)) {
                 this.inHSync = false;
             }
@@ -443,9 +455,89 @@ define(['./teletext', './utils'], function (Teletext, utils) {
             this.dispEnableChanged();
         };
 
+        // BBC MICRO
+        // 6845 REGS
+        // Register Index	Register Name
+        // 0	Horizontal Total
+        // 1	Horizontal Displayed
+        // 2	Horizontal Sync Position
+        // 3	Horizontal and Vertical Sync Widths
+        // 4	Vertical Total
+        // 5	Vertical Total Adjust
+        // 6	Vertical Displayed
+        // 7	Vertical Sync position
+        // 8	Interlace and Skew
+        // 9	Maximum Raster Address
+        // 10	Cursor Start Raster
+        // 11	Cursor End Raster
+        // 12	Display Start Address (High)
+        // 13	Display Start Address (Low)
+        // 14	Cursor Address (High)
+        // 15	Cursor Address (High)
+        // 16	Light Pen Address (High)
+        // 17	Light Pen Address (High)
+        //
+
+
+
+        // TELETEXT
+        // this.regs[0] = 0x3f;
+        // this.regs[1] = 0x28;
+        // this.regs[2] = 0x33; // horizontals
+        // this.regs[3] = 0x24; //
+        // this.regs[4] = 0x1e; // vertical position
+        // this.regs[5] = 0x02; // offset from top of each scanline
+        // this.regs[6] = 0x19;
+        // this.regs[7] = 0x1c;
+        // this.regs[8] = 0x93;
+        // this.regs[9] = 0x12;
+        // this.regs[10] = 0x72;
+        // this.regs[11] = 0x13;
+        // this.regs[12] = 0x80;
+        // this.regs[13] = 0x00;
+        // this.regs[14] = 0x29;
+        // this.regs[15] = 0x19;
+        // this.hpulseWidth = this.regs[3]&0xf;
+        // this.vpulseWidth = (this.regs[3]&0xf0)>>>4;
+        // this.teletextMode = true;
+
+        //MODE5
+        // this.regs[0] = 0x3f;
+        // this.regs[1] = 0x28;
+        // this.regs[2] = 0x31; // horizontals
+        // this.regs[3] = 0x24; //
+        // this.regs[4] = 0x26;  // vertical position
+        // this.regs[5] = 0x00; // offset from top of each scanline
+        // this.regs[6] = 0x20;
+        // this.regs[7] = 0x23;
+        // this.regs[8] = 0x01;
+        // this.regs[9] = 0x07;
+        // this.regs[10] = 0x67;
+        // this.regs[11] = 0x08;
+        // this.regs[12] = 0x0b;
+        // this.regs[13] = 0x00;
+        // this.regs[14] = 0x0b;
+        // this.regs[15] = 0x02;
+
+
+
+
+        //MODE4 -1bpp 320x256 40x32
+//    &3F &28(40) &31 &24  i.e. 40/1bpp = 40    320/8 = 40
+//    &26 &00
+//        &20(32) &22
+//        &01 &07 &67 &08
+
+        //MODE1 -2bpp 320x256 40x32
+    // &7F &50(80) &62 &28   i.e. 80/2bpp = 40  - 320/8 = 40
+    //     &26 &00
+    //     &20(32) &22
+    //     &01 &07 &67 &08
         ////////////////////
         // Main drawing routine
         this.polltime = function (clocks) {
+            if (this.isAtom)
+                return this.video6847.polltime(clocks);
             while (clocks--) {
                 this.oddClock = !this.oddClock;
                 // Advance CRT beam.

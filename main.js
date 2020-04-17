@@ -21,6 +21,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
 
         var availableImages;
         var discImage;
+        var SDCard = "SDcard.zip";  // in the MMC directory
         var extraRoms = [];
         if (typeof starCat === 'function') {
             availableImages = starCat();
@@ -36,6 +37,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         var keyLayout = window.localStorage.keyLayout || "physical";
 
         var BBC = utils.BBC;
+        var ATOM = utils.ATOM;
         var keyCodes = utils.keyCodes;
         var emuKeyHandlers = {};
         var cpuMultiplier = 1;
@@ -178,7 +180,8 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             cpuMultiplier = parseFloat(parsedQuery.cpuMultiplier);
             console.log("CPU multiplier set to " + cpuMultiplier);
         }
-        var clocksPerSecond = (cpuMultiplier * 2 * 1000 * 1000) | 0;
+        var cpuSpeed = model.isAtom ? 1 * 1000 * 1000 : 2 * 1000 * 1000;
+        var clocksPerSecond = (cpuMultiplier * cpuSpeed) | 0;
         var MaxCyclesPerFrame = clocksPerSecond / 10;
 
         var tryGl = true;
@@ -187,7 +190,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         }
         var $screen = $('#screen');
         var canvas = tryGl ? canvasLib.bestCanvas($screen[0]) : new canvasLib.Canvas($screen[0]);
-        video = new Video.Video(model.isMaster, canvas.fb32, function paint(minx, miny, maxx, maxy) {
+        video = new Video.Video(model, canvas.fb32, function paint(minx, miny, maxx, maxy) {
             frames++;
             if (frames < frameSkip) return;
             frames = 0;
@@ -218,7 +221,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             audioContext.onstatechange = function () {
                 if (audioContext.state === "running") $audioWarningNode.fadeOut();
             };
-            soundChip = new SoundChip.SoundChip(audioContext.sampleRate);
+            soundChip = new SoundChip.SoundChip(audioContext.sampleRate, cpuSpeed);
             // NB must be assigned to some kind of object else it seems to get GC'd by
             // Safari...
             soundChip.jsAudioNode = audioContext.createScriptProcessor(2048, 0, 1);
@@ -403,7 +406,14 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 evt.preventDefault();
                 checkPrinterWindow();
             } else {
-                processor.sysvia.keyDown(keyCode(evt), evt.shiftKey);
+                if (!model.isAtom)
+                {
+                    processor.sysvia.keyDown(keyCode(evt), evt.shiftKey);
+                }
+                else
+                {
+                    processor.atomppia.keyDown(keyCode(evt), evt.shiftKey);
+                }
                 evt.preventDefault();
             }
         }
@@ -413,7 +423,16 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             // Always let the key ups come through. That way we don't cause sticky keys in the debugger.
             var code = keyCode(evt);
             if (processor && processor.sysvia)
-                processor.sysvia.keyUp(code);
+            {
+                if (!model.isAtom)
+                {
+                    processor.sysvia.keyUp(code);
+                }
+                else
+                {
+                    processor.atomppia.keyUp(code);
+                }
+            }
             if (!running) return;
             if (evt.altKey) {
                 var handler = emuKeyHandlers[code];
@@ -442,7 +461,14 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         var $pastetext = $('#paste-text');
         $pastetext.on('paste', function (event) {
             var text = event.originalEvent.clipboardData.getData('text/plain');
-            sendRawKeyboardToBBC(utils.stringToBBCKeys(text), true);
+            if (processor.model.isAtom)
+            {
+                sendRawKeyboardToATOM(utils.stringToATOMKeys(text), true);
+            }
+            else
+            {
+                sendRawKeyboardToBBC(utils.stringToBBCKeys(text), true);
+            }
         });
         $pastetext.on('dragover', function (event) {
             event.preventDefault();
@@ -751,6 +777,72 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             });
         }
 
+        function sendRawKeyboardToATOM(keysToSend, checkCapsAndShiftLocks) {
+            var lastChar;
+            var nextKeyMillis = 0;
+            processor.atomppia.disableKeyboard();
+
+            // ATOM: not sure what to do about the LOCK key
+            // // assumes lock is ON so toggle it on (then off) before starting the send..
+            // if (checkCapsAndShiftLocks) {
+            //     var toggleKey = null;
+            //     if (!processor.sysvia.capsLockLight) toggleKey = utils.ATOM.LOCK;
+            //     if (toggleKey) {
+            //         keysToSend.unshift(toggleKey);
+            //         keysToSend.push(toggleKey);
+            //     }
+            // }
+
+            var sendCharHook = processor.debugInstruction.add(function nextCharHookAtom() {
+                var debounceTime = 200;
+                var millis = processor.cycleSeconds * 1000 + processor.currentCycles / (clocksPerSecond / 1000);
+                if (millis < nextKeyMillis) {
+                    return;
+                }
+
+                if (lastChar && lastChar !== utils.ATOM.SHIFT) {
+                    console.log("<"+lastChar+"> "+millis);
+                    processor.atomppia.keyToggleRaw(lastChar);
+
+                    //debounce every key on atom
+                    lastChar = undefined;
+                    nextKeyMillis = millis + debounceTime;
+                    return;
+                }
+
+                if (keysToSend.length === 0) {
+                    // Finished
+                    processor.atomppia.enableKeyboard();
+                    sendCharHook.remove();
+                    return;
+                }
+
+                var ch = keysToSend[0];
+                var debounce = lastChar === ch;//lastChar !== undefined && ch === undefined && lastChar[0] === ch[0] && lastChar[1] === ch[1];
+                lastChar = ch;
+                // var clocksPerMilli = clocksPerSecond / 1000;
+                if (debounce) {
+                    lastChar = undefined;
+                    nextKeyMillis = millis + debounceTime;
+                    return;
+                }
+
+                var time = 50;
+                if (typeof lastChar === "number") {
+                    time = lastChar;
+                    lastChar = undefined;
+                } else {
+                    console.log(">"+lastChar+"< "+millis);
+                    processor.atomppia.keyToggleRaw(lastChar);
+                }
+
+                // remove first character
+                keysToSend.shift();
+
+                nextKeyMillis = millis + time;
+            });
+        }
+
         function autoboot(image) {
             var BBC = utils.BBC;
 
@@ -867,6 +959,15 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             });
         }
 
+        function loadMMCImage(SDimage)
+        {
+            console.log("Dir mmc at mmc/" + SDimage);
+            return processor.atommc.loadSD("mmc/" + SDimage).then(function (SDresult) {
+                // console.log("done mmc with "+SDresult.names );
+                console.log("done mmc" );
+            });
+        }
+
         function loadTapeImage(tapeImage) {
             var split = splitImage(tapeImage);
             tapeImage = split.image;
@@ -895,7 +996,14 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             }
 
             return tapes.loadTape("tapes/" + tapeImage).then(function (tape) {
-                processor.acia.setTape(tape);
+                if (processor.model.isAtom)
+                {
+                    processor.atomppia.setTape(tape);
+                }
+                else
+                {
+                    processor.acia.setTape(tape);
+                }
             });
         }
 
@@ -910,7 +1018,14 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             var reader = new FileReader();
             utils.noteEvent('local', 'clickTape'); // NB no filename here
             reader.onload = function (e) {
-                processor.acia.setTape(tapes.loadTapeFromData("local file", e.target.result));
+                if (processor.model.isAtom)
+                {
+                    processor.atomppia.setTape(tapes.loadTapeFromData("local file", e.target.result));
+                }
+                else
+                {
+                    processor.acia.setTape(tapes.loadTapeFromData("local file", e.target.result));
+                }
                 delete parsedQuery.tape;
                 updateUrl();
                 $('#tapes').modal("hide");
@@ -955,7 +1070,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         }
 
         var gdAuthed = false;
-        var googleDrive = new GoogleDriveLoader();
+        var googleDrive = null;//new GoogleDriveLoader();
 
         function gdAuth(imm) {
             return googleDrive.authorize(imm)
@@ -1020,12 +1135,12 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         }
 
         $('.if-drive-available').hide();
-        googleDrive.initialise().then(function (available) {
-            if (available) {
-                $('.if-drive-available').show();
-                gdAuth(true);
-            }
-        });
+        // googleDrive.initialise().then(function (available) {
+        //     if (available) {
+        //         $('.if-drive-available').show();
+        //         gdAuth(true);
+        //     }
+        // });
         var gdModal = $('#google-drive');
         $('#open-drive-link').on('click', function () {
             if (gdAuthed) {
@@ -1104,9 +1219,10 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         });
 
         function guessModelFromUrl() {
+            if (window.location.hostname.indexOf("atom") === 0) return "ATOM";
             if (window.location.hostname.indexOf("bbc") === 0) return "B";
             if (window.location.hostname.indexOf("master") === 0) return "Master";
-            return "B";
+            return "ATOM";
         }
 
         $('#tape-menu a').on("click", function (e) {
@@ -1122,6 +1238,32 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 console.log("unknown type", type);
             }
         });
+
+        if (processor.model.isAtom) {
+            $('#cas-controls button').on("click", function (e) {
+                var type = $(e.target).attr("data-id");
+                if (type === undefined) return;
+
+                if (type === "rewind-button") {
+                    console.log("Rewinding tape to the start");
+
+                    processor.atomppia.rewindTape();
+
+                } else if (type === "stop-button") {
+                    console.log("Stopping tape");
+
+                    processor.atomppia.stopTape();
+
+                } else if (type === "play-button") {
+                    console.log("Playing tape");
+
+                    processor.atomppia.playTape();
+
+                } else {
+                    console.log("unknown type", type);
+                }
+            });
+        }
 
         function Light(name) {
             var dom = $("#" + name);
@@ -1157,6 +1299,8 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                     processor.fdc.loadDisc(1, disc);
                 }));
                 if (parsedQuery.tape) imageLoads.push(loadTapeImage(parsedQuery.tape));
+
+                if (processor.model.isAtom) imageLoads.push(loadMMCImage(SDCard));
 
                 function insertBasic(getBasicPromise,needsRun){
                     imageLoads.push(getBasicPromise.then(function (prog) {
@@ -1303,7 +1447,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 if (this.cycles) {
                     var thisMHz = this.cycles / this.time / 1000;
                     this.v.text(thisMHz.toFixed(1));
-                    if (this.cycles >= 10 * 2 * 1000 * 1000) {
+                    if (this.cycles >= 10 * cpuSpeed) {
                         this.cycles = this.time = 0;
                     }
                     var colour = "white";

@@ -4,9 +4,9 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="author" content="Matt Godbolt">
-    <meta name="description" content="A Javascript BBC Micro emulator">
-    <title>JSBeeb - Javascript BBC Micro emulator</title>
+    <meta name="author" content="Andrew Hague">
+    <meta name="description" content="A Javascript Acorn Atom emulator (based on JSBEEB)">
+    <title>JSBeeb - Javascript Acorn Atom emulator (based on JSBEEB)</title>
     <link rel="stylesheet" href="lib/bootstrap.min.css" type="text/css">
     <link rel="stylesheet" href="jsbeeb.css" type="text/css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -16,23 +16,23 @@
             require(['main']);
         });
     </script>
-    <script>
-        (function (i, s, o, g, r, a, m) {
-            i['GoogleAnalyticsObject'] = r;
-            i[r] = i[r] || function () {
-                (i[r].q = i[r].q || []).push(arguments)
-            }, i[r].l = 1 * new Date();
-            a = s.createElement(o),
-                m = s.getElementsByTagName(o)[0];
-            a.async = 1;
-            a.src = g;
-            m.parentNode.insertBefore(a, m)
-        })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
-
-        ga('create', 'UA-55180-8', 'godbolt.org');
-        ga('send', 'pageview');
-
-    </script>
+<!--    <script>-->
+<!--        (function (i, s, o, g, r, a, m) {-->
+<!--            i['GoogleAnalyticsObject'] = r;-->
+<!--            i[r] = i[r] || function () {-->
+<!--                (i[r].q = i[r].q || []).push(arguments)-->
+<!--            }, i[r].l = 1 * new Date();-->
+<!--            a = s.createElement(o),-->
+<!--                m = s.getElementsByTagName(o)[0];-->
+<!--            a.async = 1;-->
+<!--            a.src = g;-->
+<!--            m.parentNode.insertBefore(a, m)-->
+<!--        })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');-->
+<!-- -->
+<!--        ga('create', 'UA-55180-8', 'godbolt.org');-->
+<!--        ga('send', 'pageview');-->
+<!-- -->
+<!--    </script>-->
 </head>
 
 <body>
@@ -54,22 +54,22 @@
                     <a href="#configuration" data-toggle="modal" data-target="#configuration">
                         Config (<span class="bbc-model">BBC B</span>)</a>
                 </li>
-                <li class="dropdown embed-hide">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Discs<b class="caret"></b></a>
-                    <ul class="dropdown-menu">
-                        <li><a href="#sth" class="sth" data-id="discs" data-toggle="modal" data-target="#sth">From STH
-                            archive</a></li>
-                        <li><a href="#discs" data-toggle="modal" data-target="#discs">From examples or local</a></li>
-                        <li class="if-drive-available">
-                            <a href="#google-drive" id="open-drive-link">From Google Drive</a>
-                        </li>
-                    </ul>
-                </li>
+<!--                <li class="dropdown embed-hide">-->
+<!--                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Discs<b class="caret"></b></a>-->
+<!--                    <ul class="dropdown-menu">-->
+<!--                        <li><a href="#sth" class="sth" data-id="discs" data-toggle="modal" data-target="#sth">From STH-->
+<!--                            archive</a></li>-->
+<!--                        <li><a href="#discs" data-toggle="modal" data-target="#discs">From examples or local</a></li>-->
+<!--                        <li class="if-drive-available">-->
+<!--                            <a href="#google-drive" id="open-drive-link">From Google Drive</a>-->
+<!--                        </li>-->
+<!--                    </ul>-->
+<!--                </li>-->
                 <li class="dropdown embed-hide">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">Cassettes<b class="caret"></b></a>
                     <ul class="dropdown-menu" id="tape-menu">
-                        <li><a href="#sth" class="sth" data-toggle="modal" data-id="tapes" data-target="#sth">From STH
-                            archive</a></li>
+<!--                        <li><a href="#sth" class="sth" data-toggle="modal" data-id="tapes" data-target="#sth">From STH-->
+<!--                            archive</a></li>-->
                         <li><a data-id="rewind">Rewind cassette</a></li>
                         <li><a href="#discs" data-toggle="modal" data-target="#tapes">From local file</a>
                         </li>
@@ -87,10 +87,10 @@
                     <ul class="dropdown-menu">
                         <li><a href="#" id="fs">Fullscreen</a></li>
                         <li><a href="#help" data-toggle="modal" data-target="#help">Help</a></li>
-                        <li><a href="mailto:matt@godbolt.org">Contact the Author</a></li>
-                        <li><a href="http://xania.org/MattGodbolt" rel="author" target="_blank">
+                        <li><a href="mailto:andrew@everytale.com">Contact the Author</a></li>
+                        <li><a href="https://about.me/andrewhague" rel="author" target="_blank">
                             About the Author</a></li>
-                        <li><a href="#about" data-toggle="modal" data-target="#info" id="about">About jsbeeb</a></li>
+                        <li><a href="#about" data-toggle="modal" data-target="#info" id="about">About jsatom</a></li>
                     </ul>
                 </li>
             </ul>
@@ -116,37 +116,65 @@ Your browser has suspended audio -- mouse click or key press for sound.
             <div class="sidebar bottom"><img></div>
         </div>
     </div>
-    <div id="leds">
+<!--    <div id="leds">-->
+<!--        <table>-->
+<!--            <thead>-->
+<!--            <tr>-->
+<!--                <th>cassette<br>motor</th>-->
+<!--                <th>caps<br>lock</th>-->
+<!--                <th>shift<br>lock</th>-->
+<!--                <th>drive<br>0/2</th>-->
+<!--                <th>drive<br>1/3</th>-->
+<!--                <th id="virtual-mhz-header">virtual<br>MHz</th>-->
+<!--            </tr>-->
+<!--            </thead>-->
+<!--            <tbody>-->
+<!--            <tr>-->
+<!--                <td>-->
+<!--                    <div class="red led" id="motorlight"></div>-->
+<!--                </td>-->
+<!--                <td>-->
+<!--                    <div class="red led" id="capslight"></div>-->
+<!--                </td>-->
+<!--                <td>-->
+<!--                    <div class="red led" id="shiftlight"></div>-->
+<!--                </td>-->
+<!--                <td>-->
+<!--                    <div class="yellow led" id="drive0"></div>-->
+<!--                </td>-->
+<!--                <td>-->
+<!--                    <div class="yellow led" id="drive1"></div>-->
+<!--                </td>-->
+<!--                <td>-->
+<!--                    <div class="virtualMHz"></div>-->
+<!--                </td>-->
+<!--            </tr>-->
+<!--            </tbody>-->
+<!--        </table>-->
+<!--    </div>-->
+    <div id="cas-controls">
         <table>
             <thead>
             <tr>
-                <th>cassette<br>motor</th>
-                <th>caps<br>lock</th>
-                <th>shift<br>lock</th>
-                <th>drive<br>0/2</th>
-                <th>drive<br>1/3</th>
-                <th id="virtual-mhz-header">virtual<br>MHz</th>
+                <th>STOP</th>
+                <th>PLAY</th>
+                <th>REWIND</th>
+                <th id="cas-counter-header">Counter</th>
             </tr>
             </thead>
             <tbody>
             <tr>
                 <td>
-                    <div class="red led" id="motorlight"></div>
+                    <button class="cas button" data-id="stop-button"></button>
                 </td>
                 <td>
-                    <div class="red led" id="capslight"></div>
+                    <button class="cas button" data-id="play-button"></button>
                 </td>
                 <td>
-                    <div class="red led" id="shiftlight"></div>
+                    <button class="cas button" data-id="rewind-button"></button>
                 </td>
                 <td>
-                    <div class="yellow led" id="drive0"></div>
-                </td>
-                <td>
-                    <div class="yellow led" id="drive1"></div>
-                </td>
-                <td>
-                    <div class="virtualMHz"></div>
+                    <div class="cas counter" id="counter_id"></div>
                 </td>
             </tr>
             </tbody>
@@ -249,22 +277,21 @@ Your browser has suspended audio -- mouse click or key press for sound.
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title">About jsbeeb</h4>
+                <h4 class="modal-title">About jsatom</h4>
             </div>
             <div class="modal-body">
-                <div>By <a href="http://xania.org/">Matt Godbolt</a>. Based on Sarah Walker's <a
-                        href="http://b-em.bbcmicro.com/">b-em</a> emulator. Huge thanks to her for open sourcing her
-                    code. Big thanks too to Richard Talbot-Watkins for his help and support. The disc loaded up by
-                    default is the amazing Elite (thanks to
-                    <a href="http://www.iancgbell.clara.net/elite/bbc/">Ian Bell</a> for making it available).
+                <div>By <a href="https://about.me/andrewhague">Andrew Hague</a> based on JSBEEB by <a href="http://xania.org/">Matt Godbolt</a>. Based on Sarah Walker's <a
+                        href="http://b-em.bbcmicro.com/">b-em</a> emulator. Huge thanks to Matt and Sarah for open sourcing their
+                    code. A great deal of the resources used, and the mmc loaded up by
+                    default is by David Banks (<a href="https://github.com/hoglet67">hoglet</a>)).
                 </div>
-                <div>Source is on <a href="https://github.com/mattgodbolt/jsbeeb">GitHub</a>. Works best in Chrome
+                <div>Source is on <a href="https://github.com/commandercoder/jsatom">GitHub</a>. Works best in Chrome
                     or Firefox.
                 </div>
                 <div>Cycle-accurate emulation greatly helped by the fantastic <a href="http://www.visual6502.org/">Visual
                     6502</a> Project. Consider donating to them if you enjoy this stuff as much as I do!
                 </div>
-                <div>If you're looking for more information on the BBC or to find like-minded people to chat about
+                <div>If you're looking for more information on the Acorn Atom, BBC or to find like-minded people to chat about
                     the hardware or software, check out the <a href="http://www.stardot.org.uk/forums/">StarDot
                         forums</a>.
                 </div>
@@ -288,26 +315,22 @@ Your browser has suspended audio -- mouse click or key press for sound.
                 <h4 class="modal-title">Help</h4>
             </div>
             <div class="modal-body">
-                <div>This is an emulator for the <a href="http://en.wikipedia.org/wiki/Bbc_micro">BBC Micro</a>
-                    Model B, a popular home computer in the UK in the 1980s.
+                <div>This is an emulator for the <a href="https://en.wikipedia.org/wiki/Acorn_Atom">Acorn Atom</a>, a popular home computer in the UK in the 1980s.
                 </div>
-                <div>The default disc image is Elite - a pioneering 3D space trading game. To boot discs on the BBC,
-                    one would press <span class="key">SHIFT</span> and <span class="key">BREAK</span>. The keyboard
-                    of the BBC is slightly different from a modern PC, notably in the placement of the symbol
-                    characters. Also, the current keyboard layout is optimized for a US keyboard; I am working on
+                <div>This emulator also includes the ATOMMC2 eprom and it loads a default SDCard image containing a lot of the software that was made for
+                    the Acorn Atom: both commercially and written into books. To boot the atom without booting the SDCard,
+                    one can press <span class="key">SHIFT</span> and <span class="key">BREAK</span>. To boot without ATOMMC2, one can press
+                    <span class="key">CTRL</span> and <span class="key">BREAK</span>. The keyboard
+                    of the Acorn Atom is slightly different from a modern PC, notably in the placement of the symbol
+                    characters. Also, the current keyboard layout is optimized for a US keyboard; we are working on
                     improving this situation.
                 </div>
                 <h5>Handy key mappings</h5>
                 <table class="keymap">
                     <tr>
-                        <th>BBC</th>
+                        <th>Atom</th>
                         <th>PC</th>
                         <th>OSX</th>
-                    </tr>
-                    <tr>
-                        <td><span class="function key">F0</span></td>
-                        <td><span class="key">F10</span></td>
-                        <td><span class="key">F10</span></td>
                     </tr>
                     <tr>
                         <td><span class="key">BREAK</span></td>
@@ -316,20 +339,22 @@ Your browser has suspended audio -- mouse click or key press for sound.
                     </tr>
                     <tr>
                         <td><span class="key">COPY</span></td>
-                        <td><span class="key">End</span></td>
-                        <td><span class="key">Right &#8984;</span> + <span class="key">F11</span></td>
+                        <td><span class="key">TAB</span></td>
+                        <td><span class="key">TAB</span></td>
                     </tr>
                     <tr>
                         <td>
                             <div class="dbl key">*<br>:</div>
                         </td>
-                        <td>TODO</td>
-                        <td>TODO</td>
+                        <td>                            <div class="dbl key">+<br>=</div>
+                        </td>
+                        <td>                            <div class="dbl key">+<br>=</div>
+                        </td>
                     </tr>
                     <tr>
                         <td>Debug</td>
                         <td><span class="key">Ctrl-Home</span></td>
-                        <td>TODO</td>
+                        <td><span class="key">Alt-S</span></td>
                     </tr>
                 </table>
             </div>
@@ -343,35 +368,35 @@ Your browser has suspended audio -- mouse click or key press for sound.
 </div>
 <!-- /.modal -->
 
-<div class="modal fade" id="discs">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title">Load disc image</h4>
-            </div>
-            <div class="modal-body">
-                <ul id="disc-list">
-                    <li class="template"><a href="#"><span class="name"></span></a> - <span
-                            class="description"></span></li>
-                </ul>
-                To load a custom disc image, get an SSD or DSD file and load it below. Search the web, or check
-                somewhere
-                like <a href="http://www.bbcmicrogames.com/GettingStarted.html">here</a> for these. Be aware the
-                images are usually stored in a ZIP file, and you'll need to unzip first.
-                <div class="disc">
-                    <label>Load local SSD or DSD file: <input type="file" id="disc_load"
-                                                              accept=".ssd,.dsd,application/binary"></label>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-            </div>
-        </div>
-        <!-- /.modal-content -->
-    </div>
-    <!-- /.modal-dialog -->
-</div>
+<!--<div class="modal fade" id="discs">-->
+<!--    <div class="modal-dialog">-->
+<!--        <div class="modal-content">-->
+<!--            <div class="modal-header">-->
+<!--                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>-->
+<!--                <h4 class="modal-title">Load disc image</h4>-->
+<!--            </div>-->
+<!--            <div class="modal-body">-->
+<!--                <ul id="disc-list">-->
+<!--                    <li class="template"><a href="#"><span class="name"></span></a> - <span-->
+<!--                            class="description"></span></li>-->
+<!--                </ul>-->
+<!--                To load a custom disc image, get an SSD or DSD file and load it below. Search the web, or check-->
+<!--                somewhere-->
+<!--                like <a href="http://www.bbcmicrogames.com/GettingStarted.html">here</a> for these. Be aware the-->
+<!--                images are usually stored in a ZIP file, and you'll need to unzip first.-->
+<!--                <div class="disc">-->
+<!--                    <label>Load local SSD or DSD file: <input type="file" id="disc_load"-->
+<!--                                                              accept=".ssd,.dsd,application/binary"></label>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--            <div class="modal-footer">-->
+<!--                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--        &lt;!&ndash; /.modal-content &ndash;&gt;-->
+<!--    </div>-->
+<!--    &lt;!&ndash; /.modal-dialog &ndash;&gt;-->
+<!--</div>-->
 <!-- /.modal -->
 
 <div class="modal fade" id="tapes">
@@ -398,38 +423,38 @@ Your browser has suspended audio -- mouse click or key press for sound.
 </div>
 <!-- /.modal -->
 
-<div class="modal fade" id="google-drive">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title">Load or create disc from your <a href="https://drive.google.com/">Google
-                    Drive</a>
-                    account</h4>
+<!--<div class="modal fade" id="google-drive">-->
+<!--    <div class="modal-dialog">-->
+<!--        <div class="modal-content">-->
+<!--            <div class="modal-header">-->
+<!--                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>-->
+<!--                <h4 class="modal-title">Load or create disc from your <a href="https://drive.google.com/">Google-->
+<!--                    Drive</a>-->
+<!--                    account</h4>-->
 
-                <div class="loading">Loading...</div>
-            </div>
-            <div class="modal-body">
-                <div>
-                    <ul class="list">
-                        <li class="template"><a href="#"><span class="name"></span></a></li>
-                    </ul>
-                    <div>
-                        <form class="form-horizontal well" role="form" action="#">
-                            <input type="text" placeholder="Create disc..." autofocus class="disc-name">
-                            <button type="submit" class="btn btn-default create-button">Create</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn" data-dismiss="modal">Close</button>
-            </div>
-        </div>
-        <!-- /.modal-content -->
-    </div>
-    <!-- /.modal-dialog -->
-</div>
+<!--                <div class="loading">Loading...</div>-->
+<!--            </div>-->
+<!--            <div class="modal-body">-->
+<!--                <div>-->
+<!--                    <ul class="list">-->
+<!--                        <li class="template"><a href="#"><span class="name"></span></a></li>-->
+<!--                    </ul>-->
+<!--                    <div>-->
+<!--                        <form class="form-horizontal well" role="form" action="#">-->
+<!--                            <input type="text" placeholder="Create disc..." autofocus class="disc-name">-->
+<!--                            <button type="submit" class="btn btn-default create-button">Create</button>-->
+<!--                        </form>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--            <div class="modal-footer">-->
+<!--                <button type="button" class="btn" data-dismiss="modal">Close</button>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--        &lt;!&ndash; /.modal-content &ndash;&gt;-->
+<!--    </div>-->
+<!--    &lt;!&ndash; /.modal-dialog &ndash;&gt;-->
+<!--</div>-->
 <!-- /.modal -->
 
 <div class="modal fade" id="loading-dialog">
@@ -453,34 +478,34 @@ Your browser has suspended audio -- mouse click or key press for sound.
 </div>
 <!-- /.modal -->
 
-<div class="modal fade" id="sth">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title">Load from <a href="http://www.stairwaytohell.com/">Stairway to Hell</a>
-                    archive</h4>
+<!--<div class="modal fade" id="sth">-->
+<!--    <div class="modal-dialog">-->
+<!--        <div class="modal-content">-->
+<!--            <div class="modal-header">-->
+<!--                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>-->
+<!--                <h4 class="modal-title">Load from <a href="http://www.stairwaytohell.com/">Stairway to Hell</a>-->
+<!--                    archive</h4>-->
 
-                <div class="loading">Loading catalog from STH archive...</div>
-                <div class="filter">
-                    <input type="text" placeholder="Filter..." autofocus id="sth-filter">
-                </div>
-            </div>
-            <div class="modal-body">
-                <ul id="sth-list">
-                    <li class="template"><a href="#"><span class="name"></span></a></li>
-                </ul>
-            </div>
-            <div class="modal-footer">
-                <label class="pull-left checkbox-inline"><input type="checkbox" class="autoboot"
-                                                                value="">Autoboot</label>
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-            </div>
-        </div>
-        <!-- /.modal-content -->
-    </div>
-    <!-- /.modal-dialog -->
-</div>
+<!--                <div class="loading">Loading catalog from STH archive...</div>-->
+<!--                <div class="filter">-->
+<!--                    <input type="text" placeholder="Filter..." autofocus id="sth-filter">-->
+<!--                </div>-->
+<!--            </div>-->
+<!--            <div class="modal-body">-->
+<!--                <ul id="sth-list">-->
+<!--                    <li class="template"><a href="#"><span class="name"></span></a></li>-->
+<!--                </ul>-->
+<!--            </div>-->
+<!--            <div class="modal-footer">-->
+<!--                <label class="pull-left checkbox-inline"><input type="checkbox" class="autoboot"-->
+<!--                                                                value="">Autoboot</label>-->
+<!--                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--        &lt;!&ndash; /.modal-content &ndash;&gt;-->
+<!--    </div>-->
+<!--    &lt;!&ndash; /.modal-dialog &ndash;&gt;-->
+<!--</div>-->
 <!-- /.modal -->
 
 <div class="modal fade" id="error-dialog">
@@ -537,9 +562,10 @@ Your browser has suspended audio -- mouse click or key press for sound.
                             <span class="bbc-model"></span> <span class="caret"></span>
                         </button>
                         <ul class="dropdown-menu model-menu" role="menu">
-                            <li><a href="#" data-target="B">BBC B</a></li>
-                            <li><a href="#" data-target="Master">BBC Master 128</a></li>
-                            <li><a href="#" data-target="MasterTurbo">BBC Master Turbo</a></li>
+<!--                            <li><a href="#" data-target="B">BBC B</a></li>-->
+<!--                            <li><a href="#" data-target="Master">BBC Master 128</a></li>-->
+<!--                            <li><a href="#" data-target="MasterTurbo">BBC Master Turbo</a></li>-->
+                            <li><a href="#" data-target="ATOM">Acorn ATOM</a></li>
                         </ul>
                     </div>
                     <div class="btn-group">
@@ -548,8 +574,8 @@ Your browser has suspended audio -- mouse click or key press for sound.
                             <span class="keyboard-layout">Physical</span> <span class="caret"></span>
                         </button>
                         <ul class="dropdown-menu keyboard-menu" role="menu">
-                            <li><a href="#" data-target="physical">Physical: '*' is next to Enter/Return</a></li>
-                            <li><a href="#" data-target="natural">Natural: '*' is shift-8</a></li>
+                            <li><a href="#" data-target="physical">Physical: '+' is shift-;</a></li>
+                            <li><a href="#" data-target="natural">Natural: '+' is shift-=</a></li>
                             <li><a href="#" data-target="gaming">Gaming: handy for games like Zalaga</a></li>
                         </ul>
                     </div>
