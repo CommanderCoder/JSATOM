@@ -3,11 +3,13 @@ define(['./6847_fontdata', './utils'], function (fontData, utils) {
 
     const VDISPENABLE = 1 << 0,
         HDISPENABLE = 1 << 1,
-        SKEWDISPENABLE = 1 << 2,
-        SCANLINEDISPENABLE = 1 << 3,
-        USERDISPENABLE = 1 << 4,
+        // SKEWDISPENABLE = 1 << 2,
+        // SCANLINEDISPENABLE = 1 << 3,
+        // USERDISPENABLE = 1 << 4,
         FRAMESKIPENABLE = 1 << 5,
-        EVERYTHINGENABLED = VDISPENABLE | HDISPENABLE | SKEWDISPENABLE | SCANLINEDISPENABLE | USERDISPENABLE | FRAMESKIPENABLE;
+        // EVERYTHINGENABLED = VDISPENABLE | HDISPENABLE | SKEWDISPENABLE | SCANLINEDISPENABLE | USERDISPENABLE | FRAMESKIPENABLE,
+        EVERYTHINGENABLED = VDISPENABLE | HDISPENABLE | FRAMESKIPENABLE
+        ;
 
     /*
 http://mdfs.net/Docs/Comp/Acorn/Atom/atap25.htm
@@ -96,9 +98,9 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         // 8 colours (alpha on MSB)
         //
         this.collook = utils.makeFast32(new Uint32Array([
-            0xff000000, 0xff003f00, 0xff003f3f, 0xff3f0000,
-            0xff00003f, 0xff3f3f3f, 0xff3f3f00, 0xff3f003f,
-            0xff00203f]));
+            0xff000000, 0xff00ff00, 0xff00ffff, 0xffff0000,
+            0xff0000ff, 0xffffffff, 0xffffff00, 0xffff00ff,
+            0xff0080ff]));
         // { 0,  0,  0  }, /*Black 0*/
         // { 0,  63, 0  }, /*Green 1*/
         // { 63, 63, 0  }, /*Yellow 2*/
@@ -115,9 +117,6 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         this.bitmapY = 0;
         this.oddClock = false;
         this.frameCount = 0;
-        this.doEvenFrameLogic = false;
-        this.isEvenRender = true;
-        this.lastRenderWasEven = false;
         this.firstScanline = true;
         this.inHSync = false;
         this.inVSync = false;
@@ -133,7 +132,7 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         this.vpulseWidth = 0;
         this.hpulseCounter = 0;
         this.vpulseCounter = 0;
-        this.dispEnabled = FRAMESKIPENABLE;
+        this.dispEnabled = 0;
         this.horizCounter = 0;
         this.vertCounter = 0;
         this.scanlineCounter = 0;
@@ -148,7 +147,9 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         this.doubledScanlines = true;
         this.frameSkipCount = 0;
 
-
+        this.bitmapPxPerPixel = 2;  // each pixel is 2 bitmap pixels wide and high
+        this.pixelsPerBit = this.bitmapPxPerPixel;
+        this.bpp = 1;
 
 
         this.init = function () {
@@ -178,7 +179,7 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         }
         // END
 
-        this.paintAndClear = function() {
+        this.paintAndClearOLD = function() {
             if (this.dispEnabled & FRAMESKIPENABLE) {
                 this.paint();
                 this.clearPaintBuffer();
@@ -191,10 +192,17 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
             this.dispEnabled |= enable;
 
             this.bitmapY = 0;
-            // Interlace even frame fires vsync midway through a scanline.
-            if (!!(this.regs[8] & 1) && !!(this.frameCount & 1)) {
-                this.bitmapY = -1;
-            }
+            // // Interlace even frame fires vsync midway through a scanline.
+            // if (!!(this.regs[8] & 1) && !!(this.frameCount & 1)) {
+            //     this.bitmapY = -1;
+            // }
+        };
+
+        this.paintAndClear = function() {
+            this.paint();
+            this.clearPaintBuffer();
+
+            this.bitmapY = 0;
         };
 
         // atom video memory is 0x8000->0x9fff (8k but only bottom 6k used)
@@ -204,39 +212,42 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
             return this.cpu.videoRead(memAddr);
         };
 
-        this.endOfFrame = function () {
-            var regs13 = 0, regs12 = 0x80;
+        // reset vertcounter, firstscanline, nextLineStartAddr and lineStartAddr
+        // enable VIDSP,
+        this.endOfFrameOLD = function () {
             this.vertCounter = 0;
             this.firstScanline = true;
-            this.nextLineStartAddr = (regs13 | (regs12 << 8)) & 0x1FFF;
+            this.nextLineStartAddr = 0;
             this.lineStartAddr = this.nextLineStartAddr;
             this.dispEnableSet(VDISPENABLE);
-            this.lastRenderWasEven = this.isEvenRender;
-            this.isEvenRender = !(this.frameCount & 1);
-            if (!this.inVSync) {
-                this.doEvenFrameLogic = false;
-            }
         };
 
-        this.endofCharacterLine = function () {
-            this.vertCounter = (this.vertCounter + 1) & 0xff;  //0x7f - 127 / 0xff - 255
+        // reset scanlinecounter, hadVsync this row
+        // increment vertcounter (max 127 or 255)
+        this.endofCharacterLineOLD = function () {
+            this.vertCounter = (this.vertCounter + 1) ;//& 0x7f;
 
             this.scanlineCounter = 0;
             this.hadVSyncThisRow = false;
-            this.dispEnableSet(SCANLINEDISPENABLE);
+            // this.dispEnableSet(SCANLINEDISPENABLE);
         };
 
-        this.endofScanline = function() {
-
-            var regs8 = 0x00; //  0x93
-            var regs9 = this.regs[9]; //scanlines per char
-
+        // reset firstScanline
+        // increment vpulscounter (max 15)
+        // linestart = nextlinestart when scanline = regs9
+        // increment scanline (max 31)
+        // not in vertadjust and hitr9 then reset scanline
+        // endofMain and !endofvertadj then set invertadjust
+        // if endofframe or endfovertadj then reset all
+        // set next line
+        this.endofScanlineOLD = function() {
             this.firstScanline = false;
 
             this.vpulseCounter = (this.vpulseCounter + 1) & 0x0F;
 
             // Pre-counter increment compares and logic.
-            var r9Hit = (this.scanlineCounter === regs9);  //0x12 - regs[9]
+            var r9Hit = (this.scanlineCounter === this.regs[9]);  // regs9  - scanlines per char    // 9	Maximum Raster Address
+
             if (r9Hit) {
                 // An R9 hit always loads a new character row address, even if
                 // we're in vertical adjust!
@@ -252,7 +263,6 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
             if (!this.inVertAdjust && r9Hit) {
                 this.endofCharacterLine();
             }
-
 
             if (this.endOfMainLatched && !this.endOfVertAdjustLatched) {
                 this.inVertAdjust = true;
@@ -271,14 +281,10 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
                 // Testing indicates interlace is checked here, a clock before
                 // it is entered or not.
                 // Like vertical adjust, C4=R4+1.
-                if (!!(regs8 & 1) && this.doEvenFrameLogic) {  //0x93 - regs[8]
-                    this.inDummyRaster = true;
-                    this.endOfFrameLatched = true;
-                } else {
-                    endOfFrame = true;
-                }
+                endOfFrame = true;
             }
 
+            // reset everything
             if (endOfFrame) {
                 this.endOfMainLatched = false;
                 this.endOfVertAdjustLatched = false;
@@ -292,11 +298,15 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
             this.addr = this.lineStartAddr;
         };
 
-
-        this.handleHSync = function () {
-            var regs3 = this.regs[3];
-            this.hpulseWidth = regs3&0xf;
-            this.vpulseWidth = (regs3&0xf0)>>>4;
+        // set sync widths
+        // increment horiz pulse counter (max 15)
+        // if horiz pulse counter == half hpulsewidth
+        //   reset bitmapx , incr bitmapy
+        // otherwise if hpulsecounter == hpulsewidth
+        //   reset inHSync
+        this.handleHSyncOLD = function () {
+            this.hpulseWidth = this.regs[3]&0xf;  // regs3 syncwidths (horiz)
+            this.vpulseWidth = (this.regs[3]&0xf0)>>>4;  // regs3 syncwidths (vert)
 
             this.hpulseCounter = (this.hpulseCounter + 1) & 0x0F;
             if (this.hpulseCounter === (this.hpulseWidth >>> 1)) { //0x4 - hpulsewidth
@@ -319,24 +329,511 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
                     this.paintAndClear();
                 }
             }
-            else if (this.hpulseCounter === (regs3 & 0x0F)) { //regs[3]  -  0x24  (VERT and HORIZ - 4 bit each)
+            else if (this.hpulseCounter === (this.regs[3] & 0x0F)) { //regs[3]  -  0x24  (VERT and HORIZ - 4 bit each)
                 this.inHSync = false;
             }
         };
 
+        // this.dispEnableChanged = function() {
+        //     // The DISPTMG output pin is wired to the SAA5050 teletext chip,
+        //     // for scanline tracking, so keep it apprised.
+        //     var mask = (HDISPENABLE | VDISPENABLE | USERDISPENABLE);
+        //     var disptmg = ((this.dispEnabled & mask) === mask);
+        //     this.setDISPTMG(disptmg);
+        // };
+
+
         this.dispEnableSet = function (flag) {
             this.dispEnabled |= flag;
+            // this.dispEnableChanged();
         };
 
         this.dispEnableClear = function (flag) {
             this.dispEnabled &= ~flag;
+            // this.dispEnableChanged();
+        };
+
+        this.endOfFrame = function () {
+            this.vertCounter = 0;
+            this.dispEnableSet(VDISPENABLE);
+        };
+
+        this.endofCharacterLine = function () {
+            this.vertCounter = (this.vertCounter + 1);// & 0x7f;
+            this.scanlineCounter = 0;
+        };
+
+        this.endofScanline = function() {
+            this.vpulseCounter = (this.vpulseCounter + 1) & 0x0F;
+
+            // done the whole scanline
+            var completedCharVertical = (this.scanlineCounter === this.charLinesreg9);  // regs9  - scanlines per char    // 9	Maximum Raster Address
+
+            this.scanlineCounter = (this.scanlineCounter + 1) & 0x1f;
+
+            // Reset scanline if necessary.
+            if (completedCharVertical) {
+                this.endofCharacterLine();
+            }
+
+            if (this.endOfMainLatched) {
+                this.endOfMainLatched = false;
+
+                this.endofCharacterLine();
+                this.endOfFrame();
+            }
+
+            this.addr = this.lineStartAddr;
+        };
+
+        this.handleHSync = function()
+        {
+            this.hpulseCounter = (this.hpulseCounter + 1) & 0x0F;
+
+            var movingToNextScanline = (this.hpulseCounter === (this.hpulseWidth>>>1));
+            var atNextScanLine = (this.hpulseCounter === this.hpulseWidth);
+
+            if (movingToNextScanline)
+            {
+                // Start at -ve pos because new character is added before the pixel render.
+                this.bitmapX = -this.pixelsPerChar*this.bitmapPxPerPixel;
+
+                this.bitmapY += this.bitmapPxPerPixel;
+
+                if (this.bitmapY >= 768) {
+                    // Arbitrary moment when TV will give up and start flyback in the absence of an explicit VSync signal
+                    this.paintAndClear();
+                }
+            }
+            else if (atNextScanLine)
+            {
+                this.inHSync = false;
+            }
+        };
+
+        this.setValuesFromMode = function(mode) {
+
+            mode = mode & 0xf0;
+            if (mode == 0x10)  //1a - 4 colour mode
+            {
+            }
+            else if (mode == 0x50) //2a - 4 colour mode
+            {
+                this.pixelsPerBit = this.bitmapPxPerPixel;
+                this.bpp = 2;
+
+            }
+            else if (mode == 0x90) //3a - 4 colour mode
+            {
+                this.pixelsPerBit = this.bitmapPxPerPixel;
+                this.bpp = 2;
+            }
+            else if (mode == 0xd0) //4a - 4 colour mode
+            {
+                this.pixelsPerBit = this.bitmapPxPerPixel;
+                this.bpp = 2;
+            }
+
+            if (mode == 0xf0)  // RG4  - resolution mode
+            {
+                // 256 wide  - see reg1 * 8
+                // 192 LINES  - see reg4
+
+                var linesPerRow = 1;
+                var topBorder  = 24/linesPerRow; // 8 chars high
+                var bottomBorder  = 24/linesPerRow; // 8 chars high
+                var rowsPerScreen = 192/linesPerRow; // 64 chars high
+
+                // reg3	Horizontal and Vertical Sync Widths
+                this.vpulseWidth = 2; // clock cycles to go vertically
+                this.hpulseWidth = 4; // clock cycles to go horizontally
+
+                this.charsPerRowreg1 = 32; // 32 *
+                this.startHsyncreg2 = 33; // 32*8 = 256 (start of hsync
+                this.horizTotalreg0 = 64; // 64*8 = 512 (total width of canvas 2x2 canvas pixel per pixel)
+                this.pixelsPerChar = 8; // 8 pixels per element
+
+                this.vertBodyreg6 = 192;//topBorder+rowsPerScreen; // end of main body for FRAME COUNTER: 24 - 192
+                this.vertPosreg7 = 243;//topBorder+rowsPerScreen+bottomBorder-1; // character end of bottom border START OF VSYNC  : 24 - 192 - 24
+                this.vertTotalreg4 = 305;  // end of bottom border : 24 + 192 + 24 (12+96+12)
+
+                this.charLinesreg9 = linesPerRow-1;//2  - scanlines per char
+
+                this.pixelsPerBit = this.bitmapPxPerPixel;
+                this.bpp = 1;
+
+            } else if (mode == 0xb0) //RG3 resolution mode
+            {
+                // 128 wide
+                // 192 LINES // 6	Vertical Displayed
+
+                var linesPerRow = 2;
+                var linesPerChar = 12; // 12 vertical lines per char in mode 0
+                var rowsPerScreen = 16; // 16 chars high
+                // reg3	Horizontal and Vertical Sync Widths
+                this.vpulseWidth = 2; // clock cycles to go vertically
+                this.hpulseWidth = 4; // clock cycles to go horizontally
+
+                // RG3 decreases reg1 and increases pixelsPerChar
+                this.charsPerRowreg1 = 16; // 16 x2 bytes (256 bits)
+                this.startHsyncreg2 = 16;
+                this.horizTotalreg0 = 32; // 16*32 = 512
+                this.pixelsPerChar = 16; // 16 pixels per element (wide
+
+                this.vertBodyreg6 = 98;//topBorder+rowsPerScreen; // end of main body for FRAME COUNTER: 24 - 192
+                this.vertPosreg7 = 99;//topBorder+rowsPerScreen+bottomBorder-1; // character end of bottom border START OF VSYNC  : 24 - 192 - 24
+                this.vertTotalreg4 = 152;  // end of bottom border : 24 + 192 + 24 (12+96+12)
+                this.charLinesreg9 = linesPerRow-1;//2  - scanlines per char
+
+                this.pixelsPerBit = this.bitmapPxPerPixel*2;
+                this.bpp = 1;
+
+            } else if (mode == 0x70) // RG2
+            {
+                // this mode has to fill 384 lines (4*96)
+                // since bitmapPxPerPixel ia 2 , there needs to be 2 rows
+                // using charLinesreg9
+
+                // reg9 is 1 (i.e 2 lines)
+                // need 192 lines so thats 96 rows  :
+                // need 24 lines at the top (12 rows)
+                // need 24 lines at the bottom (12 rows)
+                // use these for reg4,6,7
+
+                // 128 wide
+                // 96 LINES // 6	Vertical Displayed
+
+                // RG2 increases linesPerRow but doesn't do anything else
+                var linesPerRow = 2;
+                var linesPerChar = 12; // 12 vertical lines per char in mode 0
+                var topBorder  = 24/linesPerRow; // 24 chars high
+                var bottomBorder  = 24/linesPerRow; // 24 chars high
+                var rowsPerScreen = 192/linesPerRow; // 96 chars high
+                this.vpulseWidth = 2; // clock cycles to go vertically
+                this.hpulseWidth = 4; // clock cycles to go horizontally
+
+                this.charsPerRowreg1 = 16; // 16 x2 bytes (256 bits)
+                this.startHsyncreg2 = 16;
+                this.horizTotalreg0 = 32; // 16*32 = 512
+                this.pixelsPerChar = 16; // 16 pixels per element (wide
+
+                this.vertBodyreg6 = 98;//topBorder+rowsPerScreen; // end of main body for FRAME COUNTER: 24 - 192
+                this.vertPosreg7 = 99;//topBorder+rowsPerScreen+bottomBorder-1; // character end of bottom border START OF VSYNC  : 24 - 192 - 24
+                this.vertTotalreg4 = 152;  // end of bottom border : 24 + 192 + 24 (12+96+12)
+
+                this.charLinesreg9 = linesPerRow-1;//2  - scanlines per char
+
+                this.pixelsPerBit = this.bitmapPxPerPixel*2;
+                this.bpp = 1;
+
+            } else if (mode == 0x30) // RG1
+            {
+                // this mode has to fill 384 lines (4*96)
+                // since bitmapPxPerPixel ia 2 , there needs to be 2 rows
+                // using charLinesreg9
+
+                // reg9 is 1 (i.e 3 lines)
+                // need 192 lines so thats 64 rows  :
+                // need 24 lines at the top (8 rows)
+                // need 24 lines at the bottom (8 rows)
+                // use these for reg4,6,7
+
+                // 128 wide
+                // 96 LINES // 6	Vertical Displayed
+                // RG1 increases linesPerRow but doesn't do anything else
+                var linesPerRow = 3;
+                var linesPerChar = 12; // 12 vertical lines per char in mode 0
+                var topBorder = 24 / linesPerRow; // 24 chars high
+                var bottomBorder = 24 / linesPerRow; // 24 chars high
+                var rowsPerScreen = 192 / linesPerRow; // 96 chars high
+                this.vpulseWidth = 2; // clock cycles to go vertically
+                this.hpulseWidth = 4; // clock cycles to go horizontally
+
+                this.charsPerRowreg1 = 16; // 16 x2 bytes (256 bits)
+                this.startHsyncreg2 = 16;
+                this.horizTotalreg0 = 32; // 16*32 = 512
+                this.pixelsPerChar = 16; // 16 pixels per element (wide
+
+                this.vertBodyreg6 = 98;//topBorder+rowsPerScreen; // end of main body for FRAME COUNTER: 24 - 192
+                this.vertPosreg7 = 99;//topBorder+rowsPerScreen+bottomBorder-1; // character end of bottom border START OF VSYNC  : 24 - 192 - 24
+                this.vertTotalreg4 = 101;  // end of bottom border : 24 + 192 + 24 (12+96+12)
+
+                this.charLinesreg9 = linesPerRow - 1;//2  - scanlines per char
+
+                this.pixelsPerBit = this.bitmapPxPerPixel * 2;
+                this.bpp = 1;
+            } else if (mode == 0x10) // CG1
+            {
+                // increases pixelsperchar to 16
+                // decreaes chars per row to 16
+                // 8*32 =
+                var linesPerRow = 3;
+                var linesPerChar = 12; // 12 vertical lines per char in mode 0
+                var topBorder = 24 / linesPerRow; // 24 chars high
+                var bottomBorder = 24 / linesPerRow; // 24 chars high
+                var rowsPerScreen = 192 / linesPerRow; // 96 chars high
+                this.vpulseWidth = 2; // clock cycles to go vertically
+                this.hpulseWidth = 4; // clock cycles to go horizontally
+
+                this.charsPerRowreg1 = 16; // 16 x2 bytes (256 bits)
+                this.startHsyncreg2 = 9;
+
+                this.horizTotalreg0 = 32; // 16*32 = 512
+                this.pixelsPerChar = 16; // 8 pixels normally (so 32pixels==4 'voxels' per char)
+
+                // reg6 purple white
+                // reg7 blue yellow
+                // reg4 green yellow
+                this.vertBodyreg6 = 64;//CORRECT
+                this.vertPosreg7 = 89;//topBorder+rowsPerScreen+bottomBorder-1; // character end of bottom border START OF VSYNC  : 24 - 192 - 24
+                this.vertTotalreg4 = 96;  // end of bottom border : 24 + 192 + 24 (12+96+12)
+
+                this.charLinesreg9 = linesPerRow - 1;//2  - scanlines per char
+
+                this.pixelsPerBit = this.bitmapPxPerPixel*2;
+                this.bpp = 2;
+
+
+                // } else if (mode == 0xd0) // 4a
+            // {
+            //     this.regs[9] = 0x0; //1  - scanlines per char
+            //
+            //     regs0 = 0x3f;            // 0	Horizontal Total
+            //     regs1 = 0x20;   //32bpr  // 1	Horizontal Displayed
+            //     regs2 = 0x2c;   //<<<<    // 2 	Horizontal Sync Position
+            //
+            //     regs4 = 0xe0;       // 4	Vertical Total
+            //     regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
+            //     regs6 = 0xc0; //192 LINES // 6	Vertical Displayed
+            //     regs7 = 0xc0;  // 7	Vertical Sync position
+            // } else if (mode == 0x90) //3a
+            // {
+            //     this.regs[9] = 0x1; //2  - scanlines per char
+            //
+            //     regs0 = 0x3f;            // 0	Horizontal Total
+            //     regs1 = 0x20; //32bpr   // 1	Horizontal Displayed
+            //     regs2 = 0x2c;   //<<<<    // 2	Horizontal Sync Position
+            //
+            //     regs4 = 0x70;//<<<<       // 4	Vertical Total
+            //     regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
+            //     regs6 = 0x60; // 96 LINES // 6	Vertical Displayed
+            //     regs7 = 0x60;  // 7	Vertical Sync position
+            // } else if (mode == 0x50) //2a
+            // {
+            //     this.regs[9] = 0x2; //3  - scanlines per char
+            //
+            //     regs0 = 0x40;            // 0	Horizontal Total
+            //     regs1 = 0x20; //32bpr   // 1	Horizontal Displayed
+            //     regs2 = 0x2d;   //<<<<    // 2	Horizontal Sync Position
+            //
+            //     regs4 = 0x50;//<<<<       // 4	Vertical Total
+            //     regs5 = 0x07; //<<<<<  // 5	Vertical Total Adjust
+            //     regs6 = 0x40; // 64 LINES // 6	Vertical Displayed
+            //     regs7 = 0x4c;  // 7	Vertical Sync position
+            // } else if (mode == 0x10) //1a
+            // {
+            //     this.regs[9] = 0x2; //3  - scanlines per char
+            //     regs0 = 0x3f;            // 0	Horizontal Total
+            //     regs1 = 0x10;   //16bpr  // 1	Horizontal Displayed
+            //     regs2 = 0x35;   //<<<<    // 2	Horizontal Sync Position
+            //     this.regs[3] = 0x24;
+            //     this.pixelsPerChar = 32;  // for blitChar
+            //     this.halfClock = true;
+            //
+            //     regs4 = 0x4a;//<<<<       // 4	Vertical Total
+            //     regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
+            //     regs6 = 0x40; // 64 LINES // 6	Vertical Displayed
+            //     regs7 = 0x40;  // 7	Vertical Sync position
+            // } else
+            // {
+            //     // for text mode 0
+            //
+            //     this.regs[9] = 0x0b; //13  - scanlines per char
+            //     regs0 = 0x3f;            // 0	Horizontal Total
+            //     regs1 = 0x20;   //32bpr  // 1	Horizontal Displayed
+            //     regs2 = 0x2c;   //<<<<    // 2	Horizontal Sync Position
+            //
+            //     this.pixelsPerChar = 16;  // 16 for blitChar
+            //     this.halfClock = false; //  for blitChar
+            //
+            //     regs4 = 0x14;//<<<<       // 4	Vertical Total
+            //     //regs5 ; // offset from top of each scanline
+            //     regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
+            //     regs6 = 0x10; // 64 LINES // 6	Vertical Displayed
+            //     regs7 = 0x12;  // 7	Vertical Sync position
+            //
+            //
+            //     this.regs[3] = 0x24;  //2 HEIGHT... 4 WIDTH
+
+            }
         };
 
 
         // ATOM uses 6847 chip
         this.polltime = function (clocks) {
+            // this is 256 pixels wide by 192 pixels high
+            // the canvas bitmap is 1024 x 625 (for BBC micro)
+            // so each atom pixel is two bitmap pixels using 512x384
+            // border left and right is 256-256
+            // border top and bottom is 120-121
 
-            this.dispEnableSet(USERDISPENABLE);
+            //  video mode
+            var mode = (this.ppia.portapins & 0xf0);
+
+            mode = 0x10;
+            this.setValuesFromMode(mode);
+
+
+            // scanline is a line within a characgter (or element, 1line, 2 lines, 3lines or 12 lines)
+            // vertCounter is a character line (16)
+
+            // horizCounter is a character (8,16,32) on a line  (total row including border is 64)
+            // character is 8,4,2 pixels wide (depending on bpp)
+
+            // each clock advances the raster by 16 bitmap pixels
+            while (clocks--) {
+
+                this.bitmapX += this.pixelsPerChar*this.bitmapPxPerPixel;
+
+                // Handle HSync
+                if (this.inHSync)
+                    this.handleHSync();
+
+                // Handle end of horizontal displayed.
+                // Also, the last scanline character never displays.
+                if ((this.horizCounter === this.charsPerRowreg1 ) ||  // regs1  32 Horizontal Displayed
+                    (this.horizCounter === this.horizTotalreg0 )) {  // regs0  64 Horizontal Total
+                    this.dispEnableClear(HDISPENABLE);
+                }
+
+                // Initiate HSync.
+                // got to 32 characters
+                if (this.horizCounter === this.startHsyncreg2 && !this.inHSync) {
+                    this.inHSync = true;
+                }
+
+                var vSyncEnding = false;
+                var vSyncStarting = false;
+                if (this.inVSync &&
+                    this.vpulseCounter === this.vpulseWidth) {  // vpulseWidth
+                    vSyncEnding = true;
+                    this.inVSync = false;
+                }
+
+                if (this.vertCounter === this.vertPosreg7 &&   // regs7	Vertical Sync position
+                    !this.inVSync ) {
+                    vSyncStarting = true;
+                    this.inVSync = true;
+                }
+
+                if (vSyncStarting && !vSyncEnding) {
+                    this.vpulseCounter = 0;
+                    if (this.horizTotalreg0 && this.vertTotalreg4) {
+                        this.paintAndClear();
+                    }
+                }
+
+                if (vSyncStarting || vSyncEnding) {
+                    this.ppia.setVBlankInt(this.inVSync);
+                }
+
+                // once the whole of the Vertical and Horizontal is complete then do this
+                var insideBorder = (this.dispEnabled & (HDISPENABLE | VDISPENABLE)) === (HDISPENABLE | VDISPENABLE);
+                // if (insideBorder) {
+                if (true) {
+                //     read from video memory - uses this.addr
+                    var dat = this.readVideoMem();
+
+                    //left column should be RED and right is GREEN
+                    // visible bitmapY is 12 to 544 with a halfway at 266
+                    // visible bitmapX is 64 to 960
+
+                    var offset = this.bitmapY;
+                    offset = (offset * 1024) + this.bitmapX;
+                    // Render data depending on display enable state.
+                    if (this.bitmapX >= 0 && this.bitmapX < 1024 && this.bitmapY < 625)
+                    {
+                        mode |= 0x8;  //add css
+                        // if (this.bitmapY >= 12 && this.bitmapY <= 544)
+                        //     mode &= ~0x8;  //add css
+                        if (this.bitmapY <= 266)
+                            mode &= ~0x8;  //add css
+
+                        if (this.bitmapY <= 12)
+                            this.blitPixels(this.video.fb32, 0x11, offset, mode);
+                        if (this.bitmapY === 278) //halfway
+                            this.blitPixels(this.video.fb32, 0xff, offset, mode);
+                        if (this.bitmapY >= 544)
+                            this.blitPixels(this.video.fb32, 0x11, offset, mode);
+
+                        if (this.bitmapX <= 80)
+                            this.blitPixels(this.video.fb32, 0xf2, offset, mode);
+                        if (this.bitmapX === 512)  // halfway
+                            this.blitPixels(this.video.fb32, 0xe4, offset, mode);
+                        if (this.bitmapX >= 944)
+                            this.blitPixels(this.video.fb32, 0x2f, offset, mode);
+
+                        if (this.vertCounter === this.vertPosreg7)  // vsync starts
+                            this.blitPixels(this.video.fb32, 0x73, offset, mode);
+                        if (this.vertCounter === this.vertBodyreg6) // this is end of vdisp
+                            this.blitPixels(this.video.fb32, 0x62, offset, mode);
+                        if (this.vertCounter === this.vertTotalreg4) // this is start of vdisp
+                            this.blitPixels(this.video.fb32, 0x51, offset, mode);
+
+                        if (this.horizCounter === this.startHsyncreg2)  // vsync starts
+                            this.blitPixels(this.video.fb32, 0xbb, offset, mode);
+                        if (this.horizCounter === this.charsPerRowreg1) // this is end of vdisp
+                            this.blitPixels(this.video.fb32, 0x22, offset, mode);
+                        if (this.horizCounter === this.horizTotalreg0) // this is start of vdisp
+                            this.blitPixels(this.video.fb32, 0xee, offset, mode);
+
+                        if (insideBorder) {
+
+                        this.blitPixels(this.video.fb32, this.vertCounter&0xff, offset, mode);
+                        }
+                    }
+
+                }
+
+                // CRTC MA always increments, inside display border or not.
+                // maximum 8k on ATOM
+                this.addr = (this.addr + 1) & 0x1fff;
+
+
+                // first character in and got to 16th line and list line of the scan line
+                // done the main body
+                // vertcounter is based on vertical height of an element
+                if (this.horizCounter === 1) {
+                    if (this.vertCounter === this.vertTotalreg4 &&  // end of vertical  // regs4	Vertical Total
+                        this.scanlineCounter === this.charLinesreg9) {  // end of last scanline on vertical too  // regs9  - scanlines per char
+                        this.endOfMainLatched = true;
+                    }
+                }
+
+                // 16 bitmap pixels per char (64 * 16 = 1024)
+                if (this.horizCounter === this.horizTotalreg0) {  // regs0	Horizontal Total
+                    this.endofScanline();  // update this.addr in here from this.lineStartAddr
+                    this.horizCounter = 0;
+                    this.dispEnableSet(HDISPENABLE);
+                } else {
+                    this.horizCounter = (this.horizCounter + 1) & 0xff;
+                }
+
+                // regs6	Vertical Displayed
+                if (this.vertCounter === this.vertBodyreg6 &&
+                    (this.dispEnabled & VDISPENABLE)) {
+                    this.dispEnableClear(VDISPENABLE);
+                    this.frameCount++;
+                }
+
+            } // matches while
+
+        }
+
+            // ATOM uses 6847 chip
+        this.polltimeOLD = function (clocks) {
+
+            // this.dispEnableSet(USERDISPENABLE);
 
             // var regs0 = 0x40, regs1 = 0x20, regs2 = 0x22; // horizontals
             // var regs4 = 0x12; // vertical position
@@ -355,22 +852,22 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 
             var regs4 , regs5, regs6 , regs7 ;  // verticals
 
-            var regs9 ; // this is the number of LINES per character
+           //  regs9 // this is the number of LINES per character
 
             // // in mode 1111 this should be 1
             var mode = (this.ppia.portapins & 0xf0);
             if (mode == 0xf0)  // 4
             {
-                regs9 = 0x0; //1  - scanlines per char    // 9	Maximum Raster Address
+                this.regs[9] = 0x0; //1  - scanlines per char    // 9	Maximum Raster Address
 
-                regs0 = 0x3f;            // 0	Horizontal Total
+                regs0 = 0x40;            // 0	Horizontal Total
                 regs1 = 0x20; //32bpr   // 1	Horizontal Displayed
-                regs2 = 0x2c;   //<<<<    // 2	Horizontal Sync Position
+                regs2 = 0x2d;   //<<<<    // 2	Horizontal Sync Position
 // 3	Horizontal and Vertical Sync Widths
-                regs4 = 0xe0;       // 4	Vertical Total
-                regs5 = 0x1f; //<<<<<  // 5	Vertical Total Adjust
+                regs4 = 0xf0;       // 4	Vertical Total
+                regs5 = 0x16; //<<<<<  // 5	Vertical Total Adjust
                 regs6 = 0xc0; //192 LINES // 6	Vertical Displayed
-                regs7 = 0xc0;  // 7	Vertical Sync position
+                regs7 = 0xe6;  // 7	Vertical Sync position
 
                 // want 256 pixels -
 
@@ -379,28 +876,25 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 
             } else if (mode == 0xb0) //3
             {
-                regs0 = 0x3b;
-                regs1 = 0x10; //16bpr
-                // regs2 = 0x31;
-                this.regs[3] = 0x28;  //2 HEIGHT... 8 WIDTH
+                // this.regs[3] = 0x28;  //2 HEIGHT... 8 WIDTH
 
-                this.pixelsPerChar = 8;  // for blitChar
+                // this.pixelsPerChar = 8;  // for blitChar
                 this.halfClock = true;
 
-                regs9 = 0x0; //1  - scanlines per char
+                this.regs[9] = 0x0; //1  - scanlines per char
 
-                regs0 = 0x3f;            // 0	Horizontal Total
+                regs0 = 0x40;            // 0	Horizontal Total
                 regs1 = 0x10; //16bpr  // 1	Horizontal Displayed
-                regs2 = 0x33;   //<<<<    // 2	Horizontal Sync Position
+                regs2 = 0x34;   //<<<<    // 2	Horizontal Sync Position
 
-                regs4 = 0xe0;       // 4	Vertical Total
-                regs5 = 0x1f; //<<<<<  // 5	Vertical Total Adjust
+                regs4 = 0xf0;       // 4	Vertical Total
+                regs5 = 0x16; //<<<<<  // 5	Vertical Total Adjust
                 regs6 = 0xc0; //192 LINES // 6	Vertical Displayed
-                regs7 = 0xc0;  // 7	Vertical Sync position
+                regs7 = 0xe6;  // 7	Vertical Sync position
 
             } else if (mode == 0x70) //2
             {
-                regs9 = 0x1; //2  - scanlines per char
+                this.regs[9] = 0x1; //2  - scanlines per char
 
                 regs0 = 0x33;
                 regs1 = 0x10; //16bpr
@@ -422,7 +916,7 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 
             } else if (mode == 0x30) //1
             {
-                regs9 = 0x2; //3  - scanlines per char
+                this.regs[9] = 0x2; //3  - scanlines per char
                 // regs2 = 0x29;
                 this.regs[3] = 0x28;  //2 HEIGHT... 8 WIDTH
 
@@ -430,17 +924,17 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
                 this.pixelsPerChar = 8;  // for blitChar
                 this.halfClock = true;
 
-                regs0 = 0x3f;            // 0	Horizontal Total
+                regs0 = 0x40;            // 0	Horizontal Total
                 regs1 = 0x10;   //16bpr  // 1	Horizontal Displayed
-                regs2 = 0x33;   //<<<<    // 2	Horizontal Sync Position
+                regs2 = 0x34;   //<<<<    // 2	Horizontal Sync Position
 
-                regs4 = 0x4a;//<<<<       // 4	Vertical Total
-                regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
+                regs4 = 0x50;//<<<<       // 4	Vertical Total
+                regs5 = 0x07; //<<<<<  // 5	Vertical Total Adjust
                 regs6 = 0x40; // 64 LINES // 6	Vertical Displayed
-                regs7 = 0x40;  // 7	Vertical Sync position
+                regs7 = 0x4c;  // 7	Vertical Sync position
             } else if (mode == 0xd0) // 4a
             {
-                regs9 = 0x0; //1  - scanlines per char
+                this.regs[9] = 0x0; //1  - scanlines per char
 
                 regs0 = 0x3f;            // 0	Horizontal Total
                 regs1 = 0x20;   //32bpr  // 1	Horizontal Displayed
@@ -452,7 +946,7 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
                 regs7 = 0xc0;  // 7	Vertical Sync position
             } else if (mode == 0x90) //3a
             {
-                regs9 = 0x1; //2  - scanlines per char
+                this.regs[9] = 0x1; //2  - scanlines per char
 
                 regs0 = 0x3f;            // 0	Horizontal Total
                 regs1 = 0x20; //32bpr   // 1	Horizontal Displayed
@@ -464,19 +958,19 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
                 regs7 = 0x60;  // 7	Vertical Sync position
             } else if (mode == 0x50) //2a
             {
-                regs9 = 0x2; //3  - scanlines per char
+                this.regs[9] = 0x2; //3  - scanlines per char
 
-                regs0 = 0x3f;            // 0	Horizontal Total
+                regs0 = 0x40;            // 0	Horizontal Total
                 regs1 = 0x20; //32bpr   // 1	Horizontal Displayed
-                regs2 = 0x2c;   //<<<<    // 2	Horizontal Sync Position
+                regs2 = 0x2d;   //<<<<    // 2	Horizontal Sync Position
 
-                regs4 = 0x4a;//<<<<       // 4	Vertical Total
-                regs5 = 0x1d; //<<<<<  // 5	Vertical Total Adjust
+                regs4 = 0x50;//<<<<       // 4	Vertical Total
+                regs5 = 0x07; //<<<<<  // 5	Vertical Total Adjust
                 regs6 = 0x40; // 64 LINES // 6	Vertical Displayed
-                regs7 = 0x40;  // 7	Vertical Sync position
+                regs7 = 0x4c;  // 7	Vertical Sync position
             } else if (mode == 0x10) //1a
             {
-                regs9 = 0x2; //3  - scanlines per char
+                this.regs[9] = 0x2; //3  - scanlines per char
                 regs0 = 0x3f;            // 0	Horizontal Total
                 regs1 = 0x10;   //16bpr  // 1	Horizontal Displayed
                 regs2 = 0x35;   //<<<<    // 2	Horizontal Sync Position
@@ -492,7 +986,7 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
             {
                 // for text mode 0
 
-                regs9 = 0x0b; //13  - scanlines per char
+                this.regs[9] = 0x0b; //13  - scanlines per char
                 regs0 = 0x3f;            // 0	Horizontal Total
                 regs1 = 0x20;   //32bpr  // 1	Horizontal Displayed
                 regs2 = 0x2c;   //<<<<    // 2	Horizontal Sync Position
@@ -513,9 +1007,6 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 
             mode |= (this.ppia.portcpins & 0x08); // CSS value
 
-            this.regs[9] = regs9;
-
-
             while (clocks--) {
                 this.oddClock = !this.oddClock;
                 // Advance CRT beam.
@@ -531,23 +1022,23 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
                     this.handleHSync();
 
                 // Handle delayed display enable due to skew
-                if (this.horizCounter === 0) {
-                    this.dispEnableSet(SKEWDISPENABLE);
-                }
+                // if (this.horizCounter === 0) {
+                //     this.dispEnableSet(SKEWDISPENABLE);
+                // }
 
                 // Latch next line screen address in case we are in the last line of a character row
-                if (this.horizCounter === regs1)  //regs[1]  0x28
+                if (this.horizCounter === regs1)  // regs1  32 Horizontal Displayed
                     this.nextLineStartAddr = this.addr;
 
                 // Handle end of horizontal displayed.
                 // Also, the last scanline character never displays.
-                if ((this.horizCounter === regs1 ) ||  //0x28 - regs[1]
-                    (this.horizCounter === regs0 )) {  //0x3f - regs[0]
-                    this.dispEnableClear(HDISPENABLE | SKEWDISPENABLE);
+                if ((this.horizCounter === regs1 ) ||  // regs1  32 Horizontal Displayed
+                    (this.horizCounter === regs0 )) {  // regs0  64 Horizontal Total
+                    this.dispEnableClear(HDISPENABLE);// | SKEWDISPENABLE);
                 }
 
                 // Initiate HSync.
-                if (this.horizCounter === regs2 && !this.inHSync) {  //0x33 - regs[2]
+                if (this.horizCounter === regs2 && !this.inHSync) {  // regs2	Horizontal Sync Position
                     this.inHSync = true;
                     this.hpulseCounter = 0;
                 }
@@ -559,7 +1050,7 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
                     vSyncEnding = true;
                     this.inVSync = false;
                 }
-                if (this.vertCounter === regs7 &&  //0x1c - regs[7]
+                if (this.vertCounter === regs7 &&   // regs7	Vertical Sync position
                     !this.inVSync &&
                     !this.hadVSyncThisRow ) {
                     vSyncStarting = true;
@@ -574,29 +1065,35 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 
                 if (vSyncStarting || vSyncEnding) {
                     this.ppia.setVBlankInt(this.inVSync);
+                    // this.setDEW(this.inVSync);
                 }
 
                 // once the whole of the Vertical and Horizontal is complete then do this
                 var insideBorder = (this.dispEnabled & (HDISPENABLE | VDISPENABLE)) === (HDISPENABLE | VDISPENABLE);
+                // if (false)
                 if (insideBorder)
                 {
                     // read from video memory - uses this.addr
                     var dat = this.readVideoMem();
 
-                    //
+                    var offset = this.bitmapY;
+                    offset = (offset * 1024) + this.bitmapX;
+
+
+            //
                     // Render data depending on display enable state.
                     if (this.bitmapX >= 0 && this.bitmapX < 1024 && this.bitmapY < 625) {
                         var doubledLines = false;
-                        var offset = this.bitmapY;
-                        offset = (offset * 1024) + this.bitmapX;
 
                         if ((this.dispEnabled & EVERYTHINGENABLED) === EVERYTHINGENABLED) {
-                            if ((mode & 0x10 ) == 0) // MODE_AG - bit 4; 0x10 is the AG bit
-                                // TODO: Add in the INTEXT modifiers to mode (if necessary)
-                                // blit into the fb32 buffer which is painted by VIDEO
-                                this.blitChar(this.video.fb32, dat, offset, this.pixelsPerChar, mode);
-                            else
-                                this.blitPixels(this.video.fb32, dat, offset, mode);
+                            this.blitPixels(this.video.fb32, dat, offset, mode);
+
+                        //     if ((mode & 0x10 ) == 0) // MODE_AG - bit 4; 0x10 is the AG bit
+                        //         // TODO: Add in the INTEXT modifiers to mode (if necessary)
+                        //         // blit into the fb32 buffer which is painted by VIDEO
+                        //         this.blitChar(this.video.fb32, dat, offset, this.pixelsPerChar, mode);
+                        //     else
+                        //         this.blitPixels(this.video.fb32, dat, offset, mode);
                         }
                     }
                 }
@@ -605,7 +1102,10 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
                 {
                     var offset = this.bitmapY;
                     offset = (offset * 1024) + this.bitmapX;
-                    this.blitPixels(this.video.fb32, 0xff, offset, mode);
+                    if (!insideBorder) {
+                        // this.blitPixels(this.video.fb32, this.dispEnabled & 0xff, offset, mode);
+                        this.blitPixels(this.video.fb32, (this.bitmapY) & 0xff, offset, mode);
+                    }
                 }
 
                 // CRTC MA always increments, inside display border or not.
@@ -629,8 +1129,8 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
                 }
 
                 if (this.horizCounter === 1) {
-                    if (this.vertCounter === regs4 &&  // end of vertical  //0x16 - regs[4]
-                        this.scanlineCounter === regs9) {  // end of last scanline on vertical too  //0x12 - regs[9]
+                    if (this.vertCounter === regs4 &&  // end of vertical  // regs4	Vertical Total
+                        this.scanlineCounter === this.regs[9]) {  // end of last scanline on vertical too  // regs9  - scanlines per char
                         this.endOfMainLatched = true;
                         this.vertAdjustCounter = 0;
 
@@ -643,33 +1143,76 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 
 
                 //256 pixels across which is 32 bytes - 256 bits
-                if (this.horizCounter === regs0) {  //0x3f - regs[0]
+                if (this.horizCounter === regs0) {  // regs0	Horizontal Total
                     this.endofScanline();  // update this.addr in here from this.lineStartAddr
                     this.horizCounter = 0;
                     this.dispEnableSet(HDISPENABLE);
                 } else {
                     this.horizCounter = (this.horizCounter + 1) & 0xff;
                 }
+
+
+                var r6Hit = (this.vertCounter === regs6);  // regs6	Vertical Displayed
+                if (r6Hit &&
+                    !this.firstScanline &&
+                    (this.dispEnabled & VDISPENABLE)) {
+                    this.dispEnableClear(VDISPENABLE);
+                    // Perhaps surprisingly, this happens here. Both cursor
+                    // blink and interlace cease if R6 > R4.
+                    this.frameCount++;
+                }
+            } // matches while
+        };
+
+
+
+        this.levelDEW = false;
+        this.levelDISPTMG = false;
+        this.scanlineCounterT = 0;
+
+        this.setDEW = function (level) {
+            // The SAA5050 input pin "DEW" is connected to the 6845 output pin
+            // "VSYNC" and it is used to track frames.
+            var oldlevel = this.levelDEW;
+            this.levelDEW = level;
+
+            // Trigger on high -> low. This appears to be what the hardware does.
+            // It needs to be this way for the scanline counter to stay in sync
+            // if you set R6>R4.
+            if (!oldlevel || level) {
+                return;
             }
 
-            var r6Hit = (this.vertCounter === regs6);
-            if (r6Hit &&
-                !this.firstScanline &&
-                (this.dispEnabled & VDISPENABLE)) {
-                this.dispEnableClear(VDISPENABLE);
-                // Perhaps surprisingly, this happens here. Both cursor
-                // blink and interlace cease if R6 > R4.
-                this.frameCount++;
-            }
-            var r7Hit = (this.vertCounter === regs7); //0x1c - regs[7]
-            if (r6Hit || r7Hit) {
-                this.doEvenFrameLogic = !!(this.frameCount & 1);
-            }
+            this.scanlineCounterT = 0;
         };
+
+
+        this.setDISPTMG = function (level) {
+            // The SAA5050 input pin "LOSE" is connected to the 6845 output pin
+            // "DISPTMG" and it is used to track scanlines.
+            var oldlevel = this.levelDISPTMG;
+            this.levelDISPTMG = level;
+
+            // Trigger on high -> low. This is probably what the hardware does as
+            // we need to increment scanline at the end of the scanline, not the
+            // beginning.
+            if (!oldlevel || level) {
+                return;
+            }
+
+            this.scanlineCounterT++;
+            // Check for end of character row.
+            if (this.scanlineCounterT === 12) {
+                this.scanlineCounterT = 0;
+            }
+
+        };
+
+
 
         this.blitPixels = function ( buf, data, destOffset, mode)
         {
-            var scanline = this.scanlineCounter;
+            var scanline = this.scanlineCounterT;
             var css = (mode & 0x08) >>> 2;
             // bitpattern from data is either 4 or 8 pixels in raw graphics
             // either white and black
@@ -679,50 +1222,10 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
             var css = (mode & 0x08) >>> 2;
 
             var bitdef = data;
-            var pixelsPerBit = 4;
-            var bpp = 2;
+            var pixelsPerBit = this.pixelsPerBit;
+            var bpp = this.bpp;
             var colour = 0xffffffff; //white  - see 'collook'  // alpha, blue, green, red
-         if (mode == 0x10)  //1a - 4 colour mode
-        {
-            pixelsPerBit = 4;
-            bpp = 2;
-         }
-         else if (mode == 0x50) //2a - 4 colour mode
-         {
-             pixelsPerBit = 2;
-             bpp = 2;
 
-         }
-         else if (mode == 0x90) //3a - 4 colour mode
-         {
-             pixelsPerBit = 2;
-             bpp = 2;
-         }
-         else if (mode == 0xd0) //4a - 4 colour mode
-            {
-                pixelsPerBit = 2;
-                bpp = 2;
-            }
-         else if (mode == 0x30) //1 - resolution mode
-         {
-             pixelsPerBit = 4;
-             bpp = 1;
-         }
-         else if (mode == 0x70) //2 - resolution mode
-         {
-             pixelsPerBit = 4;
-             bpp = 1;
-         }
-        else if (mode == 0xb0)  //3 - resolution mode
-        {
-            pixelsPerBit = 4;
-            bpp = 1;
-        }
-         else   if (mode == 0xf0) //4 - resolution mode
-         {
-             pixelsPerBit = 2;
-             bpp = 1;
-         }
 
     // MODE NEED TO CHANGE THE RASTER SCAN
             // currently 32 x 16 - 256 x 192 (with 12 lines per row)
@@ -769,32 +1272,31 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
                 // { 0,  63, 63 }, /*Cyan 6*/
                 // { 63, 0,  63 }, /*Magenta 7*/
                 // { 63, 32,  0  }, /*Orange 8 - actually red on the Atom*/
-    var brighten = 4;
+
                 // get just one bit
+                // RG modes
                 if (bpp == 1) {
                     // get a bit
                     var cval = (bitdef>>>j)&0x1;
                     // - green / buff  & black
                     colour = (cval!=0) ? this.collook[(css | 1)] : this.collook[0];
 
-                    colour <<= brighten;
 
-                    fb32[destOffset + n] = fb32[destOffset + n + 1024] = colour;
+                    // two bitmap lines per 1 pixel
+                    fb32[destOffset + n + 1024] = fb32[destOffset + n] = colour;
 
                 }
-                else
+                else // CG modes
                 {
                     //var cval = (bitdef>>>(j&0xe))&0x3;
                     var cval = (bitdef>>>(j&0xe))&0x3;
 
                     // 2 or 4 - green/yellow/blue/red
-                    colour = (cval!=0) ? this.collook[1+(cval | (css<<1)) ] : this.collook[0];
+                    var colindex = 1+(cval | (css<<1));
+                    colour = this.collook[colindex];
 
-                    colour <<= brighten;
-
-                    fb32[destOffset + n] = fb32[destOffset + n + 1024] = colour;
-                //    fb32[destOffset + n+1] = fb32[destOffset + n+1 + 1024] = colour;
-               //     i++;
+                    // two bitmap lines per 1 pixel
+                    fb32[destOffset + n + 1024] = fb32[destOffset + n] = colour;
                 }
 
             }
@@ -806,6 +1308,7 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 
         this.blitChar = function ( buf, data, destOffset, numPixels, mode)
         {
+            // var scanline = this.scanlineCounterT;
             var scanline = this.scanlineCounter;
             var css = (mode & 0x08) >>> 1;
             var chr = data&0x7f;
