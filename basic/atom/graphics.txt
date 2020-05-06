@@ -58,9 +58,10 @@ Again the program can be modified to test the state of points of the screen.
 
 CLEAR4;MOVE0,0;DRAW100,100
 
-5 CLEAR3
-10 ?#B000=#70
-20 MOVE0,0;DRAW100,100
+5 CLEAR4
+10 ?#B000=#50
+20 MOVE0,0
+21 DRAW60,60
 30 END
 RUN
 
@@ -136,6 +137,14 @@ RUN
 
 
 
+
+70 ?#B000=#30
+80 FOR I=0 TO 1024
+90 A=#8000+I
+100 ?A=I
+110 NEXT I
+140 END
+RUN
 
 80 FOR I=0 TO 256
 90 A=#8000+I

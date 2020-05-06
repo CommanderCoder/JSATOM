@@ -801,7 +801,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 }
 
                 if (lastChar && lastChar !== utils.ATOM.SHIFT) {
-                    console.log("<"+lastChar+"> "+millis);
+                    // console.log("<"+lastChar+"> "+millis);
                     processor.atomppia.keyToggleRaw(lastChar);
 
                     //debounce every key on atom
@@ -832,7 +832,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                     time = lastChar;
                     lastChar = undefined;
                 } else {
-                    console.log(">"+lastChar+"< "+millis);
+                    // console.log(">"+lastChar+"< "+millis);
                     processor.atomppia.keyToggleRaw(lastChar);
                 }
 
