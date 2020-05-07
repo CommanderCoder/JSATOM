@@ -1123,6 +1123,9 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     this.uservia.reset(hard);
                     if (model.isAtom) {
                         this.atomppia.reset(hard);
+
+                        // random numbers
+                        for (i = 8; i < 13; this.ramRomOs[i++] = 256 * Math.random() | 0);   // Random number seed address
                     }
                 }
                 this.tube.reset(hard);

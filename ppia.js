@@ -395,7 +395,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
         self.portCUpdated = function () {
 
             self.speaker = (self.portcpins & 0x04)>>>2;
-            soundChip.updateSpeaker(!!(self.speaker), self.processor.currentCycles, self.processor.cycleSeconds);
+            // soundChip.updateSpeaker(!!(self.speaker), self.processor.currentCycles, self.processor.cycleSeconds);
      };
 
         self.drivePortA = function () {

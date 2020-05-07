@@ -271,10 +271,10 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
                 0xf0: [32,44,64,8,  192,288,324,  1, 1, 1], //clear4  256x192x2,  pixels 1w1h   MAIN MENU
                 0xb0: [16,21,32,16,  192,288,324,  2, 1, 1], //clear3  128x192x2, pixels  2w1h   BABIES
                 0x70: [16,21,32,16,  96,144,162,  2, 2, 1], //clear2  128x96x2, pixels  2w2h  3D ASTEROIDS
-                0x30: [16,19,24,24,  64,78,84,  3, 4, 1], //clear1   128x64x2 , pixels  3w4h  3D MAZE
+                0x30: [16,13,24,16,  64,74,84,  2, 3, 1], //clear1   128x64x2 , pixels  3w4h (2w4h) 3D MAZE
                 0xd0: [32,44,64,8,  192,288,324,  2, 1, 2], //?#B000=#d0  128x192x4,pixels  2w1h CHUCKIE EGG
                 0x90: [32,44,64,8,  96,126,144,  2, 2, 2],//?#B000=#90  128x96x4, pixels 2w2h  FLAPPY BIRD
-                0x50: [16,32,48,12, 72,96,108,  3, 3, 2],//?#B000=#50  128x64x4 , pixels 3w3h  <none found>
+                0x50: [16,21,32,16, 64,96,108,  4, 3, 2],//?#B000=#50  128x64x4 , pixels 3w3h (4w3h) <none found>
                 0x10: [16,21,32,16,  64,84,96,  4, 3, 2],//?#B000=#10  64x64x4 , pixels 4w3h  <none found>
                 0x00: [32,44,64,8,  16,18,20,  0, 12, 2]  // clear0 //0,0 not used on Mode 0 (uses blitChar), pixelsPerBit, bpp
             };
