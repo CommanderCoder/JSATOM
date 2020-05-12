@@ -215,9 +215,9 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
                         var casbit = casin?1:0;
 
-
-                        var rept_key = !self.keys[1][6]<<6 ;
-                        r |= (rept_key&0x40);
+                        // make sure REPT key bit is HIGH (low means pressed)
+                        var rept_key = (!self.keys[1][6]<<6)&0x40;
+                        val |= rept_key;
 
                         // TAPE - 0xfc0a  (every 3.340ms/3340us), -OSBGET Get Byte from Tape subroutine; get a bit and count duration of tape pulse (using FCD2)
                         // TAPE - 0xfcd2  (every 0.033ms/3.3us), -Test state of #B002 tape input pulse subroutine (has there been a change?)
@@ -279,9 +279,6 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
             },
 
             recalculatePortCPins: function () {
-                // make sure REPT key is HIGH (low means pressed)
-                self.latchc |= 1<<6;
-
                 self.portcpins = self.latchc;
                 self.drivePortC();
                 self.portCUpdated();
@@ -385,6 +382,12 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
         };
 
+        self.polltime = function(cycles) {
+            // update in ATOM getting value from speaker
+            soundChip.updateSpeaker(!!(self.speaker), self.processor.currentCycles, self.processor.cycleSeconds);
+        };
+
+
         self.portAUpdated = function () {
             self.updateKeys();
         };
@@ -393,10 +396,8 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
         };
 
         self.portCUpdated = function () {
-
             self.speaker = (self.portcpins & 0x04)>>>2;
-            // soundChip.updateSpeaker(!!(self.speaker), self.processor.currentCycles, self.processor.cycleSeconds);
-     };
+        };
 
         self.drivePortA = function () {
             self.updateKeys();
@@ -411,7 +412,6 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
         };
 
         self.reset();
-
 
         // ATOM TAPE SUPPORT
 

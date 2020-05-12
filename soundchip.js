@@ -173,6 +173,8 @@ define(['./utils'], function (utils) {
             buffer = new Float32Array(maxBufferSize);
         }
 
+        // this grabs data from the generators and makes the noise
+        // polled by the browser!
         function render(out, offset, length) {
             catchUp();
             var fromBuffer = position > length ? length : position;
@@ -204,6 +206,8 @@ define(['./utils'], function (utils) {
 
         var latchedChannel = 0;
 
+        // triggered by the emulator to latch relevant data
+        // on ATOM this is really just using the 'catchup' regularly.
         function poke(value) {
             catchUp();
             var latchData = !!(value & 0x80);
@@ -260,21 +264,31 @@ define(['./utils'], function (utils) {
             speakerBuffer[i] = 0.0;
         }
 
+        var speakerTime = 0;
+        var bufferPos = speakerBufferSize>>1;  // start buffer half way through buffer and speakertime at the beginning
+        var samplesSinceLastValueChange = 0;
+
         var lastSecond = 0;
         var lastMicroCycle = 0;
-        var speakerTime = 0;
+        var outstandingCycles = 0;
 
+        // called by the generator to pump samples to the output
+        // THIS IS FINE
         function speakerChannel(channel, out, offset, length) {
-            // the JS AudioContext has a 2048 byte buffer
+
+            // testaudio
+            // {
+            //     console.log("speakerChannel :  st: " + speakerTime + "+" + length + " bp: "+bufferPos);
+            // }
 
             for (var i = 0; i < length; ++i) {
-
                 out[i + offset] += speakerBuffer[speakerTime & (speakerBufferSize - 1)];
                 speakerTime++;
             }
             while (speakerTime > speakerBufferSize) speakerTime -= speakerBufferSize;
         };
 
+        // fill the buffer with the last value
         this.updateSpeaker = function(value, microCycle, seconds)
         {
             catchUp();
@@ -282,32 +296,72 @@ define(['./utils'], function (utils) {
             // value - true for 1, false for 0
 
             // calculate the number of buffer values to fill
-            var t = seconds - lastSecond;
-            lastSecond = t;
-            var length = microCycle - lastMicroCycle;
-            if (length+t/cpuFreq < 0) console.log("more than one second since last updateSpeaker " + length + ">"+seconds+ ":"+microCycle +"<" );
-            // console.log(" second since last updateSpeaker >"+seconds+ ":"+microCycle +"<" );
-            while (length < 0) length += 1 / cpuFreq;  // add seconds to get it positive
+            var deltaSeconds = seconds - lastSecond;
+            var deltaCycles = microCycle - lastMicroCycle;
 
-            //convert length to samples at samplerate
-            length *= samplesPerCycle;
-            var sampleTime = lastMicroCycle * samplesPerCycle;
+            // deltaSeconds is seconds since last last update
+            // deltaCycles is microcycles since last update
 
-            if (length >= speakerBufferSize) {
-                console.log("speaker buffer too small " + sampleTime + " " + length + "/"+speakerBufferSize);
-               return;
+            var totalCycles = outstandingCycles + deltaCycles + deltaSeconds / cpuFreq;
+
+            //convert totalCycles to totalSamples at samplerate
+            var totalSamples = (totalCycles * samplesPerCycle) | 0;
+
+            // testaudio
+            // if (totalSamples>0)
+            // {
+            //     console.log("updateSpeaker : " + ">" + seconds + ":" + microCycle + "< st:"+ speakerTime + " bp:" + bufferPos+" + "+ totalSamples);
+            // }
+
+            if (totalSamples === 0)
+                outstandingCycles = totalCycles;
+            else
+                outstandingCycles = totalCycles-outstandingCycles;
+
+            var lastbit = speakerBuffer[bufferPos];
+
+
+            if (totalSamples >= speakerBufferSize) {
+                console.log("speaker buffer too small " + bufferPos + " " + totalSamples + " >= "+speakerBufferSize);
+                // clear out the buffer with zeros
+                outstandingCycles=0;
+                bufferPos = 0;
+            }
+            else
+            {
+                // fill the buffer with the last value that was set
+                for (var i = 0; i < totalSamples; ++i) {
+                    speakerBuffer[bufferPos & (speakerBufferSize - 1)] = lastbit;
+                    bufferPos++;
+                }
+                while (bufferPos > speakerBufferSize) bufferPos -= speakerBufferSize;
+            }
+            var newbit = value?1.0:0.0;
+
+            // record the current value
+            speakerBuffer[bufferPos] = newbit;
+
+            // testAudio
+            samplesSinceLastValueChange+=totalSamples;
+            if ( lastbit != newbit ) {
+                // samples since last change is only half a cycle so multiply by 2
+                console.log("updateSpeaker frequency: " + sampleRate / (samplesSinceLastValueChange * 2) + "hz");
+                samplesSinceLastValueChange=0;
             }
 
-            // fill the buffer with the last value that was sent
-            var bit = speakerBuffer[sampleTime];
-            for (var i = 0; i < length; ++i) {
-                speakerBuffer[(i + sampleTime) & (speakerBufferSize - 1)] = bit;
-            }
+            // running this program (from Atomic Theory and Practice) page 26
+            // section 4.6.1 Labels - a to z
+            // shows that the frequencies and sounds are right
 
+            // 10 REM 322 Hz
+            // 20 P=#B002
+            // 30 FOR Z=0 TO 10000000 STEP 4;?P=Z;N.
+            // 40 END
+
+
+            // start the next update from this point
+            lastSecond = seconds;
             lastMicroCycle = microCycle;
-            // add the current value
-            sampleTime = lastMicroCycle * samplesPerCycle;
-            speakerBuffer[sampleTime] = value?1.0:0.0;
         };
 
         this.reset = function (hard) {

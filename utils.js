@@ -414,8 +414,8 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         Y: 89,
         Z: 90,
         /* also META on Mac */
-        WINDOWS: 91,
-        MENU: 93,
+        WINDOWS: 91,         // note: WINDOWS is CMD_LEFT on MAC
+        MENU: 93,          // note: MENU is CMD_RIGHT on MAC
         NUMPAD0: 96,
         NUMPAD1: 97,
         NUMPAD2: 98,
@@ -813,35 +813,38 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         map(keyCodes.PERIOD, ATOM.PERIOD_GREATERTHAN);
         map(keyCodes.SLASH, ATOM.SLASH_QUESTIONMARK);
         map(keyCodes.SPACE, ATOM.SPACE);
-
         map(keyCodes.ENTER, ATOM.RETURN);
 
-        map(keyCodes.SHIFT, ATOM.SHIFT);
-        map(keyCodes.SHIFT_LEFT, ATOM.SHIFT);
-        map(keyCodes.SHIFT_RIGHT, ATOM.SHIFT);
 
         // other keys to map to these in "game" layout too
-        map(keyCodes.ALT_RIGHT, ATOM.REPT);
-        map(keyCodes.F10, ATOM.CLEAR);
+        map(keyCodes.F9, ATOM.CLEAR);  // not actually on an ATOM keyboard
         map(keyCodes.LEFT, ATOM.LEFT); // arrow left
         map(keyCodes.RIGHT, ATOM.LEFT_RIGHT); // arrow right
         map(keyCodes.DOWN, ATOM.DOWN); // arrow down
         map(keyCodes.UP, ATOM.UP_DOWN); // arrow up
 
+        map(keyCodes.BACKSPACE, ATOM.DELETE); // delete
+        map(keyCodes.DELETE, ATOM.DELETE); // delete
+
+        map(keyCodes.ESCAPE, ATOM.ESCAPE);
+        map(keyCodes.TAB, ATOM.COPY);
+        map(keyCodes.F11, ATOM.UP_ARROW);
+
+        map(keyCodes.F10, ATOM.REPT);
 
         if (keyLayout === "natural") {
 
             // "natural" keyboard
             // Like a PC/Mac keyboard
 
-
             // US Keyboard: has Tilde on <Shift>BACK_QUOTE
+            map(keyCodes.BACK_QUOTE, ATOM.UP_ARROW);  // ` on PC, § on Mac
             map(keyCodes.APOSTROPHE, isUKlayout ? ATOM.AT : ATOM.K2, true);
             map(keyCodes.K2, isUKlayout ? ATOM.K2 : ATOM.AT, true);
 
             // 1st row
             map(keyCodes.K3, ATOM.K3, true);
-            map(keyCodes.HASH, ATOM.K3, true);  // on UK
+            map(keyCodes.K6, ATOM.UP_ARROW, true);
             map(keyCodes.K7, ATOM.K6, true);
             map(keyCodes.K8, ATOM.COLON_STAR, true);
             map(keyCodes.K9, ATOM.K8, true);
@@ -849,6 +852,7 @@ define(['jsunzip', 'promise'], function (jsunzip) {
 
             map(keyCodes.K2, ATOM.K2, false);
             map(keyCodes.K3, ATOM.K3, false);
+            map(keyCodes.K6, ATOM.K6, false);
             map(keyCodes.K7, ATOM.K7, false);
             map(keyCodes.K8, ATOM.K8, false);
             map(keyCodes.K9, ATOM.K9, false);
@@ -857,7 +861,11 @@ define(['jsunzip', 'promise'], function (jsunzip) {
             map(keyCodes.K1, ATOM.K1);
             map(keyCodes.K4, ATOM.K4);
             map(keyCodes.K5, ATOM.K5);
-            map(keyCodes.K6, ATOM.K6);
+
+            // 3rd row
+
+            map(keyCodes.HASH, ATOM.HASH); // OK for <Shift> at least
+
 
             map(keyCodes.MINUS, ATOM.MINUS_EQUALS);
 
@@ -875,24 +883,21 @@ define(['jsunzip', 'promise'], function (jsunzip) {
             map(keyCodes.EQUALS, ATOM.SEMICOLON_PLUS); // OK for <Shift> at least
 
             map(keyCodes.END, ATOM.COPY);
-
             map(keyCodes.F11, ATOM.COPY);
-
-            map(keyCodes.ESCAPE, ATOM.ESCAPE);
 
             map(keyCodes.CTRL, ATOM.CTRL);
             map(keyCodes.CTRL_LEFT, ATOM.CTRL);
             map(keyCodes.CTRL_RIGHT, ATOM.CTRL);
+            map(keyCodes.SHIFT, ATOM.SHIFT);
+            map(keyCodes.SHIFT_LEFT, ATOM.SHIFT);
+            map(keyCodes.SHIFT_RIGHT, ATOM.SHIFT);
 
-            map(keyCodes.CAPSLOCK, ATOM.LOCK);
-
-            map(keyCodes.DELETE, ATOM.DELETE);
-
-            map(keyCodes.BACKSPACE, ATOM.DELETE);
+            map(keyCodes.WINDOWS, ATOM.LOCK);  // this is wrong on a MAC
 
             map(keyCodes.BACKSLASH, ATOM.BACKSLASH);
 
-        } else if (keyLayout === "gaming") {
+        }
+        else if (keyLayout === "gaming") {
             // gaming keyboard
 
             // 1st row
@@ -942,24 +947,22 @@ define(['jsunzip', 'promise'], function (jsunzip) {
 
             // for Zalaga
             map(keyCodes.CTRL_LEFT, ATOM.CAPSLOCK);
-            map(keyCodes.ALT_LEFT, ATOM.CTRL);
+            // map(keyCodes.WINDOWS, ATOM.CTRL);  // CMD_LEFT
 
             // should be 4th row, not enough keys
-            map(keyCodes.MENU, ATOM.DELETE);
+            map(keyCodes.DELETE, ATOM.DELETE);
             map(keyCodes.CTRL_RIGHT, ATOM.COPY);
 
             // not in correct location
-            map(keyCodes.ALT_RIGHT, ATOM.SHIFTLOCK);
-            map(keyCodes.WINDOWS, ATOM.SHIFTLOCK);
-        } else {
+            map(keyCodes.WINDOWS, ATOM.SHIFTLOCK);  // CMD_LEFT
+        } else
+            {
             // Physical, and default
             // Like a real ATOM
             // mainly the CTRL key is still CTRL (as CAPSLOCK locks on the MAC)
             // UP/DOWN/LEFT/RIGHT are using arrow keys
             // REPT is using the RIGHT_ALT
             // note: LOCK is on LEFT_ALT
-            map(keyCodes.ESCAPE, ATOM.ESCAPE);
-            // map(keyCodes.BACK_QUOTE, ATOM.ESCAPE);  // ` on PC, § on Mac
             map(keyCodes.K1, ATOM.K1);
             map(keyCodes.K2, ATOM.K2);
             map(keyCodes.K3, ATOM.K3);
@@ -972,32 +975,28 @@ define(['jsunzip', 'promise'], function (jsunzip) {
             map(keyCodes.K0, ATOM.K0);
             map(keyCodes.MINUS, ATOM.MINUS_EQUALS); // - / _ becomes - / =
             map(keyCodes.EQUALS, ATOM.COLON_STAR);  // = / + becomes  : / *
-            map(keyCodes.F11, ATOM.UP_ARROW);
             //BREAK is code in 'main.js' to F12
 
-            map(keyCodes.TAB, ATOM.COPY);
             // Q-P normal
             map(keyCodes.LEFT_SQUARE_BRACKET, ATOM.AT); // maps to @
             map(keyCodes.RIGHT_SQUARE_BRACKET, ATOM.BACKSLASH); // maps to \
-            map(keyCodes.BACKSPACE, ATOM.DELETE); // delete
-            map(keyCodes.DELETE, ATOM.DELETE); // delete
 
-            map(keyCodes.CTRL, ATOM.CTRL);
-            map(keyCodes.CTRL_LEFT, ATOM.CTRL);  // using CAPSLOCK for CTRL doesn't work
-            map(keyCodes.CTRL_RIGHT, ATOM.CTRL);  // using CAPSLOCK for CTRL doesn't work
+            map(keyCodes.SHIFT, ATOM.CTRL);
+            map(keyCodes.SHIFT_LEFT, ATOM.CTRL);  // using CAPSLOCK for CTRL doesn't work on MAC
+            map(keyCodes.CTRL, ATOM.SHIFT);
+            map(keyCodes.CTRL_LEFT, ATOM.SHIFT);
+
+            map(keyCodes.CTRL_RIGHT, ATOM.SHIFT);
+            map(keyCodes.SHIFT_RIGHT, ATOM.REPT);
+
             // A-L normal
             map(keyCodes.SEMICOLON, ATOM.SEMICOLON_PLUS); // ; / +
             map(keyCodes.APOSTROPHE, ATOM.LEFT_SQUARE_BRACKET);
             map(keyCodes.BACKSLASH, ATOM.RIGHT_SQUARE_BRACKET);  // HASH is \| key on Mac
-            map(keyCodes.ENTER, ATOM.RETURN); // return
 
-            map(keyCodes.ALT_LEFT, ATOM.LOCK);
+            map(keyCodes.F1, ATOM.LOCK);  // ALT_LEFT  or WINDOWS might be better
+
             // Z - M normal
-            map(keyCodes.COMMA, ATOM.COMMA_LESSTHAN); // ',' / '<'
-            map(keyCodes.PERIOD, ATOM.PERIOD_GREATERTHAN); // '.' / '>'
-            map(keyCodes.SLASH, ATOM.SLASH_QUESTIONMARK); // '/' / '?'
-            map(keyCodes.ALT_RIGHT, ATOM.REPT);
-
         }
 
         // user keymapping

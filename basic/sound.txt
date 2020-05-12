@@ -1,0 +1,14 @@
+From ATAP page 26
+section 4.6.1 Labels - a to z
+
+
+10 REM 322 Hz
+20 P=#B002
+30 FOR Z=0 TO 10000000 STEP 4;?P=Z;N.
+40 END
+RUN
+
+20 P=#B002
+30 FOR Z=0 TO 10000000 STEP 4;?P=Z;N.
+40 END
+RUN
