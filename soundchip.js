@@ -23,7 +23,7 @@ define(['./utils'], function (utils) {
         var outputBit = [false, false, false, false];
         var volume = [0, 0, 0, 0];
         this.volume = volume;  // for debug
-        var generators = [null, null, null, null, null];
+        var generators = [null, null, null, null, null , null]; // added ATOM generator
 
         var volumeTable = [];
         var f = 1.0;
@@ -256,7 +256,7 @@ define(['./utils'], function (utils) {
         };
 
         //ATOM
-        generators[3] = speakerChannel;
+        generators[5] = speakerChannel;
 
         var speakerBufferSize = 8192;
         var speakerBuffer = [];
@@ -266,33 +266,54 @@ define(['./utils'], function (utils) {
 
         var speakerTime = 0;
         var bufferPos = speakerBufferSize>>1;  // start buffer half way through buffer and speakertime at the beginning
-        var samplesSinceLastValueChange = 0;
+        // var samplesSinceLastValueChange = 0;
 
         var lastSecond = 0;
         var lastMicroCycle = 0;
         var outstandingCycles = 0;
 
+        var numSamplesAdded = 0;
+
         // called by the generator to pump samples to the output
-        // THIS IS FINE
         function speakerChannel(channel, out, offset, length) {
 
-            // testaudio
-            // {
-            //     console.log("speakerChannel :  st: " + speakerTime + "+" + length + " bp: "+bufferPos);
+            // soundchip _reset_ will advance the buffer 100000 cycles (or 4410 samples)
+            //  which is rounded to buffer size of 4096
+            //
+
+            // the catchup() in updateSpeaker() will cause this to be called every time a sample can
+            // be played, but it just buffers up the result and doesn't play it.
+            // a real 'render' is when the length is about 2048 or higher
+
+            // if (numSamplesAdded < length) {
+            //     console.log("speakerChannel grabbing too many samples: " + (length-numSamplesAdded));
             // }
 
+
+            var lastbit = speakerBuffer[speakerTime];
             for (var i = 0; i < length; ++i) {
-                out[i + offset] += speakerBuffer[speakerTime & (speakerBufferSize - 1)];
+                // got a real sample, so grab it.  If not, just keep using the last correct value
+                if (i < numSamplesAdded)
+                    lastbit = speakerBuffer[speakerTime & (speakerBufferSize - 1)];
+
+                out[i + offset] += lastbit;
                 speakerTime++;
             }
+
+            if (numSamplesAdded > length) {
+                // console.log("speakerChannel created too many samples: " + (numSamplesAdded-length));
+                // skip past the sample created that cannot be played in time
+                speakerTime += (numSamplesAdded-length);
+            }
+
+            numSamplesAdded = 0;
+
             while (speakerTime > speakerBufferSize) speakerTime -= speakerBufferSize;
-        };
+        }
 
         // fill the buffer with the last value
         this.updateSpeaker = function(value, microCycle, seconds)
         {
-            catchUp();
-
             // value - true for 1, false for 0
 
             // calculate the number of buffer values to fill
@@ -307,19 +328,12 @@ define(['./utils'], function (utils) {
             //convert totalCycles to totalSamples at samplerate
             var totalSamples = (totalCycles * samplesPerCycle) | 0;
 
-            // testaudio
-            // if (totalSamples>0)
-            // {
-            //     console.log("updateSpeaker : " + ">" + seconds + ":" + microCycle + "< st:"+ speakerTime + " bp:" + bufferPos+" + "+ totalSamples);
-            // }
-
             if (totalSamples === 0)
                 outstandingCycles = totalCycles;
             else
-                outstandingCycles = totalCycles-outstandingCycles;
+                outstandingCycles = totalCycles-(1/samplesPerCycle);
 
             var lastbit = speakerBuffer[bufferPos];
-
 
             if (totalSamples >= speakerBufferSize) {
                 console.log("speaker buffer too small " + bufferPos + " " + totalSamples + " >= "+speakerBufferSize);
@@ -335,6 +349,7 @@ define(['./utils'], function (utils) {
                     bufferPos++;
                 }
                 while (bufferPos > speakerBufferSize) bufferPos -= speakerBufferSize;
+                numSamplesAdded+=totalSamples;
             }
             var newbit = value?1.0:0.0;
 
@@ -342,12 +357,12 @@ define(['./utils'], function (utils) {
             speakerBuffer[bufferPos] = newbit;
 
             // testAudio
-            samplesSinceLastValueChange+=totalSamples;
-            if ( lastbit != newbit ) {
-                // samples since last change is only half a cycle so multiply by 2
-                console.log("updateSpeaker frequency: " + sampleRate / (samplesSinceLastValueChange * 2) + "hz");
-                samplesSinceLastValueChange=0;
-            }
+            // samplesSinceLastValueChange+=totalSamples;
+            // if ( lastbit != newbit ) {
+            //     // samples since last change is only half a cycle so multiply by 2
+            //     console.log("updateSpeaker frequency: " + sampleRate / (samplesSinceLastValueChange * 2) + "hz");
+            //     samplesSinceLastValueChange=0;
+            // }
 
             // running this program (from Atomic Theory and Practice) page 26
             // section 4.6.1 Labels - a to z

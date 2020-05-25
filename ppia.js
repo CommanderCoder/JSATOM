@@ -115,6 +115,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
             polltime: function (cycles) {
                 cycles |= 0;
+
             },
 /*
  Port C - #B002
@@ -382,11 +383,10 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
         };
 
-        self.polltime = function(cycles) {
-            // update in ATOM getting value from speaker
+        self.polltime = function(cycles)
+        {
             soundChip.updateSpeaker(!!(self.speaker), self.processor.currentCycles, self.processor.cycleSeconds);
         };
-
 
         self.portAUpdated = function () {
             self.updateKeys();
