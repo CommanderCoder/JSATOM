@@ -209,6 +209,8 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
             globalDataPresent:0,
             filenum : -1,
             worker:null,
+            WildPattern:".*",
+            foldersSeen:[],
 
             MMCdata:undefined,
             dfn : 0,
@@ -231,17 +233,27 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
                 var ret = 0;
                 if (this.filenum == 0) {
+                    // spread operator '...'
                     var fname = String.fromCharCode(...this.globalData.slice(0,-1)).split('\0')[0];
+                    fname = "/"+fname;
                     if (this.CWD.length > 0)
-                        fname = this.CWD+"/"+fname;
-                    console.log("FileOpen " + fname);
+                        fname = this.CWD+fname;
+                    console.log("FileOpen " + fname + " mode "+ mode);
                     // The scratch file is fixed, so we are backwards compatible with 2.9 firmware
                     this.fildata = new Uint8Array();
                     this.fildataIndex = 0;
                     //ret = f_open(&fildata[0], (const char*)globalData, mode);
                     ret = 4;//FR_NO_FILE
+
+                    // search to see if this might be a directory name
+                    var dirname = fname+'/';
+                    var result = self.MMCdata.names.findIndex((file) => { return file.startsWith(dirname);}, dirname);
                     var a = self.MMCdata.names.indexOf(fname );
-                    if (a != -1) {
+                    if (result !== -1)
+                    {
+                        ret = 8;//FR_EXISTS
+                    }
+                    else if (a !== -1) {
                         this.fildata = self.MMCdata.uFiles[a].data;
                         ret = 0;//FR_OK
                     }
@@ -271,7 +283,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
             },
             WFN_FileOpenRead: function()
             {
-                console.log("WFN_FileOpenRead "+ this.filenum);
+                // console.log("WFN_FileOpenRead "+ this.filenum);
 
                 var res = self.fileOpen(FA_OPEN_EXISTING|FA_READ);
                 // if (self.filenum < 4) {
@@ -283,23 +295,46 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
             WFN_FileClose: function()
         {
-            console.log("WFN_FileClose "+ this.filenum);
+            // console.log("WFN_FileClose "+ this.filenum);
             // FIL *fil = &fildata[filenum];
             // WriteDataPort(STATUS_COMPLETE | f_close(fil));
             self.WriteDataPort(STATUS_COMPLETE);
 
         },
+            openeddir:"",
             WFN_DirectoryOpen: function()
             {
-                console.log("WFN_DirectoryOpen : STATUS_OK" );
+                var path = String.fromCharCode(...this.globalData.slice(0,-1)).split('\0')[0];
+                if (this.CWD.length > 0)
+                    path = this.CWD+path;
+                else if (path !== "")
+                    path = "/"+path;
 
+                self.globalData = new TextEncoder("utf-8").encode(path+"\0");
+
+                console.log("WFN_DirectoryOpen : "+path );
+
+
+                // found a wildcard but no final '/' then just use wildcard
+                // found a final / followed by wildcard, set path and wildcard
+
+                self.WildPattern = ".*";
+                self.foldersSeen = [];
                 // GetWildcard(); // into globaldata
 
+                var res = 0; // FR_OK
+                path += "/";
                 // globaldata is the wildcard for the getting the director
                 // res = f_opendir(&dir, (const char*)globalData);
+                var result = self.MMCdata.names.findIndex((file) => { return file.startsWith(path);}, path);
+                self.openeddir ="";
+                if (result === -1)
+                    res = 5; //FR_NO_PATH
+                else
+                    self.openeddir = path;
+
                 self.dfn = 0;
 
-                var res = 0; // FR_OK
                 if (self.MMCdata === undefined)
                     res = 4; //FR_ERROR
 
@@ -314,6 +349,8 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
             },
             WFN_DirectoryRead:function() {
+                console.log("WFN_DirectoryRead : " );
+
                 while (1) {
 
                     if (self.MMCdata === undefined || self.MMCdata.names[self.dfn] === undefined || self.MMCdata.names.length == 0) {
@@ -324,9 +361,28 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                         return;
                     }
 
-                    var fname = self.MMCdata.names[self.dfn];
-                    var dirmatch = fname.match('/^'+this.CWD+'\/.+/i');
-                    if (!dirmatch)
+
+                    var longname = self.MMCdata.names[self.dfn];
+                    var cwd = new RegExp("^"+self.openeddir);  // ,'i'); for case insensitive
+
+                    // skip any file that doesn't begin with the CWD (beginning with /)
+                    var dirmatch = longname.match(cwd);
+                    if (!dirmatch )
+                    {
+                        self.dfn+=1;
+                        continue;
+                    }
+
+                    longname = longname.replace(cwd, '');
+
+                    var folders = longname.split('/');
+                    var fname = folders[0];
+                    var isdir = folders.length > 1;
+                    var Match = fname.match(new RegExp(self.WildPattern));
+
+                    var seenAlready = (isdir && self.foldersSeen.includes(fname));
+
+                    if (!Match || seenAlready  )
                     {
                         self.dfn+=1;
                         continue;
@@ -334,17 +390,18 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
                     var str = '';
                     // check for dir
-                    // if (attr[self.dfn] == 'dir')
-                    // {
-                    //     str += '<';
-                    // }
+                    if (isdir) // its a directory name
+                    {
+                        str += '<';
+                    }
 
-                    str+=self.MMCdata.names[self.dfn];
-
-                    // if (attr[self.dfn] == 'dir')
-                    // {
-                    //     str+='>';
-                    // }
+                    // str+=self.MMCdata.names[self.dfn];
+                    str+=fname;
+                    if (isdir) // its a directory name
+                    {
+                        str+='>';
+                        self.foldersSeen.push(fname);
+                    }
 
                     console.log("WFN_DirectoryRead STATUS_OK  " + str);
                     self.WriteDataPort(STATUS_OK);
@@ -363,7 +420,28 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
                 console.log("WFN_SetCWDirectory "+dirname);
                 //this.WriteDataPort(STATUS_COMPLETE | f_chdir((const XCHAR*)globalData));
-                this.CWD+=dirname;
+                if (dirname === '/' || dirname === '') {
+                    this.CWD = '';
+                }
+                else if (dirname === '.')
+                {
+
+                }
+                else if (dirname === '..')
+                {
+                    var dirs = this.CWD.split ('/');
+                    dirs.pop(); // remove right
+                    if (dirs.length>1)
+                        this.CWD = '/'+dirs.join('/');
+                    else
+                        this.CWD="";
+                } else if (dirname[0] === '/')
+                {
+                    this.CWD = dirname;
+                }
+                else{
+                    this.CWD += '/'+dirname;
+                }
                 this.WriteDataPort(STATUS_COMPLETE);
             }
                 ,
@@ -371,6 +449,8 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                 console.log("WFN_FileSeek");
             },
             WFN_FileRead:function() {
+                // console.log("WFN_FileRead : " );
+
                 if (this.globalAmount == 0)
                 {
                     this.globalAmount = 256;
@@ -621,7 +701,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                                 this.WriteDataPort(1);//(blVersion);
                             } else if (received == CMD_GET_CFG_BYTE) // read config byte
                             {
-                                console.log("CMD_REG:CMD_GET_CFG_BYTE -> 0x" + this.configByte.toString(16));
+                                // console.log("CMD_REG:CMD_GET_CFG_BYTE -> 0x" + this.configByte.toString(16));
                                 this.WriteDataPort(this.configByte);
                             } else if (received == CMD_SET_CFG_BYTE) // write config byte
                             {
@@ -642,7 +722,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                                 // Utility commands.
                             // Moved here 2011-05-29 PHS
                             else if (received == CMD_GET_CARD_TYPE) {
-                                console.log("CMD_REG:CMD_GET_CARD_TYPE -> 0x01");
+                                // console.log("CMD_REG:CMD_GET_CARD_TYPE -> 0x01");
                                 // get card type - it's a slowcmd despite appearance
                                 // disk_initialize(0);
                                 //#define CT_MMC 0x01 /* MMC ver 3 */
@@ -698,6 +778,10 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
                                 // this.WriteEEPROM(EE_PORTBVALU, byteValueLatch);
                                 this.WriteDataPort(STATUS_OK);
+                            }
+                            else
+                            {
+                                console.log("unrecognised CMD: "+received)
                             }
 
 
@@ -758,7 +842,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                             }
                             // console.log("Adding file", f);
                             uncompressedFiles.push(unzip.read(f));
-                            loadedFiles.push(f);
+                            loadedFiles.push("/"+f);
                         }
 
                         self.MMCdata = {uFiles: uncompressedFiles, names: loadedFiles};
