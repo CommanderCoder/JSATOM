@@ -482,6 +482,8 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         });
 
         var $cub = $('#cub-monitor');
+        // on Atom
+            $cub = $('#80s-tv');
         $cub.on('mousemove mousedown mouseup', function (evt) {
             userInteraction();
             if (document.activeElement !== document.body)
@@ -1292,12 +1294,16 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             .then(function () {
                 // Ideally would start the loads first. But their completion needs the FDC from the processor
                 var imageLoads = [];
-                if (discImage) imageLoads.push(loadDiscImage(discImage).then(function (disc) {
-                    processor.fdc.loadDisc(0, disc);
-                }));
-                if (secondDiscImage) imageLoads.push(loadDiscImage(secondDiscImage).then(function (disc) {
-                    processor.fdc.loadDisc(1, disc);
-                }));
+                if (!processor.model.isAtom)
+                {
+                    if (discImage) imageLoads.push(loadDiscImage(discImage).then(function (disc) {
+                        processor.fdc.loadDisc(0, disc);
+                    }));
+                    if (secondDiscImage) imageLoads.push(loadDiscImage(secondDiscImage).then(function (disc) {
+                        processor.fdc.loadDisc(1, disc);
+                    }));
+                }
+
                 if (parsedQuery.tape) imageLoads.push(loadTapeImage(parsedQuery.tape));
 
                 if (processor.model.isAtom) imageLoads.push(loadMMCImage(SDCard));
@@ -1566,7 +1572,11 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         }
 
         (function () {
-            const $cubMonitor = $("#cub-monitor");
+            var monitortype = "#cub-monitor";
+            if (processor.model.isAtom)
+                monitortype = "#80s-tv";
+
+            const $cubMonitor = $(monitortype);
             var cubOrigHeight = $cubMonitor.height();
             var cubToScreenHeightRatio = $screen.height() / cubOrigHeight;
             var cubOrigWidth = $cubMonitor.width();
@@ -1586,8 +1596,12 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 } else {
                     width = height * desiredAspectRatio;
                 }
-                $('#cub-monitor').height(height).width(width);
-                $('#cub-monitor-pic').height(height).width(width);
+                // var monitortype = '#cub-monitor';
+                // if (processor.model.isAtom)
+                //     monitortype = '#80s-tv';
+
+                $(monitortype).height(height).width(width);
+                $(monitortype+'-pic').height(height).width(width);
                 $screen.height(height * cubToScreenHeightRatio).width(width * cubToScreenWidthRatio);
             }
 

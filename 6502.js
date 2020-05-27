@@ -1069,15 +1069,17 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                         } else {
                             // ROMS are different on ATOM - using 0x8000 onwards for video memory
                             //0x8000 -> 0xbfff
-                            for (i = 128; i < 192; ++i) this.memLook[i] = this.memLook[256 + i] = 0; // just usual address
+                            for (i = 0x80; i < 0xc0; ++i) this.memLook[i] = this.memLook[256 + i] = 0; // just usual address
+
+                            // roms
                             //0xc000 -> 0xefff
-                            for (i = 192; i < 240; ++i) this.memLook[i] = this.memLook[256 + i] = this.romOffset - 0xc000;
+                            for (i = 0xc0; i < 0xf0; ++i) this.memLook[i] = this.memLook[256 + i] = this.romOffset - 0xc000;
                             //0xf000 -> 0xffff
-                            for (i = 240; i < 256; ++i) this.memLook[i] = this.memLook[256 + i] = this.osOffset - 0xf000;
+                            for (i = 0xf0; i < 0x100; ++i) this.memLook[i] = this.memLook[256 + i] = this.osOffset - 0xf000;
 
 
                             for (i = 0; i < 0xa0; ++i) this.memStat[i] = this.memStat[256 + i] = 1; // up 0x9fff : 1 means RAM
-                            for (i = 0xa0; i < 0xb0; ++i) this.memStat[i] = this.memStat[256 + i] = 2; // 0xA000 onwards : 2 means ROM
+                            for (i = 0xa0; i < 0xb0; ++i) this.memStat[i] = this.memStat[256 + i] = 1; // 0xA000 onwards : 1 means RAM
                             for (i = 0xb0; i < 0xc0; ++i) this.memStat[i] = this.memStat[256 + i] = 0;  //0xb000 to 0xbfff  : 0 means DEVICE/PERIPHERAL/IO
                             for (i = 0xc0; i < 0x100; ++i) this.memStat[i] = this.memStat[256 + i] = 2; // 0xC000 onwards : 2 means ROM
                         }
