@@ -6,7 +6,7 @@ body {
     display: block;
 }
 
-#80s-tv {
+#nec-tv {
     position: relative;
     margin-left: auto;
     margin-right: auto;
@@ -14,10 +14,9 @@ body {
     height: 668px;
 }
 
-#80s-tv-pic {
+#nec-tv-pic {
     position: absolute;
 }
-
 
 .sidebar {
     position: absolute;
@@ -30,7 +29,7 @@ body {
 }
 
 .sidebar.left {
-    left: -105px;
+    left: -205px;
     top: 0px;
 }
 
@@ -41,11 +40,11 @@ body {
 #screen {
     position: absolute;
     z-index: -1;
-    top: 128px;
+    top: 32px;
     left: 0px;
     display: block;
-    width: 768px;
-    height: 576px;
+    width: 830px;
+    height: 622px;
 }
 
 #debug {

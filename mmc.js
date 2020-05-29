@@ -190,6 +190,38 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
         */
 
+    function extractSDFiles(data)
+    {
+        var unzip = new jsunzip.JSUnzip();
+        // console.log("Attempting to unzip");
+        var result = unzip.open(data);
+        if (!result.status) {
+            throw new Error("Error unzipping ", result.error);
+        }
+        var uncompressedFiles = [];
+        var loadedFiles = [];
+
+        for (var f in unzip.files) {
+            var match = f.match(/^[a-z\.\/]+/i);
+            // console.log("m "+match);
+            if (!match ) {
+                console.log("Skipping file", f);
+                continue;
+            }
+            // console.log("Adding file", f);
+            uncompressedFiles.push(unzip.read(f));
+            loadedFiles.push("/"+f);
+        }
+
+        return {uFiles: uncompressedFiles, names: loadedFiles};
+    }
+
+    function loadSD(file) {
+
+        return utils.loadData(file).then(function (data) {
+            return extractSDFiles(data);
+        });
+    }
 
     function atommc2(cpu) {
 
@@ -821,42 +853,22 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                 }
 
             },
-                loadSD: function(file) {
-
-                    return utils.loadData(file).then(function (data) {
-                        var unzip = new jsunzip.JSUnzip();
-                        // console.log("Attempting to unzip");
-                        var result = unzip.open(data);
-                        if (!result.status) {
-                            throw new Error("Error unzipping ", result.error);
-                        }
-                        var uncompressedFiles = [];
-                        var loadedFiles = [];
-
-                        for (var f in unzip.files) {
-                            var match = f.match(/^[a-z\.\/]+/i);
-                            // console.log("m "+match);
-                            if (!match ) {
-                                console.log("Skipping file", f);
-                                continue;
-                            }
-                            // console.log("Adding file", f);
-                            uncompressedFiles.push(unzip.read(f));
-                            loadedFiles.push("/"+f);
-                        }
-
-                        self.MMCdata = {uFiles: uncompressedFiles, names: loadedFiles};
-                        return self.MMCdata;
-                    });
-                }
+            SetMMCData: function(data)
+            {
+                self.MMCdata = data;
             }
+
+        }
 
 
 
         return self;
     }
 
+
     return {
-        AtomMMC2: atommc2
+        AtomMMC2: atommc2,
+        LoadSD: loadSD,
+        extractSDFiles: extractSDFiles
     };
 });

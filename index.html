@@ -66,6 +66,15 @@
 <!--                    </ul>-->
 <!--                </li>-->
                 <li class="dropdown embed-hide">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">SDCards<b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                        <li><a href="#sdcards" data-toggle="modal" data-target="#sdcards">From examples or local</a></li>
+<!--                        <li class="if-drive-available">-->
+<!--                            <a href="#google-drive" id="open-drive-link">From Google Drive</a>-->
+<!--                        </li>-->
+                    </ul>
+                </li>
+                <li class="dropdown embed-hide">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">Cassettes<b class="caret"></b></a>
                     <ul class="dropdown-menu" id="tape-menu">
 <!--                        <li><a href="#sth" class="sth" data-toggle="modal" data-id="tapes" data-target="#sth">From STH-->
@@ -108,17 +117,10 @@ Your browser has suspended audio -- mouse click or key press for sound.
 
 <div>
     <div id="outer">
-<!--        <div id="cub-monitor">-->
-<!--            <img id="cub-monitor-pic" width="896" height="648" src="images/cub-monitor.png">-->
-<!--            <div class="sidebar left"><img></div>-->
-<!--            <canvas id="screen" width="896" height="600"></canvas>-->
-<!--            <div class="sidebar right"><img></div>-->
-<!--            <div class="sidebar bottom"><img></div>-->
-<!--        </div>-->
-        <div id="80s-tv">
-            <img id="80s-tv-pic" width="1023" height="668" src="images/80s-nec-tv.png">
+        <div id="nec-tv">
+            <img id="nec-tv-pic" width="1023" height="668" src="images/80s-nec-tv.png">
             <div class="sidebar left"><img></div>
-            <canvas id="screen" width="768" height="576"></canvas>
+            <canvas id="screen" width="1023" height="600"></canvas>
             <div class="sidebar right"><img></div>
             <div class="sidebar bottom"><img></div>
         </div>
@@ -405,7 +407,35 @@ Your browser has suspended audio -- mouse click or key press for sound.
 <!--    &lt;!&ndash; /.modal-dialog &ndash;&gt;-->
 <!--</div>-->
 <!-- /.modal -->
-
+<div class="modal fade" id="sdcards">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h4 class="modal-title">Load SDcard image</h4>
+            </div>
+            <div class="modal-body">
+                <ul id="sdcard-list">
+                    <li class="template"><a href="#"><span class="name"></span></a> - <span
+                            class="description"></span></li>
+                </ul>
+                To load a custom sdcard image, get a zip and load it below. Search the web, or check
+                somewhere
+                like <a href="https://github.com/hoglet67/AtomSoftwareArchive">here</a> for these.
+                <div class="sdcard">
+                    <label>Load local ZIP file: <input type="file" id="sdcard_load"
+                                                              accept=".zip,application/binary"></label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+        <!-- /.modal-content -->
+    </div>
+    <!-- /.modal-dialog -->
+</div>
+ /.modal
 <div class="modal fade" id="tapes">
     <div class="modal-dialog">
         <div class="modal-content">

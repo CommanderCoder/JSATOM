@@ -154,12 +154,12 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         //00001111 - 0x0F -- only write to the bottom 4 bits
                         self.latchc = (self.portcpins & 0xF0) | (val & 0x0F);
 
-                        if (self.portcpins & 0x01) {
-                            console.log("casout");
-                        }
-                        if (self.portcpins & 0x02) {
-                            console.log("hzout");
-                        }
+                        // if (self.portcpins & 0x01) {
+                        //     console.log("casout");
+                        // }
+                        // if (self.portcpins & 0x02) {
+                        //     console.log("hzout");
+                        // }
 
                         //     console.log("spk "+(self.portcpins & 0x04)+ " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
 

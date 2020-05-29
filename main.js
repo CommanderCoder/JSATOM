@@ -1,8 +1,8 @@
 require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debug', '6502', 'cmos', 'sth', 'gamepads',
-        'fdc', 'discs/cat', 'tapes', 'google-drive', 'models', 'basic-tokenise',
+        'fdc', 'discs/cat', 'tapes', 'mmc', 'google-drive', 'models', 'basic-tokenise',
         'canvas', 'config', 'promise', 'bootstrap', 'jquery-visibility'],
     function ($, _, utils, Video, SoundChip, DdNoise, Debugger, Cpu6502, Cmos, StairwayToHell, Gamepad, disc,
-              starCat, tapes, GoogleDriveLoader, models, tokeniser, canvasLib, Config) {
+              starCat, tapes, mmc, GoogleDriveLoader, models, tokeniser, canvasLib, Config) {
         "use strict";
 
         var processor;
@@ -21,7 +21,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
 
         var availableImages;
         var discImage;
-        var SDCard = "SDcard.zip";  // in the MMC directory
+        var mmcImage = "SDcard.zip";  // in the MMC directory
         var extraRoms = [];
         if (typeof starCat === 'function') {
             availableImages = starCat();
@@ -104,6 +104,9 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                         case "disc":
                         case "disc1":
                             discImage = val;
+                            break;
+                        case "mmc":
+                            mmcImage = val;
                             break;
                         case "rom":
                             extraRoms.push(val);
@@ -458,6 +461,18 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             reader.readAsBinaryString(file);
         }
 
+        function loadMMCZIPfile(file) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                var buffer = new Uint8Array(e.target.result);
+                processor.atommc.SetMMCData(mmc.extractSDFiles(buffer));
+                delete parsedQuery.mmc;
+                updateUrl();
+                $('#sdcards').modal("hide");
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
         var $pastetext = $('#paste-text');
         $pastetext.on('paste', function (event) {
             var text = event.originalEvent.clipboardData.getData('text/plain');
@@ -482,8 +497,8 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         });
 
         var $cub = $('#cub-monitor');
-        // on Atom
-            $cub = $('#80s-tv');
+        // isAtom
+            $cub = $('#nec-tv');
         $cub.on('mousemove mousedown mouseup', function (evt) {
             userInteraction();
             if (document.activeElement !== document.body)
@@ -963,11 +978,8 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
 
         function loadMMCImage(SDimage)
         {
-            console.log("Dir mmc at mmc/" + SDimage);
-            return processor.atommc.loadSD("mmc/" + SDimage).then(function (SDresult) {
-                // console.log("done mmc with "+SDresult.names );
-                console.log("done mmc" );
-            });
+            console.log("Loading mmcImage from mmc/" + SDimage);
+            return mmc.LoadSD("mmc/" + SDimage);
         }
 
         function loadTapeImage(tapeImage) {
@@ -1013,6 +1025,12 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             utils.noteEvent('local', 'click'); // NB no filename here
             var file = evt.target.files[0];
             loadHTMLFile(file);
+        });
+
+        $('#sdcard_load').change(function (evt) {
+            utils.noteEvent('local', 'click'); // NB no filename here
+            var file = evt.target.files[0];
+            loadMMCZIPfile(file);
         });
 
         $('#tape_load').change(function (evt) {
@@ -1306,7 +1324,9 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
 
                 if (parsedQuery.tape) imageLoads.push(loadTapeImage(parsedQuery.tape));
 
-                if (processor.model.isAtom) imageLoads.push(loadMMCImage(SDCard));
+                if (processor.model.isAtom && mmcImage) imageLoads.push(loadMMCImage(mmcImage).then(function(sdcard) {
+                    processor.atommc.SetMMCData(sdcard);
+                }));
 
                 function insertBasic(getBasicPromise,needsRun){
                     imageLoads.push(getBasicPromise.then(function (prog) {
@@ -1572,9 +1592,9 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         }
 
         (function () {
-            var monitortype = "#cub-monitor";
-            if (processor.model.isAtom)
-                monitortype = "#80s-tv";
+            var monitortype = "#nec-tv";
+            // if (processor.model.isAtom)
+            //     monitortype = "#nec-tv";
 
             const $cubMonitor = $(monitortype);
             var cubOrigHeight = $cubMonitor.height();
@@ -1596,9 +1616,6 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 } else {
                     width = height * desiredAspectRatio;
                 }
-                // var monitortype = '#cub-monitor';
-                // if (processor.model.isAtom)
-                //     monitortype = '#80s-tv';
 
                 $(monitortype).height(height).width(width);
                 $(monitortype+'-pic').height(height).width(width);
