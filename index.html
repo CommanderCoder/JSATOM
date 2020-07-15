@@ -4,9 +4,11 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="author" content="Andrew Hague">
-    <meta name="description" content="A Javascript Acorn Atom emulator (based on JSBEEB)">
-    <title>JSAtom - Javascript Acorn Atom emulator (based on JSBeeb)</title>
+    <meta name="author" content="Matt Godbolt">
+    <meta name="description" content="A Javascript Acorn Atom and BBC Micro emulator">
+    <meta http-equiv="Content-Security-Policy"
+          content="script-src 'self' 'unsafe-inline' 'unsafe-eval' *.google-analytics.com *.google.com;"/>
+    <title>JSAcorn - Javascript Acorn Atom and BBC Micro emulator</title>
     <link rel="stylesheet" href="lib/bootstrap.min.css" type="text/css">
     <link rel="stylesheet" href="jsatom.css" type="text/css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -16,28 +18,27 @@
             require(['main']);
         });
     </script>
-<!--    <script>-->
-<!--        (function (i, s, o, g, r, a, m) {-->
-<!--            i['GoogleAnalyticsObject'] = r;-->
-<!--            i[r] = i[r] || function () {-->
-<!--                (i[r].q = i[r].q || []).push(arguments)-->
-<!--            }, i[r].l = 1 * new Date();-->
-<!--            a = s.createElement(o),-->
-<!--                m = s.getElementsByTagName(o)[0];-->
-<!--            a.async = 1;-->
-<!--            a.src = g;-->
-<!--            m.parentNode.insertBefore(a, m)-->
-<!--        })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');-->
-<!-- -->
-<!--        ga('create', 'UA-55180-8', 'godbolt.org');-->
-<!--        ga('send', 'pageview');-->
-<!-- -->
-<!--    </script>-->
+    <script>
+        (function (i, s, o, g, r, a, m) {
+            i['GoogleAnalyticsObject'] = r;
+            i[r] = i[r] || function () {
+                (i[r].q = i[r].q || []).push(arguments)
+            }, i[r].l = 1 * new Date();
+            a = s.createElement(o),
+                m = s.getElementsByTagName(o)[0];
+            a.async = 1;
+            a.src = g;
+            m.parentNode.insertBefore(a, m)
+        })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+
+        ga('create', 'UA-55180-8', 'godbolt.org');
+        ga('send', 'pageview');
+    </script>
 </head>
 
 <body>
 
-<div id="header-bar" class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+<div id="header-bar" class="navbar navbar-inverse navbar-fixed-top not-electron" role="navigation">
     <div class="container">
         <div class="navbar-header">
             <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
@@ -104,7 +105,8 @@
                 </li>
             </ul>
             <div style="float:left; padding-top:12px; padding-left:32px;">
-                <input id="paste-text" type="text" maxlength="0" placeholder="Paste text or drop files here..." style="width:200px;"></input>
+                <input id="paste-text" type="text" maxlength="0" placeholder="Paste text or drop files here..."
+                       style="width:200px;"></input>
             </div>
         </div>
         <!--/.nav-collapse -->
@@ -112,7 +114,7 @@
 </div>
 
 <div id="audio-warning" class="alert alert-warning initially-hidden">
-Your browser has suspended audio -- mouse click or key press for sound.
+    Your browser has suspended audio -- mouse click or key press for sound.
 </div>
 
 <div>

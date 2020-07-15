@@ -23,7 +23,7 @@ dormann-test: npm
 
 lint: npm
 	$(NODE) ./node_modules/.bin/jshint --version
-	$(NODE) ./node_modules/.bin/jshint $(shell find -name '*.js' -not -path './node_modules/*' -not -path './out/*' -not -path './lib/*' -not -path './tests/*' -not -path './.git/*')
+	$(NODE) ./node_modules/.bin/jshint $(shell find -name '*.js' -not -path './node_modules/*' -not -path './out/*' -not -path './lib/*' -not -path './.git/*')
 
 short-tests: unit-tests timing-tests dormann-test
 long-tests: test-suite 
@@ -35,6 +35,7 @@ dist: npm
 	@mkdir -p out/dist
 	@mkdir -p out/build
 	cp -r *.js *.css *.html *.txt *.ico discs tapes basic images lib roms sounds out/build
+	mkdir out/build/app && cp app/electron.js out/build/app
 	for BASEFILE in main requirejs-common; do \
 		perl -pi -e "s/require\(\['$${BASEFILE}'\]/require(['$${BASEFILE}-$(HASH)']/" out/build/index.html; \
 		mv out/build/$${BASEFILE}.js out/build/$${BASEFILE}-$(HASH).js; \

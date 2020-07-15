@@ -4,9 +4,10 @@
   "browser": true,
   "node": true,
   "globals": {
-    "ga": false,
-    "define": false
+    "define": false,
+    "requirejs": false,
+    "ga": false
   },
-  "esversion": 6,
+  "esversion": 8,
   "eqeqeq": true
 }
