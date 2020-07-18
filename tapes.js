@@ -105,16 +105,15 @@ define(['utils'], function (utils) {
             var isAtom = (acia.processor === undefined) ? false : acia.processor.model.isAtom;
             self.cpuSpeed = isAtom ? 1 * 1000 * 1000 : 2 * 1000 * 1000;
 
-            if (wavebits.length > 0)
-            {
-                // console.log("SEND (0x"+self.lastChunkId.toString(16)+") at ["+wavebits+"]" + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles ("+t+") } ");
-                const wbit = wavebits.shift();
-                acia.receiveBit(wbit);
-                return cycles(1.0/15.5136);  // to create 3340 cycles between bits
-            }
-            else
-            {
-                // console.log("NEXT (0x"+self.lastChunkId.toString(16)+") at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles ("+t+") } ");
+            if (isAtom) {
+                if (wavebits.length > 0) {
+                    // console.log("SEND (0x"+self.lastChunkId.toString(16)+") at ["+wavebits+"]" + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles ("+t+") } ");
+                    const wbit = wavebits.shift();
+                    acia.receiveBit(wbit);
+                    return cycles(1.0 / 15.5136);  // to create 3340 cycles between bits
+                } else {
+                    // console.log("NEXT (0x"+self.lastChunkId.toString(16)+") at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles ("+t+") } ");
+                }
             }
 
 

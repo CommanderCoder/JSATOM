@@ -2,7 +2,7 @@ define(['./utils'], function (utils) {
     "use strict";
 
     function SoundChip(sampleRate, cpuSpeed) {
-//ATOM has 1Mhz processor , BBC has 2Mhz processer
+        //ATOM has 1Mhz processor , BBC has 2Mhz processer
         var cpuFreq = 1 / cpuSpeed;
 
         // 4MHz input signal. Internal divide-by-8
@@ -23,7 +23,8 @@ define(['./utils'], function (utils) {
         var outputBit = [false, false, false, false];
         var volume = [0, 0, 0, 0];
         this.volume = volume;  // for debug
-        var generators = [null, null, null, null, null , null]; // added ATOM generator
+        var generators = [null, null, null, null, null,
+            null]; // Acorn Atom generator
 
         var volumeTable = [];
         var f = 1.0;
@@ -207,7 +208,7 @@ define(['./utils'], function (utils) {
         var latchedRegister = 0;
 
         // triggered by the emulator to latch relevant data
-        // on ATOM this is really just using the 'catchup' regularly.
+        // on Acorn Atom this is really just using the 'catchup' regularly.
         function poke(value) {
             catchUp();
 
@@ -260,7 +261,7 @@ define(['./utils'], function (utils) {
             }
         };
 
-        //ATOM
+        //Acorn Atom
         generators[5] = speakerChannel;
 
         var speakerBufferSize = 8192;

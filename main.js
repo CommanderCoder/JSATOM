@@ -24,7 +24,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
 
         var availableImages;
         var discImage;
-        var mmcImage = "SDcard.zip";  // in the MMC directory
+        var mmcImage = "mmc/SDcard.zip";
         var extraRoms = [];
         if (typeof starCat === 'function') {
             availableImages = starCat();
@@ -195,6 +195,9 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             tryGl = parsedQuery.glEnabled === "true";
         }
         var $screen = $('#screen');
+        if (model.isAtom)
+            $screen = $('#nec-tv-screen');
+
         var canvas = tryGl ? canvasLib.bestCanvas($screen[0]) : new canvasLib.Canvas($screen[0]);
         video = new Video.Video(model, canvas.fb32, function paint(minx, miny, maxx, maxy) {
             frames++;
@@ -412,13 +415,13 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 evt.preventDefault();
                 checkPrinterWindow();
             } else {
-                if (!model.isAtom)
+                if (model.isAtom)
                 {
-                    processor.sysvia.keyDown(keyCode(evt), evt.shiftKey);
+                    processor.atomppia.keyDown(keyCode(evt), evt.shiftKey);
                 }
                 else
                 {
-                    processor.atomppia.keyDown(keyCode(evt), evt.shiftKey);
+                    processor.sysvia.keyDown(keyCode(evt), evt.shiftKey);
                 }
                 evt.preventDefault();
             }
@@ -428,16 +431,11 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             if (document.activeElement.id === 'paste-text') return;
             // Always let the key ups come through. That way we don't cause sticky keys in the debugger.
             var code = keyCode(evt);
-            if (processor && processor.sysvia)
-            {
-                if (!model.isAtom)
-                {
-                    processor.sysvia.keyUp(code);
-                }
-                else
-                {
-                    processor.atomppia.keyUp(code);
-                }
+            if (model.isAtom && processor && processor.atomppia) {
+                processor.atomppia.keyUp(code);
+            }
+            else if (processor && processor.sysvia) {
+                processor.sysvia.keyUp(code);
             }
             if (!running) return;
             if (evt.altKey) {
@@ -500,8 +498,11 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         });
 
         var $cub = $('#cub-monitor');
-        // isAtom
+        $cub.hide();
+        if (model.isAtom)
             $cub = $('#nec-tv');
+        $cub.show();
+
         $cub.on('mousemove mousedown mouseup', function (evt) {
             userInteraction();
             if (document.activeElement !== document.body)
@@ -981,8 +982,10 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
 
         function loadMMCImage(SDimage)
         {
-            console.log("Loading mmcImage from mmc/" + SDimage);
-            return mmc.LoadSD("mmc/" + SDimage);
+            // console.log("Loading mmcImage from mmc/" + SDimage);
+            // return mmc.LoadSD("mmc/" + SDimage);
+            console.log("Loading mmcImage from " + SDimage);
+            return mmc.LoadSD( SDimage);
         }
 
         function loadTapeImage(tapeImage) {
@@ -1093,7 +1096,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         }
 
         var gdAuthed = false;
-        var googleDrive = null;//new GoogleDriveLoader();
+        var googleDrive = new GoogleDriveLoader();
 
         function gdAuth(imm) {
             return googleDrive.authorize(imm)
@@ -1158,12 +1161,12 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         }
 
         $('.if-drive-available').hide();
-        // googleDrive.initialise().then(function (available) {
-        //     if (available) {
-        //         $('.if-drive-available').show();
-        //         gdAuth(true);
-        //     }
-        // });
+        googleDrive.initialise().then(function (available) {
+            if (available) {
+                $('.if-drive-available').show();
+                gdAuth(true);
+            }
+        });
         var gdModal = $('#google-drive');
         $('#open-drive-link').on('click', function () {
             if (gdAuthed) {
@@ -1242,10 +1245,10 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         });
 
         function guessModelFromUrl() {
-            if (window.location.hostname.indexOf("atom") === 0) return "ATOM";
+            if (window.location.hostname.indexOf("atom") === 0) return "Atom";
             if (window.location.hostname.indexOf("bbc") === 0) return "B";
             if (window.location.hostname.indexOf("master") === 0) return "Master";
-            return "ATOM";
+            return "B";
         }
 
         $('#tape-menu a').on("click", function (e) {
@@ -1263,6 +1266,9 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         });
 
         if (processor.model.isAtom) {
+            $('#leds').hide();
+            $('#cas-controls').show();
+
             $('#cas-controls button').on("click", function (e) {
                 var type = $(e.target).attr("data-id");
                 if (type === undefined) return;
@@ -1286,6 +1292,11 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                     console.log("unknown type", type);
                 }
             });
+        }
+        else
+        {
+            $('#leds').show();
+            $('#cas-controls').hide();
         }
 
         function Light(name) {
@@ -1315,7 +1326,13 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             .then(function () {
                 // Ideally would start the loads first. But their completion needs the FDC from the processor
                 var imageLoads = [];
-                if (!processor.model.isAtom)
+                // AcornAtom
+                if (processor.model.isAtom) {
+                    if (mmcImage) imageLoads.push(loadMMCImage(mmcImage).then(function (sdcard) {
+                        processor.atommc.SetMMCData(sdcard);
+                    }));
+                }
+                else
                 {
                     if (discImage) imageLoads.push(loadDiscImage(discImage).then(function (disc) {
                         processor.fdc.loadDisc(0, disc);
@@ -1327,10 +1344,6 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
 
                 if (parsedQuery.tape) imageLoads.push(loadTapeImage(parsedQuery.tape));
 
-                // AcornAtom
-                if (processor.model.isAtom && mmcImage) imageLoads.push(loadMMCImage(mmcImage).then(function(sdcard) {
-                    processor.atommc.SetMMCData(sdcard);
-                }));
 
                 function insertBasic(getBasicPromise, needsRun) {
                     imageLoads.push(getBasicPromise.then(function (prog) {
@@ -1598,9 +1611,9 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         }
 
         (function () {
-            var monitortype = "#nec-tv";
-            // if (processor.model.isAtom)
-            //     monitortype = "#nec-tv";
+            var monitortype = "#cub-monitor";
+            if (processor.model.isAtom)
+                monitortype = "#nec-tv";
 
             const $cubMonitor = $(monitortype);
             var cubOrigHeight = $cubMonitor.height();

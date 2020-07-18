@@ -19,6 +19,7 @@ define(['jsunzip', 'promise'], function (jsunzip) {
     exports.userKeymap = [];
 
     /*
+    Acorn Atom
 
                   &B001 - keyboard matrix column:
                        ~b0 : SPC  [   \   ]   ^  LCK <-> ^-v Lft Rgt
@@ -35,6 +36,7 @@ define(['jsunzip', 'promise'], function (jsunzip) {
                        ~b6 :                                          Rept
 
      */
+
     exports.ATOM = {
 
 
@@ -42,14 +44,14 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         LEFT: [1, 0],
         UP_DOWN: [2, 0],
         LEFT_RIGHT: [3, 0],
-        LOCK: [4,0],  //LOCK
+        LOCK: [4,0],  //CAPSLOCK
 
         UP_ARROW: [5,0],  // big uparrow next to break
         RIGHT_SQUARE_BRACKET: [6,0],
         BACKSLASH: [7,0],
         LEFT_SQUARE_BRACKET: [8,0],
         SPACE: [9,0],
-        
+
         K3: [0,1],
         K2: [1,1],
         K1: [2,1],
@@ -61,8 +63,8 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         UP: [8,1],
         DOWN: [9,1],
 
-        MINUS: [0,2], // AND EQUALS
-        COMMA: [1,2], // AND LESS
+        MINUS_EQUALS: [0,2],
+        COMMA_LESSTHAN: [1,2],
         SEMICOLON_PLUS: [2,2],
         COLON_STAR: [3,2],
         K9: [4,2],
@@ -80,8 +82,8 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         B: [5,3],
         A: [6,3],
         AT: [7,3],
-        SLASH: [8,3], // AND QUESTION MARK
-        PERIOD: [9,3],  // AND GREATER
+        SLASH_QUESTIONMARK: [8,3], // AND QUESTION MARK
+        PERIOD_GREATERTHAN: [9,3],  // AND GREATER
 
         Q: [0,4],
         P: [1,4],
@@ -104,7 +106,6 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         T: [7,5],
         S: [8,5],
         R: [9,5],
-
 
         // special codes
         CTRL: [0,6],
@@ -519,98 +520,6 @@ define(['jsunzip', 'promise'], function (jsunzip) {
     }
 
 
-    /*
-
-                  &B001 - keyboard matrix column:
-                       ~b0 : SPC  [   \   ]   ^  LCK <-> ^-v Lft Rgt
-                       ~b1 : Dwn Up  CLR ENT CPY DEL  0   1   2   3
-                       ~b2 :  4   5   6   7   8   9   :   ;   <   =
-                       ~b3 :  >   ?   @   A   B   C   D   E   F   G
-                       ~b4 :  H   I   J   K   L   M   N   O   P   Q
-                       ~b5 :  R   S   T   U   V   W   X   Y   Z  ESC
-                       ~b6 :                                          Ctrl
-                       ~b7 :                                          Shift
-                              9   8   7   6   5   4   3   2   1   0
-
-                  &B002 - REPT key
-                       ~b6 :                                          Rept
-
-     */
-    exports.ATOM = {
-
-
-        RIGHT: [0, 0],
-        LEFT: [1, 0],
-        UP_DOWN: [2, 0],
-        LEFT_RIGHT: [3, 0],
-        LOCK: [4,0],  //CAPSLOCK
-
-        UP_ARROW: [5,0],  // big uparrow next to break
-        RIGHT_SQUARE_BRACKET: [6,0],
-        BACKSLASH: [7,0],
-        LEFT_SQUARE_BRACKET: [8,0],
-        SPACE: [9,0],
-
-        K3: [0,1],
-        K2: [1,1],
-        K1: [2,1],
-        K0: [3,1],
-        DELETE: [4,1],
-        COPY: [5,1],
-        RETURN: [6,1],
-        CLEAR: [7,1],
-        UP: [8,1],
-        DOWN: [9,1],
-
-        MINUS_EQUALS: [0,2],
-        COMMA_LESSTHAN: [1,2],
-        SEMICOLON_PLUS: [2,2],
-        COLON_STAR: [3,2],
-        K9: [4,2],
-        K8: [5,2],
-        K7: [6,2],
-        K6: [7,2],
-        K5: [8,2],
-        K4: [9,2],
-
-        G: [0,3],
-        F: [1,3],
-        E: [2,3],
-        D: [3,3],
-        C: [4,3],
-        B: [5,3],
-        A: [6,3],
-        AT: [7,3],
-        SLASH_QUESTIONMARK: [8,3], // AND QUESTION MARK
-        PERIOD_GREATERTHAN: [9,3],  // AND GREATER
-
-        Q: [0,4],
-        P: [1,4],
-        O: [2,4],
-        N: [3,4],
-        M: [4,4],
-        L: [5,4],
-        K: [6,4],
-        J: [7,4],
-        I: [8,4],
-        H: [9,4],
-
-        ESCAPE: [0,5],
-        Z: [1,5],
-        Y: [2,5],
-        X: [3,5],
-        W: [4,5],
-        V: [5,5],
-        U: [6,5],
-        T: [7,5],
-        S: [8,5],
-        R: [9,5],
-
-        // special codes
-        CTRL: [0,6],
-        SHIFT: [0,7],
-        REPT: [1,6],
-    };
 
     exports.stringToATOMKeys = function(str) {
         var ATOM = exports.ATOM;
