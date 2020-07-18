@@ -270,6 +270,22 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
 
         $('.initially-hidden').removeClass('initially-hidden');
 
+        // Acorn Atom menus
+        if (model.isAtom)
+        {
+            $('#bbcmicro-disc-menu').addClass('hide');
+            $('#bbcmicro-tape-menu').addClass('hide');
+            $('#acornatom-sdcard-menu').removeClass('hide');
+            $('#acornatom-tape-menu').removeClass('hide');
+        }
+        else
+        {
+            $('#bbcmicro-disc-menu').removeClass('hide');
+            $('#bbcmicro-tape-menu').removeClass('hide');
+            $('#acornatom-sdcard-menu').addClass('hide');
+            $('#acornatom-tape-menu').addClass('hide');
+        }
+
         function keyCode(evt) {
             var ret = evt.which || evt.charCode || evt.keyCode;
 
