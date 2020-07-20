@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="author" content="Matt Godbolt">
+    <meta name="author" content="Matt Godbolt (Acorn Atom by Andrew Hague)">
     <meta name="description" content="A Javascript Acorn Atom and BBC Micro emulator">
     <meta http-equiv="Content-Security-Policy"
           content="script-src 'self' 'unsafe-inline' 'unsafe-eval' *.google-analytics.com *.google.com;"/>
@@ -47,7 +47,7 @@
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
             </button>
-            <a class="navbar-brand" href="http://bbc.godbolt.org/" target="_top">jsacorn</a>
+            <a class="navbar-brand" href="http://jsacorn.web.app/" target="_top">jsacorn</a>
         </div>
         <div class="collapse navbar-collapse">
             <ul class="nav navbar-nav">
@@ -105,9 +105,12 @@
                     <ul class="dropdown-menu">
                         <li><a href="#" id="fs">Fullscreen</a></li>
                         <li><a href="#help" data-toggle="modal" data-target="#help">Help</a></li>
-                        <li><a href="mailto:matt@godbolt.org">Contact the Author</a></li>
+                        <li><a href="mailto:matt@godbolt.org">Contact the Author (jsbeeb)</a></li>
                         <li><a href="http://xania.org/MattGodbolt" rel="author" target="_blank">
-                            About the Author</a></li>
+                            About the Author (jsbeeb)</a></li>
+                        <li><a href="mailto:andrew@commandercoder.com">Contact the Author (jsatom)</a></li>
+                        <li><a href="http://commandercoder.com/" rel="author" target="_blank">
+                            About the Author (jsatom)</a></li>
                         <li><a href="#about" data-toggle="modal" data-target="#info" id="about">About jsacorn</a></li>
                     </ul>
                 </li>
@@ -308,7 +311,7 @@
                 <h4 class="modal-title">About jsacorn</h4>
             </div>
             <div class="modal-body">
-                <div>By <a href="http://xania.org/">Matt Godbolt</a> and <a href="http://commandercoder.com/">Andrew Hague</a>. Based on Sarah Walker's <a
+                <div>By <a href="http://xania.org/">Matt Godbolt</a>. Based on Sarah Walker's <a
                         href="http://b-em.bbcmicro.com/">b-em</a> emulator. Huge thanks to her for open sourcing her
                     code. Big thanks too to Richard Talbot-Watkins for his help and support. The disc loaded up by
                     default is the amazing Elite (thanks to
@@ -320,7 +323,19 @@
                 <div>Cycle-accurate emulation greatly helped by the fantastic <a href="http://www.visual6502.org/">Visual
                     6502</a> Project. Consider donating to them if you enjoy this stuff as much as I do!
                 </div>
-                <div>If you're looking for more information on the BBC or to find like-minded people to chat about
+                <div>The Acorn Atom emulator is by <a href="http://commandercoder.com/">Andrew Hague</a> and makes heavy use of
+                    the 6502 emulator in jsbeeb. Many thanks to David Banks for
+                    open sourcing the <a
+                        href="http://acornatom.co.uk/">Atomulator</a> emulator. Also thanks to the Acorn Atom source
+                    on <a href="https://github.com/mamedev/mame">Mame</a> and <a href="http://phils-place.co.uk/HTeMuLator/atom/">Phil's Place</a> for unwittingly helping me with
+                    jsatom. The MMC loaded by
+                    default is the amazing <a href="https://github.com/hoglet67/AtomSoftwareArchive">Acorn Atom
+                        Software Archive</a> created by David Banks.
+                </div>
+                <div>Source for Acorn Atom is on <a href="https://github.com/commandercoder/jsatom">GitHub</a>.
+                </div>
+
+                <div>If you're looking for more information on the BBC or Acorn Atom or to find like-minded people to chat about
                     the hardware or software, check out the <a href="http://www.stardot.org.uk/forums/">StarDot
                         forums</a>.
                 </div>
@@ -345,7 +360,8 @@
             </div>
             <div class="modal-body">
                 <div>This is an emulator for the <a href="http://en.wikipedia.org/wiki/Bbc_micro">BBC Micro</a>
-                    Model B, a popular home computer in the UK in the 1980s.
+                    Model B, a popular home computer in the UK in the 1980s.  It also includes an emulator for its predecessor,
+                    the <a href="https://en.wikipedia.org/wiki/Acorn_Atom">Acorn Atom</a>.
                 </div>
                 <div>The default disc image is Elite - a pioneering 3D space trading game. To boot discs on the BBC,
                     one would press <span class="key">SHIFT</span> and <span class="key">BREAK</span>. The keyboard
@@ -353,7 +369,7 @@
                     characters. Also, the current keyboard layout is optimized for a US keyboard; I am working on
                     improving this situation.
                 </div>
-                <h5>Handy key mappings</h5>
+                <h5>Handy BBC key mappings</h5>
                 <table class="keymap">
                     <tr>
                         <th>BBC</th>
@@ -388,7 +404,71 @@
                         <td>TODO</td>
                     </tr>
                 </table>
+                <div>For the Acorn Atom, the default SDCard is the Acorn Atom Software Archive. This also requires
+                    a modified Atom OS rom and it will automatically boot.  To avoid booting press
+                    <span class="key">SHIFT</span> and <span class="key">BREAK</span>.  To disable
+                    MMC support altogether press <span class="key">CTRL</span> and <span class="key">BREAK</span>.
+                    Like the BBC, the keyboard
+                    of the Acorn Atom is slightly different from a modern PC.
+                </div>
+
+                <h5>Handy Acorn Atom key mappings</h5>
+            <b>NOTE:</b> The <span class="key">SHIFT</span> and <span class="key">CTRL</span> key are exchanged on the Acorn Atom natural layout.
+            <table class="keymap">
+                <tr>
+                    <th>ATOM</th>
+                    <th>PC</th>
+                    <th>OSX</th>
+                </tr>
+                <tr>
+                    <td><span class="key">BREAK</span></td>
+                    <td><span class="key">F12</span></td>
+                    <td><span class="key">F12</span></td>
+                </tr>
+                <tr>
+                    <td><span class="key">COPY</span></td>
+                    <td><span class="key">TAB</span></td>
+                    <td><span class="key">TAB</span></td>
+                </tr>
+                <tr>
+                    <td><span class="key">REPT</span></td>
+                    <td><span class="key">RIGHT_SHIFT</span></td>
+                    <td><span class="key">RIGHT_SHIFT</span></td>
+                </tr>
+                <tr>
+                    <td><span class="key">LOCK</span></td>
+                    <td><span class="key">F1</span></td>
+                    <td><span class="key">F1</span></td>
+                </tr>
+                <tr>
+                    <td><span class="key">CTRL</span></td>
+                    <td><span class="key">LEFT_SHIFT</span></td>
+                    <td><span class="key">LEFT_SHIFT</span></td>
+                </tr>
+                <tr>
+                    <td><span class="key">SHIFT</span></td>
+                    <td><span class="key">CTRL</span></td>
+                    <td><span class="key">CTRL</span></td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="dbl key">*<br>:</div>
+                    </td>
+                    <td>
+                        <div class="dbl key">+<br>=</div>
+                    </td>
+                    <td>
+                        <div class="dbl key">+<br>=</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Debug</td>
+                    <td><span class="key">Ctrl-Home</span></td>
+                    <td>TODO</td>
+                </tr>
+            </table>
             </div>
+
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
             </div>
