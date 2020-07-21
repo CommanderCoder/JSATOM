@@ -280,6 +280,22 @@ define(['./utils'], function (utils) {
 
         var numSamplesAdded = 0;
 
+        function speakerReset()
+        {
+            for (i = 0; i < speakerBufferSize; ++i) {
+                speakerBuffer[i] = 0.0;
+            }
+
+            speakerTime = 0;
+            bufferPos = speakerBufferSize>>1;  // start buffer half way through buffer and speakertime at the beginning
+
+            lastSecond = 0;
+            lastMicroCycle = 0;
+            outstandingCycles = 0;
+
+            numSamplesAdded = 0;
+        }
+
         // called by the generator to pump samples to the output
         function speakerChannel(channel, out, offset, length) {
 
@@ -295,6 +311,8 @@ define(['./utils'], function (utils) {
             //     console.log("speakerChannel grabbing too many samples: " + (length-numSamplesAdded));
             // }
 
+            if (numSamplesAdded == 0)
+                return;
 
             var lastbit = speakerBuffer[speakerTime];
             for (var i = 0; i < length; ++i) {
@@ -373,12 +391,13 @@ define(['./utils'], function (utils) {
             // running this program (from Atomic Theory and Practice) page 26
             // section 4.6.1 Labels - a to z
             // shows that the frequencies and sounds are right
-
-            // 10 REM 322 Hz
-            // 20 P=#B002
-            // 30 FOR Z=0 TO 10000000 STEP 4;?P=Z;N.
-            // 40 END
-
+/*
+10 REM 322 Hz
+20 P=#B002
+30 FOR Z=0 TO 10000000 STEP 4;?P=Z;N.
+40 END
+RUN
+*/
 
             // start the next update from this point
             lastSecond = seconds;
@@ -395,6 +414,7 @@ define(['./utils'], function (utils) {
             noisePoked();
             advance(100000);
             this.setScheduler(scheduler);
+            speakerReset(); // atom
         };
         this.enable = function (e) {
             enabled = e;
