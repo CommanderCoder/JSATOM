@@ -1055,7 +1055,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             loadMMCZIPfile(file);
         });
 
-        $('#tape_load').change(function (evt) {
+        var tapeload = function (evt) {
             var file = evt.target.files[0];
             var reader = new FileReader();
             utils.noteEvent('local', 'clickTape'); // NB no filename here
@@ -1063,17 +1063,21 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 if (processor.model.isAtom)
                 {
                     processor.atomppia.setTape(tapes.loadTapeFromData("local file", e.target.result));
+                    $('#atom-tapes').modal("hide");
                 }
                 else
                 {
                     processor.acia.setTape(tapes.loadTapeFromData("local file", e.target.result));
+                    $('#tapes').modal("hide");
                 }
                 delete parsedQuery.tape;
                 updateUrl();
-                $('#tapes').modal("hide");
             };
             reader.readAsBinaryString(file);
-        });
+        };
+
+        $('#tape_load').change(tapeload);
+        $('#tape_load_atom').change(tapeload);
 
         function anyModalsVisible() {
             return $(".modal:visible").length !== 0;
@@ -1342,8 +1346,10 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             .then(function () {
                 // Ideally would start the loads first. But their completion needs the FDC from the processor
                 var imageLoads = [];
-                // AcornAtom
-                if (processor.model.isAtom) {
+                // AcornAtom - not (Tape) version
+                if (processor.model.isAtom ){
+                    if (!processor.model.name.includes("(Tape)"))
+                        mmcImage = null;
                     if (mmcImage) imageLoads.push(loadMMCImage(mmcImage).then(function (sdcard) {
                         processor.atommc.SetMMCData(sdcard);
                     }));
