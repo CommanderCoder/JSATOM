@@ -273,14 +273,14 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         // Acorn Atom menus
         if (model.isAtom)
         {
-            $('#bbcmicro-disc-menu').addClass('hide');
+            // $('#bbcmicro-disc-menu').addClass('hide');
             $('#bbcmicro-tape-menu').addClass('hide');
             $('#acornatom-sdcard-menu').removeClass('hide');
             $('#acornatom-tape-menu').removeClass('hide');
         }
         else
         {
-            $('#bbcmicro-disc-menu').removeClass('hide');
+            // $('#bbcmicro-disc-menu').removeClass('hide');
             $('#bbcmicro-tape-menu').removeClass('hide');
             $('#acornatom-sdcard-menu').addClass('hide');
             $('#acornatom-tape-menu').addClass('hide');
@@ -1352,6 +1352,9 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                         mmcImage = null;
                     if (mmcImage) imageLoads.push(loadMMCImage(mmcImage).then(function (sdcard) {
                         processor.atommc.SetMMCData(sdcard);
+                    }));
+                    if (discImage) imageLoads.push(loadDiscImage(discImage).then(function (disc) {
+                        processor.fdc.loadDisc(0, disc);
                     }));
                 }
                 else

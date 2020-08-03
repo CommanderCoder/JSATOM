@@ -35,8 +35,9 @@ define(['./fdc'], function (fdc) {
             true, false, beebSwram, fdc.WD1770),
         new Model("BBC Master 128", ["Master"], ["master/mos3.20"], false, true, masterSwram, fdc.WD1770),
         new Model("BBC Master Turbo", ["MasterTurbo"], ["master/mos3.20"], false, true, masterSwram, fdc.WD1770, tube65c02),
-        new Model("Acorn Atom", ["Atom"], ["atom/Atom_Kernel_E.rom", "atom/ATMMC3E.rom", "atom/Atom_FloatingPoint.rom", "atom/Atom_Basic.rom"], true, false, beebSwram, fdc.I8271, null, true),
-        new Model("Acorn Atom (Tape)", ["Atom-Tape"], ["atom/Atom_Kernel.rom", "atom/ATMMC3E.rom", "atom/Atom_FloatingPoint.rom", "atom/Atom_Basic.rom"], true, false, beebSwram, fdc.I8271, null, true),
+        new Model("Acorn Atom (MMC)", ["Atom"], ["atom/Atom_Kernel_E.rom", "atom/ATMMC3E.rom", "atom/Atom_FloatingPoint.rom", "atom/Atom_Basic.rom","",""], true, false, beebSwram, fdc.I8271, null, true),
+        new Model("Acorn Atom (Tape)", ["Atom-Tape"], ["atom/Atom_Kernel.rom", "", "atom/Atom_FloatingPoint.rom", "atom/Atom_Basic.rom","","atom/werom.rom"], true, false, beebSwram, fdc.I8271, null, true),
+        new Model("Acorn Atom (DOS)", ["Atom-DOS"], ["atom/Atom_Kernel.rom", "atom/Atom_DOS.rom", "atom/Atom_FloatingPoint.rom", "atom/Atom_Basic.rom","",""], true, false, beebSwram, fdc.I8271, null, true),
 ];
 
     function findModel(name) {

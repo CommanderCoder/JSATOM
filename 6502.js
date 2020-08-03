@@ -604,9 +604,16 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 // only set up a single VIA - reclaiming USERVIA from BBC
                 addr &= 0xffff;
                 switch (addr & ~0x0003) {
+                    case 0x0a00:
+                    case 0x0a04:
+                        // FDC (8271)
+                        var res = this.fdc.read(addr);
+                        // console.log("read fdc " + addr.toString(16)+" : " +res.toString(16) + " : " + String.fromCharCode(res));
+                        return res;
                     case 0xb000:  // mirror 0x3fc
                     case 0xb004:
-                        return this.atomppia.read(addr); // on atom is 6847
+                        // PPIA 8522
+                        return this.atomppia.read(addr); // on atom is 8522
                     case 0xb008:
                     case 0xb00c:
                         return 0x00;  //TODO: PPI
@@ -620,7 +627,18 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     case 0xb804:
                     case 0xb808:
                     case 0xb80c:
+                        // VIA 6522
                         return this.uservia.read(addr);
+                    case 0xbc10:
+                    case 0xbc14:
+                        // 1770 - not implemented
+                        break;
+                    case 0xbdc0:
+                    case 0xbdd0:
+                    case 0xbde0:
+                    case 0xbdf0:
+                        // SID - not implemented
+                        break;
                 }
                 return addr >>> 8;
             };
@@ -783,7 +801,7 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     return;
                 }
                 if (model.isAtom) {
-                    if (addr < 0xb000 || addr >= 0xc000) return; // not an ATOM device outside this range
+                    // got this far - should be an atom device address
                     return this.writeDeviceAtom(addr, b);
                 } else {
                     if (addr < 0xfc00 || addr >= 0xff00) return;
@@ -792,12 +810,14 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
             };
 
             this.writeDeviceAtom = function (addr, b) {
-                // only set up a single VIA - reclaiming USERVIA from BBC
                 b |= 0;
 
                 switch (addr & ~0x0003) {
-
-
+                    case 0x0a00:
+                    case 0x0a04:
+                        // FDC (8271)
+                        // console.log("wrte fdc "+addr + ","+b);
+                        return this.fdc.write(addr, b);
                     case 0xb000:
                     case 0xb004:
                         return this.atomppia.write(addr, b); // on atom is 6847
@@ -814,6 +834,8 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     case 0xb804:
                     case 0xb808:
                     case 0xb80c:
+                        // only set up a single VIA - repurposing USERVIA from BBC
+                        // 6522 VIA
                         return this.uservia.write(addr, b);
                 }
             };
@@ -933,6 +955,9 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
             };
 
             this.loadRom = function (name, offset) {
+                if (name === '')
+                    return;
+
                 if (name.indexOf('http') !== 0)
                     name = "roms/" + name;
                 console.log("Loading ROM from " + name);
@@ -974,7 +999,7 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
 
                         var awaiting = [];
 
-                        var romIndex = 3;
+                        var romIndex = 5;
 
                         for (i = 0; i < extraRoms.length; ++i) {
                             romIndex--;
@@ -1043,16 +1068,20 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                             for (i = 0x80; i < 0xc0; ++i) this.memLook[i] = this.memLook[256 + i] = 0; // just usual address
 
                             // roms
-                            //0xc000 -> 0xefff
-                            for (i = 0xc0; i < 0xf0; ++i) this.memLook[i] = this.memLook[256 + i] = this.romOffset - 0xc000;
+                            //0xa000 -> 0xefff
+                            for (i = 0xa0; i < 0xf0; ++i) this.memLook[i] = this.memLook[256 + i] = this.romOffset - 0xa000;
                             //0xf000 -> 0xffff
                             for (i = 0xf0; i < 0x100; ++i) this.memLook[i] = this.memLook[256 + i] = this.osOffset - 0xf000;
 
 
                             for (i = 0; i < 0xa0; ++i) this.memStat[i] = this.memStat[256 + i] = 1; // up 0x9fff : 1 means RAM
-                            for (i = 0xa0; i < 0xb0; ++i) this.memStat[i] = this.memStat[256 + i] = 1; // 0xA000 onwards : 1 means RAM
+                            for (i = 0xa0; i < 0xb0; ++i) this.memStat[i] = this.memStat[256 + i] = 1; // 0xA000 onwards : 1 means RAM (ROMS loaded here are writable!)
                             for (i = 0xb0; i < 0xc0; ++i) this.memStat[i] = this.memStat[256 + i] = 0;  //0xb000 to 0xbfff  : 0 means DEVICE/PERIPHERAL/IO
                             for (i = 0xc0; i < 0x100; ++i) this.memStat[i] = this.memStat[256 + i] = 2; // 0xC000 onwards : 2 means ROM
+
+                            // for FDC
+                            i = 0x0a; this.memStat[i] = this.memStat[256 + i] = 0;  // 0 means DEVICE/PERIPHERAL/IO
+
                         } else {
                             //0xfc00 to 0xfeff
                             for (i = 0xfc; i < 0xff; ++i) this.memStat[i] = this.memStat[256 + i] = 0;

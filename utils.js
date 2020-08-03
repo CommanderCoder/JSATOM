@@ -1538,7 +1538,8 @@ define(['jsunzip', 'promise'], function (jsunzip) {
     var knownDiscExtensions = {
         'uef': true,
         'ssd': true,
-        'dsd': true
+        'dsd': true,
+        'dsk': true
     };
 
     var knownRomExtensions = {
@@ -1595,6 +1596,10 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         if (name.toLowerCase().endsWith(".dsd")) {
             byteSize *= 2;
             isDsd = true;
+        }
+        // DSK, aka. atom disk is half the size of ssd
+        if (name.toLowerCase().endsWith(".dsk")) {
+            byteSize /= 2;
         }
         return { isDsd: isDsd, byteSize: byteSize };
     };
