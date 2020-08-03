@@ -1348,7 +1348,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 var imageLoads = [];
                 // AcornAtom - not (Tape) version
                 if (processor.model.isAtom ){
-                    if (processor.model.name.includes("(Tape)"))
+                    if (!processor.model.name.includes("(MMC)"))
                         mmcImage = null;
                     if (mmcImage) imageLoads.push(loadMMCImage(mmcImage).then(function (sdcard) {
                         processor.atommc.SetMMCData(sdcard);
