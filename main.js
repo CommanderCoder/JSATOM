@@ -163,6 +163,11 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         config.setKeyLayout(keyLayout);
         model = config.model;
 
+        if (model.isAtom)
+        {
+            discImage = "atom/disk0725.dsk"; // Graphics demos
+        }
+
         function sbBind(div, url, onload) {
             if (!url) return;
             var img = div.find("img");
