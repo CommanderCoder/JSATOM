@@ -307,35 +307,38 @@ define(['./utils'], function (utils) {
             // be played, but it just buffers up the result and doesn't play it.
             // a real 'render' is when the length is about 2048 or higher
 
-            // if (numSamplesAdded < length) {
-            //     console.log("speakerChannel grabbing too many samples: " + (length-numSamplesAdded));
-            // }
 
+            // speakerBuffer contains the data from the CPU
+            // the start of that data is speakerTime and it wraps around
+            // the buffer is unlikely to fill since the speakerBufferSize is 4 times bigger than
+            // the average length that is grabbed by this function
+            // NOTE: bufferPos is the position that the CPU is copying data into this buffer
+            // NOTE: numSamplesAdded is the number of samples that were added since this function last was called
+
+            // this function must copy the data from speakerBuffer into out, starting at offset until length
+            // it doesn't need to wrap the out as it will be larger than offset+length (I think)
+
+            // if (length !== numSamplesAdded)
+            //     console.log("offset+length (" + offset + "+" + length + ") = " + (offset + length) + ", speakerTime " + speakerTime + ", numSamplesAdded " + numSamplesAdded + ", bufferPos " + bufferPos);
+
+            // this is the last bit that was copied into out
             var lastbit = speakerBuffer[speakerTime];
 
-            if (numSamplesAdded == 0) {
-                // just fill out[] with nothing
-                lastbit = 0;
-            }
-
+            // fill the out buffer with length samples
+            // it will use data from the speakerBuffer until it runs out; and then it will repeat the
+            // last bit until the out buffer is full
             for (var i = 0; i < length; ++i) {
                 // got a real sample, so grab it.  If not, just keep using the last correct value
                 if (i < numSamplesAdded)
-                    lastbit = speakerBuffer[speakerTime & (speakerBufferSize - 1)];
+                    lastbit = speakerBuffer[(speakerTime+i) & (speakerBufferSize - 1)];
 
                 out[i + offset] += lastbit;
-                speakerTime++;
             }
 
-            if (numSamplesAdded > length) {
-                // console.log("speakerChannel created too many samples: " + (numSamplesAdded-length));
-                // skip past the sample created that cannot be played in time
-                speakerTime += (numSamplesAdded-length);
-            }
+            speakerTime += numSamplesAdded;
 
+            while (speakerTime >= speakerBufferSize) speakerTime -= speakerBufferSize;
             numSamplesAdded = 0;
-
-            while (speakerTime > speakerBufferSize) speakerTime -= speakerBufferSize;
         }
 
         // fill the buffer with the last value
@@ -375,7 +378,7 @@ define(['./utils'], function (utils) {
                     speakerBuffer[bufferPos & (speakerBufferSize - 1)] = lastbit;
                     bufferPos++;
                 }
-                while (bufferPos > speakerBufferSize) bufferPos -= speakerBufferSize;
+                while (bufferPos >= speakerBufferSize) bufferPos -= speakerBufferSize;
                 numSamplesAdded+=totalSamples;
             }
             var newbit = value?1.0:0.0;
