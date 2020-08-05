@@ -160,11 +160,47 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         // if (self.portcpins & 0x02) {
                         //     console.log("hzout");
                         // }
+                        // if ((self.portcpins & 0x04) !== (self.latchc & 0x04)) {
+                            // console.log(cpu.currentCycles+" PORTC Speaker "+ (self.latchc & 0x04));
+                            // speaker = val & 4;
+                            // portc pins - not separate variable
+
+                        // }
+                        // if ((self.portcpins & 0x08) !== (self.latchc & 0x08)) {
+                            // console.log(cpu.currentCycles+" PORTC CSS "+ (self.latchc & 0x08));
+                            // css = (val & 8) >> 2;
+                            // portc pins - not separate variable
+                        // }
 
                         //     console.log("spk "+(self.portcpins & 0x04)+ " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
 
                         // console.log("write portc "+self.latchc);
                         self.recalculatePortCPins();
+                        break;
+                    case CREG:
+                        // bit 7 is 0 for Bit Set/Reset (BSR) mode of PPIA
+                        // using the CREG to quickly activate B2,B1,B0 of port C
+                        // bit 0 is the set/reset value
+                        var speaker = 0;
+                        var css = 0;
+                        switch (val & 0xE)
+                        {
+                            case 0x4:  //0xxx010v is port C pin 2 set to v
+                                speaker = (val & 1)<<2;
+                                console.log(cpu.currentCycles+" CREG Speaker "+ (val & 1));
+                                break;
+
+                            case 0x6: //0xxx011v is port C pin 3 set to v
+                                css = ((val & 1) << 3);
+
+                                console.log(cpu.currentCycles+" CREG CSS "+ (val & 1));
+                                break;
+                        }
+                        // NOT STRICTLY CORRECT - SHOULD BE ABLE TO FORCE CPINS SET/RESET
+                        // this is just forcing them rather than latching anything
+                        console.log(cpu.currentCycles+" CREG  "+ (val ));
+                        self.portcpins = (self.portcpins & 0xF0) | css | speaker;
+                        self.portCUpdated();
                         break;
 
                 }
@@ -220,6 +256,14 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         var rept_key = (!self.keys[1][6]<<6)&0x40;
                         val |= rept_key;
 
+
+                        // include speaker and css values
+                        val |= 0x0f; // initially high
+                        if (!(self.portcpins&0x04)) // speaker
+                            val &= ~4;
+                        if (!(self.portcpins&0x08)) // css
+                            val &= ~8;
+
                         // TAPE - 0xfc0a  (every 3.340ms/3340us), -OSBGET Get Byte from Tape subroutine; get a bit and count duration of tape pulse (using FCD2)
                         // TAPE - 0xfcd2  (every 0.033ms/3.3us), -Test state of #B002 tape input pulse subroutine (has there been a change?)
                         // TAPE - 0xFCC2 (every 8.446ms/8446us), -Count Duration of Tape Pulse subroutine (<8 loops, >=8 loops)
@@ -248,7 +292,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                             //     console.log("#" + self.processor.pc.toString(16) + " ppia_read " + val.toString(2).padStart(8, '0') + " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles ("+tt+") } ");
                             // }
 
-                            if (casbit != self.prevcas) {
+                            if (casbit !== self.prevcas) {
 
 //                            var t = millis - self.lasttime;
 //                            self.lasttime = millis;

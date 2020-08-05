@@ -737,7 +737,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                                 this.WriteDataPort(this.configByte);
                             } else if (received == CMD_SET_CFG_BYTE) // write config byte
                             {
-                                this.configByte = byteValueLatch;
+                                this.configByte = this.byteValueLatch;
 
                                 console.log("CMD_REG:CMD_SET_CFG_BYTE -> 0x" + STATUS_OK.toString(16));
 //                                WriteEEPROM(EE_SYSFLAGS, this.configByte);

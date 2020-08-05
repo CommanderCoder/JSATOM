@@ -1355,6 +1355,9 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 if (processor.model.isAtom ){
                     if (!processor.model.name.includes("(MMC)"))
                         mmcImage = null;
+                    if (!processor.model.useFdc)
+                        discImage = null;
+
                     if (mmcImage) imageLoads.push(loadMMCImage(mmcImage).then(function (sdcard) {
                         processor.atommc.SetMMCData(sdcard);
                     }));

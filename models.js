@@ -1,7 +1,7 @@
 define(['./fdc'], function (fdc) {
     "use strict";
 
-    function Model(name, synonyms, os, nmos, isMaster, swram, fdc, tube, isAtom) {
+    function Model(name, synonyms, os, nmos, isMaster, swram, fdc, tube, isAtom, useFdc) {
         this.name = name;
         this.synonyms = synonyms;
         this.os = os;
@@ -12,6 +12,7 @@ define(['./fdc'], function (fdc) {
         this.swram = swram;
         this.isTest = false;
         this.tube = tube;
+        this.useFdc = useFdc;
     }
 
     // TODO: semi-bplus-style to get swram for exile hardcoded here
@@ -37,7 +38,7 @@ define(['./fdc'], function (fdc) {
         new Model("BBC Master Turbo", ["MasterTurbo"], ["master/mos3.20"], false, true, masterSwram, fdc.WD1770, tube65c02),
         new Model("Acorn Atom (MMC)", ["Atom"], ["atom/Atom_Kernel_E.rom", "atom/ATMMC3E.rom", "atom/Atom_FloatingPoint.rom", "atom/Atom_Basic.rom","",""], true, false, beebSwram, fdc.I8271, null, true),
         new Model("Acorn Atom (Tape)", ["Atom-Tape"], ["atom/Atom_Kernel.rom", "", "atom/Atom_FloatingPoint.rom", "atom/Atom_Basic.rom","","atom/werom.rom"], true, false, beebSwram, fdc.I8271, null, true),
-        new Model("Acorn Atom (DOS)", ["Atom-DOS"], ["atom/Atom_Kernel.rom", "atom/Atom_DOS.rom", "atom/Atom_FloatingPoint.rom", "atom/Atom_Basic.rom","",""], true, false, beebSwram, fdc.I8271, null, true),
+        new Model("Acorn Atom (DOS)", ["Atom-DOS"], ["atom/Atom_Kernel.rom", "atom/Atom_DOS.rom", "atom/Atom_FloatingPoint.rom", "atom/Atom_Basic.rom","",""], true, false, beebSwram, fdc.I8271, null, true, true),
 ];
 
     function findModel(name) {

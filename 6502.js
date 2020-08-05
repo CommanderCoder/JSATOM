@@ -601,7 +601,6 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
 
 
             this.readDeviceAtom = function (addr) {
-                // only set up a single VIA - reclaiming USERVIA from BBC
                 addr &= 0xffff;
                 switch (addr & ~0x0003) {
                     case 0x0a00:
@@ -612,8 +611,11 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                         return res;
                     case 0xb000:  // mirror 0x3fc
                     case 0xb004:
-                        // PPIA 8522
-                        return this.atomppia.read(addr); // on atom is 8522
+                        // PPIA 8255
+                        var res = this.atomppia.read(addr);
+                        // if (addr === 0xb002)
+                        //     console.log("read PPIA 8255 0x"+addr.toString(16) +": 0x"+res.toString(16));
+                        return res;
                     case 0xb008:
                     case 0xb00c:
                         return 0x00;  //TODO: PPI
@@ -627,8 +629,11 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     case 0xb804:
                     case 0xb808:
                     case 0xb80c:
+                        // only set up a single VIA - repurposing USERVIA from BBC
                         // VIA 6522
-                        return this.uservia.read(addr);
+                        var res = this.uservia.read(addr);
+                        // console.log("read VIA  6522 0x"+addr.toString(16) +": 0x"+res.toString(16));
+                        return res;
                     case 0xbc10:
                     case 0xbc14:
                         // 1770 - not implemented
@@ -820,10 +825,11 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                         return this.fdc.write(addr, b);
                     case 0xb000:
                     case 0xb004:
-                        return this.atomppia.write(addr, b); // on atom is 6847
                     case 0xb008:
                     case 0xb00c:
-                        break; // TODO: PPI
+//                         if (addr >= 0xb002 ) // SOUND
+//                             console.log("wrte PPIA 8255 0x"+addr.toString(16)+" <- 0x"+b.toString(16));
+                        return this.atomppia.write(addr, b); // on atom is 6847
                     case 0xb400:
                     case 0xb404:
                     case 0xb408:
@@ -836,6 +842,7 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     case 0xb80c:
                         // only set up a single VIA - repurposing USERVIA from BBC
                         // 6522 VIA
+                        // console.log("wrte VIA  6522 0x"+addr.toString(16)+" <- 0x"+b.toString(16));
                         return this.uservia.write(addr, b);
                 }
             };
@@ -1079,9 +1086,13 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                             for (i = 0xb0; i < 0xc0; ++i) this.memStat[i] = this.memStat[256 + i] = 0;  //0xb000 to 0xbfff  : 0 means DEVICE/PERIPHERAL/IO
                             for (i = 0xc0; i < 0x100; ++i) this.memStat[i] = this.memStat[256 + i] = 2; // 0xC000 onwards : 2 means ROM
 
-                            // for FDC
-                            i = 0x0a; this.memStat[i] = this.memStat[256 + i] = 0;  // 0 means DEVICE/PERIPHERAL/IO
-
+                            if (model.useFdc) {
+                                // for FDC
+                                // - When you boot in MMC- or in TAPE mode, the diskcontroler area at #0A00 is read only and generates an error when written.
+                                // This causes a lot of AGD files fail to work.
+                                i = 0x0a;
+                                this.memStat[i] = this.memStat[256 + i] = 0;  // 0 means DEVICE/PERIPHERAL/IO
+                            }
                         } else {
                             //0xfc00 to 0xfeff
                             for (i = 0xfc; i < 0xff; ++i) this.memStat[i] = this.memStat[256 + i] = 0;

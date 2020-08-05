@@ -81,84 +81,6 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 
 */
 
-    // BBC MICRO
-    // 6845 REGS
-    // Register Index	Register Name
-    // 0	Horizontal Total
-    // 1	Horizontal Displayed
-    // 2	Horizontal Sync Position
-    // 3	Horizontal and Vertical Sync Widths
-    // 4	Vertical Total
-    // 5	Vertical Total Adjust
-    // 6	Vertical Displayed
-    // 7	Vertical Sync position
-    // 8	Interlace and Skew
-    // 9	Maximum Raster Address
-    // 10	Cursor Start Raster
-    // 11	Cursor End Raster
-    // 12	Display Start Address (High)
-    // 13	Display Start Address (Low)
-    // 14	Cursor Address (High)
-    // 15	Cursor Address (High)
-    // 16	Light Pen Address (High)
-    // 17	Light Pen Address (High)
-    //
-
-
-
-    // TELETEXT
-    // this.regs[0] = 0x3f;
-    // this.regs[1] = 0x28;
-    // this.regs[2] = 0x33; // horizontals
-    // this.regs[3] = 0x24; //
-    // this.regs[4] = 0x1e; // vertical position
-    // this.regs[5] = 0x02; // offset from top of each scanline
-    // this.regs[6] = 0x19;
-    // this.regs[7] = 0x1c;
-    // this.regs[8] = 0x93;
-    // this.regs[9] = 0x12;
-    // this.regs[10] = 0x72;
-    // this.regs[11] = 0x13;
-    // this.regs[12] = 0x80;
-    // this.regs[13] = 0x00;
-    // this.regs[14] = 0x29;
-    // this.regs[15] = 0x19;
-    // this.hpulseWidth = this.regs[3]&0xf;
-    // this.vpulseWidth = (this.regs[3]&0xf0)>>>4;
-    // this.teletextMode = true;
-
-    //MODE5
-    // this.regs[0] = 0x3f;
-    // this.regs[1] = 0x28;
-    // this.regs[2] = 0x31; // horizontals
-    // this.regs[3] = 0x24; //
-    // this.regs[4] = 0x26;  // vertical position
-    // this.regs[5] = 0x00; // offset from top of each scanline
-    // this.regs[6] = 0x20;
-    // this.regs[7] = 0x23;
-    // this.regs[8] = 0x01;
-    // this.regs[9] = 0x07;
-    // this.regs[10] = 0x67;
-    // this.regs[11] = 0x08;
-    // this.regs[12] = 0x0b;
-    // this.regs[13] = 0x00;
-    // this.regs[14] = 0x0b;
-    // this.regs[15] = 0x02;
-
-
-
-
-    //MODE4 -1bpp 320x256 40x32
-//    &3F &28(40) &31 &24  i.e. 40/1bpp = 40    320/8 = 40
-//    &26 &00
-//        &20(32) &22
-//        &01 &07 &67 &08
-
-    //MODE1 -2bpp 320x256 40x32
-    // &7F &50(80) &62 &28   i.e. 80/2bpp = 40  - 320/8 = 40
-    //     &26 &00
-    //     &20(32) &22
-    //     &01 &07 &67 &08
 
     const MODE_AG = 0x80,
         MODE_GM2  = 0x40,
@@ -347,15 +269,15 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 
             var modes = {
                 //chars,hsync,total,perchar    body,pos,total,  pixpb,lines, bpp
-                0xf0: [32,44,64,8,  192,288,324,  1, 1, 1], //clear4  256x192x2,  pixels 1w1h   MAIN MENU
-                0xb0: [16,21,32,16,  192,288,324,  2, 1, 1], //clear3  128x192x2, pixels  2w1h   BABIES
-                0x70: [16,21,32,16,  96,144,162,  2, 2, 1], //clear2  128x96x2, pixels  2w2h  3D ASTEROIDS
-                0x30: [16,13,24,16,  64,74,84,  2, 3, 1], //clear1   128x64x2 , pixels  3w4h (2w4h) 3D MAZE
-                0xd0: [32,44,64,8,  192,288,324,  2, 1, 2], //?#B000=#d0  128x192x4,pixels  2w1h CHUCKIE EGG
-                0x90: [32,44,64,8,  96,126,144,  2, 2, 2],//?#B000=#90  128x96x4, pixels 2w2h  FLAPPY BIRD
-                0x50: [16,21,32,16, 64,96,108,  4, 3, 2],//?#B000=#50  128x64x4 , pixels 3w3h (4w3h) <none found>
-                0x10: [16,21,32,16,  64,84,96,  4, 3, 2],//?#B000=#10  64x64x4 , pixels 4w3h  <none found>
-                0x00: [32,44,64,8,  16,18,20,  0, 12, 2]  // clear0 //0,0 not used on Mode 0 (uses blitChar), pixelsPerBit, bpp
+                0xf0: [32,44,64,8,  192,264,324,  1, 1, 1], //clear4  256x192x2,  pixels 1w1h   MAIN MENU
+                0xb0: [16,21,32,16,  192,264,324,  2, 1, 1], //clear3  128x192x2, pixels  2w1h   BABIES
+                0x70: [16,21,32,16,  96,133,162,  2, 2, 1], //clear2  128x96x2, pixels  2w2h  3D ASTEROIDS
+                0x30: [16,13,24,16,  64,65,84,  2, 3, 1], //clear1   128x64x2 , pixels  3w4h (2w4h) 3D MAZE
+                0xd0: [32,44,64,8,  192,264,324,  2, 1, 2], //?#B000=#d0  128x192x4,pixels  2w1h CHUCKIE EGG
+                0x90: [32,44,64,8,  96,115,144,  2, 2, 2],//?#B000=#90  128x96x4, pixels 2w2h  FLAPPY BIRD
+                0x50: [16,21,32,16, 64,89,108,  4, 3, 2],//?#B000=#50  128x64x4 , pixels 3w3h (4w3h) <none found>
+                0x10: [8,9,15,32,  64,77,96,  8, 3, 2],//?#B000=#10  64x64x4 , pixels 4w3h  <none found>
+                0x00: [32,44,64,8,  16,16,20,  0, 12, 2]  // clear0 //0,0 not used on Mode 0 (uses blitChar), pixelsPerBit, bpp
             };
             // DEFAULT to RG6 - 4 : resolution mode
 
@@ -376,165 +298,6 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
             var linesPerRow = modes[mode][8]; // move to reg9
             this.bpp = modes[mode][9];
 
-
-            //
-            // if (mode == 0xf0)  // RG6 - 4  - resolution mode
-            // {
-            //     // 256 wide  - see reg1 * 8
-            //     // 192 LINES  - see reg4
-            //
-            // } else if (mode == 0xb0) //RG3 resolution mode
-            // {
-            //     // 128 wide
-            //     // 192 LINES // 6	Vertical Displayed
-            //
-            //     linesPerRow = 2;
-            //
-            //     // RG3 decreases reg1 and increases pixelsPerChar
-            //     this.charsPerRowreg1 = 16; // 16 x2 bytes (256 bits)
-            //     this.startHsyncreg2 = 21;
-            //     this.horizTotalreg0 = 32; // 16*32 = 512
-            //     this.pixelsPerChar = 16; // 16 pixels per element (wide
-            //
-            //     this.vertBodyreg6 = 96;//topBorder+rowsPerScreen; // end of main body for FRAME COUNTER: 24 - 192
-            //     this.vertPosreg7 = 144;//topBorder+rowsPerScreen+bottomBorder-1; // character end of bottom border START OF VSYNC  : 24 - 192 - 24
-            //     this.vertTotalreg4 = 162;  // end of bottom border : 24 + 192 + 24 (12+96+12)
-            //
-            //     this.pixelsPerBit = this.bitmapPxPerPixel*2;
-            //
-            // } else if (mode == 0x70) // RG2
-            // {
-            //     // this mode has to fill 384 lines (4*96)
-            //     // since bitmapPxPerPixel ia 2 , there needs to be 2 rows
-            //     // using charLinesreg9
-            //
-            //     // reg9 is 1 (i.e 2 lines)
-            //     // need 192 lines so thats 96 rows  :
-            //     // need 24 lines at the top (12 rows)
-            //     // need 24 lines at the bottom (12 rows)
-            //     // use these for reg4,6,7
-            //
-            //     // 128 wide
-            //     // 96 LINES // 6	Vertical Displayed
-            //
-            //     // RG2 increases linesPerRow but doesn't do anything else
-            //     linesPerRow = 2;
-            //
-            //     this.charsPerRowreg1 = 16; // 16 x2 bytes (256 bits)
-            //     this.startHsyncreg2 = 21;
-            //     this.horizTotalreg0 = 32; // 16*32 = 512
-            //     this.pixelsPerChar = 16; // 16 pixels per element (wide
-            //
-            //     this.vertBodyreg6 = 96;//topBorder+rowsPerScreen; // end of main body for FRAME COUNTER: 24 - 192
-            //     this.vertPosreg7 = 126;//topBorder+rowsPerScreen+bottomBorder-1; // character end of bottom border START OF VSYNC  : 24 - 192 - 24
-            //     this.vertTotalreg4 = 144;  // end of bottom border : 24 + 192 + 24 (12+96+12)
-            //
-            //     this.pixelsPerBit = this.bitmapPxPerPixel*2;
-            //
-            // } else if (mode == 0x30) // RG1
-            // {
-            //     // this mode has to fill 384 lines (4*96)
-            //     // since bitmapPxPerPixel ia 2 , there needs to be 2 rows
-            //     // using charLinesreg9
-            //
-            //     // reg9 is 1 (i.e 3 lines)
-            //     // need 192 lines so thats 64 rows  :
-            //     // need 24 lines at the top (8 rows)
-            //     // need 24 lines at the bottom (8 rows)
-            //     // use these for reg4,6,7
-            //
-            //     // 128 wide
-            //     // 96 LINES // 6	Vertical Displayed
-            //     // RG1 increases linesPerRow but doesn't do anything else
-            //     linesPerRow = 3;
-            //
-            //     this.charsPerRowreg1 = 16; // 16 x2 bytes (256 bits)
-            //     this.startHsyncreg2 = 21;
-            //     this.horizTotalreg0 = 32; // 16*32 = 512
-            //     this.pixelsPerChar = 16; // 16 pixels per element (wide
-            //
-            //     this.vertBodyreg6 = 64;//topBorder+rowsPerScreen; // end of main body for FRAME COUNTER: 24 - 192
-            //     this.vertPosreg7 = 84;//topBorder+rowsPerScreen+bottomBorder-1; // character end of bottom border START OF VSYNC  : 24 - 192 - 24
-            //     this.vertTotalreg4 = 96;  // end of bottom border : 24 + 192 + 24 (12+96+12)
-            //
-            //     this.pixelsPerBit = this.bitmapPxPerPixel * 2;
-            //
-            // } else if (mode == 0xd0) // CG6 (4a )
-            // {
-            //     // 128 wide  - see reg1 * 8
-            //     // 192 LINES  - see reg4
-            //
-            //     // reg6 purple white
-            //     // reg7 blue yellow
-            //     // reg4 green yellow
-            //
-            //     this.startHsyncreg2 = 45; // 32*8 = 256 (start of hsync
-            //     this.bpp = 2;
-            //
-            // } else if (mode == 0x90) // CG3  (3a)
-            // {
-            //     linesPerRow = 2;
-            //
-            //     // reg6 purple white
-            //     // reg7 blue yellow
-            //     // reg4 green yellow
-            //
-            //     this.startHsyncreg2 = 45; // 32*8 = 256 (start of hsync
-            //
-            //     this.vertBodyreg6 = 98;//topBorder+rowsPerScreen; // end of main body for FRAME COUNTER: 24 - 192
-            //     this.vertPosreg7 = 125;//topBorder+rowsPerScreen+bottomBorder-1; // character end of bottom border START OF VSYNC  : 24 - 192 - 24
-            //     this.vertTotalreg4 = 152;  // end of bottom border : 24 + 192 + 24 (12+96+12)
-            //
-            //     this.bpp = 2;
-            //
-            // } else if (mode == 0x50) // GC2 (2a)
-            // {
-            //     linesPerRow = 3;
-            //
-            //     // reg6 purple white
-            //     // reg7 blue yellow
-            //     // reg4 green yellow
-            //
-            //     this.charsPerRowreg1 = 16; // 32 *
-            //     this.startHsyncreg2 = 21; // 32*8 = 256 (start of hsync
-            //     this.horizTotalreg0 = 32; // 64*8 = 512 (total width of canvas 2x2 canvas pixel per pixel)
-            //     this.pixelsPerChar = 16; // 8 pixels per element
-            //
-            //     this.vertBodyreg6 = 64;//CORRECT
-            //     this.vertPosreg7 = 84;//topBorder+rowsPerScreen+bottomBorder-1; // character end of bottom border START OF VSYNC  : 24 - 192 - 24
-            //     this.vertTotalreg4 = 96;  // end of bottom border : 24 + 192 + 24 (12+96+12)
-            //
-            //     this.pixelsPerBit = this.bitmapPxPerPixel*2;
-            //     this.bpp = 2;
-            //
-            // } else if (mode == 0x10) // CG1
-            // {
-            //     // increases pixelsperchar to 16
-            //     // decreaes chars per row to 16
-            //     // 8*32 =
-            //     linesPerRow = 3;
-            //
-            //     this.charsPerRowreg1 = 16; // 16 x2 bytes (256 bits)
-            //     this.startHsyncreg2 = 21;
-            //     this.horizTotalreg0 = 32; // 16*32 = 512
-            //     this.pixelsPerChar = 16; // 8 pixels normally (so 32pixels==4 'voxels' per char)
-            //
-            //     // reg6 purple white
-            //     // reg7 blue yellow
-            //     // reg4 green yellow
-            //     this.vertBodyreg6 = 64;//CORRECT
-            //     this.vertPosreg7 = 84;//topBorder+rowsPerScreen+bottomBorder-1; // character end of bottom border START OF VSYNC  : 24 - 192 - 24
-            //     this.vertTotalreg4 = 96;  // end of bottom border : 24 + 192 + 24 (12+96+12)
-            //
-            //     this.pixelsPerBit = this.bitmapPxPerPixel*2;
-            //     this.bpp = 2;
-            // } else
-            // {
-            //     // for text mode 0
-            //
-            // }
-
-
             this.charLinesreg9 = linesPerRow-1;//2  - scanlines per char
 
 
@@ -551,6 +314,7 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 
             //  video mode
             var mode = (this.ppia.portapins & 0xf0);
+            var css = (this.ppia.portcpins & 0x08)>>>2;
 
             // mode = 0x50;
             this.setValuesFromMode(mode);
@@ -630,52 +394,14 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
                     // Render data depending on display enable state.
                     if (this.bitmapX >= 0 && this.bitmapX < 1024 && this.bitmapY < 625)
                     {
-                        //
-                        // mode |= 0x8;  //add css
-                        // // if (this.bitmapY >= 12 && this.bitmapY <= 544)
-                        // //     mode &= ~0x8;  //add css
-                        // if (this.bitmapY <= 266)
-                        //     mode &= ~0x8;  //add css
-                        //
-                        // if (this.bitmapY <= 12)
-                        //     this.blitPixels(this.video.fb32, 0x11, offset, mode);
-                        // if (this.bitmapY === 278) //halfway
-                        //     this.blitPixels(this.video.fb32, 0xff, offset, mode);
-                        // if (this.bitmapY >= 544)
-                        //     this.blitPixels(this.video.fb32, 0x11, offset, mode);
-                        //
-                        // if (this.bitmapX <= 80)
-                        //     this.blitPixels(this.video.fb32, 0xf2, offset, mode);
-                        // if (this.bitmapX === 512)  // halfway
-                        //     this.blitPixels(this.video.fb32, 0xe4, offset, mode);
-                        // if (this.bitmapX >= 944)
-                        //     this.blitPixels(this.video.fb32, 0x2f, offset, mode);
-                        //
-                        // if (this.vertCounter === this.vertPosreg7)  // vsync starts
-                        //     this.blitPixels(this.video.fb32, 0x73, offset, mode);
-                        // if (this.vertCounter === this.vertBodyreg6) // this is end of vdisp
-                        //     this.blitPixels(this.video.fb32, 0x62, offset, mode);
-                        // if (this.vertCounter === this.vertTotalreg4) // this is start of vdisp
-                        //     this.blitPixels(this.video.fb32, 0x51, offset, mode);
-                        //
-                        // if (this.horizCounter === this.startHsyncreg2)  // vsync starts
-                        //     this.blitPixels(this.video.fb32, 0xbb, offset, mode);
-                        // if (this.horizCounter === this.charsPerRowreg1) // this is end of vdisp
-                        //     this.blitPixels(this.video.fb32, 0x22, offset, mode);
-                        // if (this.horizCounter === this.horizTotalreg0) // this is start of vdisp
-                        //     this.blitPixels(this.video.fb32, 0xee, offset, mode);
-                        //
-                        // if (insideBorder)
-
                         {
                                 if ((mode & 0x10 ) == 0) // MODE_AG - bit 4; 0x10 is the AG bit
                                     // TODO: Add in the INTEXT modifiers to mode (if necessary)
                                     // blit into the fb32 buffer which is painted by VIDEO
-                                    this.blitChar(this.video.fb32, dat, offset, this.pixelsPerChar, mode);
+                                    this.blitChar(this.video.fb32, dat, offset, this.pixelsPerChar, css);
                                 else
-                                    this.blitPixels(this.video.fb32, dat, offset, mode);
+                                    this.blitPixels(this.video.fb32, dat, offset, css);
 
-                        // this.blitPixels(this.video.fb32, this.vertCounter&0xff, offset, mode);
                         }
                     }
 
@@ -684,7 +410,7 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
                 {
                     var offset = this.bitmapY;
                     offset = (offset * 1024) + this.bitmapX;
-                    this.blitPixels(this.video.fb32, 0x00, offset, mode);
+                    this.blitPixels(this.video.fb32, 0x00, offset, css);
                 }
 
                 // CRTC MA always increments, inside display border or not.
@@ -723,16 +449,13 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
         };
 
 
-        this.blitPixels = function ( buf, data, destOffset, mode)
+        this.blitPixels = function ( buf, data, destOffset, css)
         {
             var scanline = this.scanlineCounterT;
-            var css = (mode & 0x08) >>> 2;
             // bitpattern from data is either 4 or 8 pixels in raw graphics
             // either white and black
             // or 3 colours and black (in pairs of bits)
             // that is: all graphics modes are 1bpp or 2bpp giving 2 colours or 4 colours
-            mode |= 0;
-            var css = (mode & 0x08) >>> 2;
 
             var bitdef = data;
             var bpp = this.bpp;
@@ -749,22 +472,6 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
             var fb32 = buf;
             var i = 0;
 
-            // 8 or 4 bits
-            // var pixelsPerBit = 2*xscale;  // draw two,four pixels for each bit in the data to fill the width.
-            // var  numPixels = 8*pixelsPerBit;
-            // for (i = 0; i < numPixels/bpp; i++) {
-            //     var n = (numPixels/bpp) - 1 - i; // pixels in reverse order
-            //     // get bits in pairs or singles
-            //     var j = i*bpp;
-            //     j=j/pixelsPerBit;
-            //     // get both bits
-            //     var cval = (bitdef>>>j)&0x11;
-            //     // get just one bit
-            //     if (bpp==1)
-            //         cval &= 0x1;
-            //
-            //     fb32[destOffset + n] = (cval!=0)?colour:0x0;
-            // }
 
             var numPixels = 8*pixelsPerBit;  //per char
             // draw two,four pixels for each bit in the data to fill the width.
@@ -819,11 +526,10 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 
 
 
-        this.blitChar = function ( buf, data, destOffset, numPixels, mode)
+        this.blitChar = function ( buf, data, destOffset, numPixels, css)
         {
             // var scanline = this.scanlineCounterT;
             var scanline = this.scanlineCounter;
-            var css = (mode & 0x08) >>> 1;
             var chr = data&0x7f;
 
             // 0 - 63 is alphachars green  (0x00-0x3f)
