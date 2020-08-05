@@ -311,10 +311,13 @@ define(['./utils'], function (utils) {
             //     console.log("speakerChannel grabbing too many samples: " + (length-numSamplesAdded));
             // }
 
-            if (numSamplesAdded == 0)
-                return;
-
             var lastbit = speakerBuffer[speakerTime];
+
+            if (numSamplesAdded == 0) {
+                // just fill out[] with nothing
+                lastbit = 0;
+            }
+
             for (var i = 0; i < length; ++i) {
                 // got a real sample, so grab it.  If not, just keep using the last correct value
                 if (i < numSamplesAdded)
