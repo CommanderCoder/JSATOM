@@ -79,6 +79,17 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 	 CG1, CG2, CG3, CG6, RG6 are 2bpp
 	 RG1, RG2, RG3 are 1bpp
 
+?#B002=8
+F.I=0TO255;I?#8000=I;N.
+
+text colours are black/green (css=0) and black/orange (css=1); border black always
+css not used for semigraphics 4 : THIS IS NOT AVAILABLE ON ATOM?
+css is used for semigraphics 6,
+they use 4 bits and 6 bits for luminance (0 off, 1 on)
+and the last 2 or 3 bits are used for colour
+(UNAVAILABLE) SG4 : 3 bits : 8 colours + black: green, yellow, blue, red , buff, cyan, magenta, orange
+(PARTIALLY AVAILABLE) SG6 : 2 bits : 4 colours + black: css = 0, green, yellow, blue, red, css=1, buff, cyan, magenta, orange
+only 1 bit is used of SG6 - to get yellow/red, cyan/orange
 */
 
 
@@ -528,28 +539,36 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 
         this.blitChar = function ( buf, data, destOffset, numPixels, css)
         {
-            // var scanline = this.scanlineCounterT;
             var scanline = this.scanlineCounter;
             var chr = data&0x7f;
 
-            // 0 - 63 is alphachars green  (0x00-0x3f)
-            // 64-127 is alphagraphics yellow (0x40-0x7f) bit 7 set (0x40)
+            // character set is just the pixel data
+            // 0 - 63 is alphachars green  (0x00-0x3f) bits 0-5 for character
+            // 64-127 is alphagraphics green/yellow/blue/red (0x40-0x7f) bit 6,7  (0xC0)
+            // bit 7 set is inverted and the alphagraphics again
             // 128 - 191 is alphachars inverted green (0x80-0xbf)
-            // 192-255 is alphagraphics red (0xc0-0xff) bit 7 set (0x40)
+            // 192-255 is alphagraphics again buff/cyan/magenta/orange (0xc0-0xff) bit 6,7 set (0xC0)
 
-            // invert the  char if bit 7 is set and bit 6 is not
-            var inv = false;
-            if ((data&0xC0) == 0x80)
-            {
-                inv = true;
-            }
+            // in the data; bits 0-5 are the pixels
+            // bit 7 and CSS give the colour
+            // bit 6 indicates TEXT or GRAPHICS
+            // thus green and blue (css=0) alphagraphics cannot be accessed
+            // and  buff and magenta (css=1) alphagraphics cannot be accessed
+            // bits 7,6
+            // [00] green text (or orange)
+            // [01] yellow graphics (or cyan)
+            // [10] inv green text (or inv orange)
+            // [11] red graphics (or orange)
 
-            var agmode = (data & 0x40);
+            // invert the char if bit 7 is set
+            var inv = !!(data & 0x80);
+            // graphics if bit 6 is set
+            var agmode = !!(data & 0x40);
 
             //bitpattern for chars is in rows; each char is 12 rows deep
             var chardef = this.curGlyphs[chr  * 12 + scanline];
 
-            if (inv)
+            if (inv && !agmode)
                 chardef = ~chardef;
 
             numPixels |= 0;
@@ -564,18 +583,26 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
             for (i = 0; i < numPixels; ++i) {
                 var n = numPixels - 1 - i; // pixels in reverse order
                 var j = i / pixelsPerBit;
-                var fgcol = this.collook[css?4:1];
+                // text is either green/black or orange/black - nothing else
+                // css is 2 or 0 on input
+                var fgcol = this.collook[(!!css)?8:1];
 
-                if (agmode) // alphagraphics
+                if (agmode) // alphagraphics 6
                 {
-                    // 2 or 4 - yellow/red
-                    fgcol = this.collook[1+(data>>>6 | css)];
+                    // inv css | colour
+                    // 0 0 | yellow (2)   10   +   0000
+                    // 1 0 | red (4)      10   +   0010
+                    // 0 2 | cyan (6)     10   +   0100
+                    // 1 2 | orange (8)   10   +   0110
+                    // css is 2 or 0 on input
+                    fgcol = this.collook[2+((inv | css)<<1)];
                 }
 
-                var colour = ((chardef>>>j)&0x1)?fgcol:this.collook[0];
+                var luminance = (chardef>>>j)&0x1;
+                var colour = luminance?fgcol:this.collook[0];
                 fb32[destOffset + n] =
                     fb32[destOffset + n + 1024 ] =  // two lines
-                        colour<<2;
+                        colour;
             }
 
         };

@@ -187,18 +187,18 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         {
                             case 0x4:  //0xxx010v is port C pin 2 set to v
                                 speaker = (val & 1)<<2;
-                                console.log(cpu.currentCycles+" CREG Speaker "+ (val & 1));
+                                // console.log(cpu.currentCycles+" CREG Speaker "+ (val & 1));
                                 break;
 
                             case 0x6: //0xxx011v is port C pin 3 set to v
                                 css = ((val & 1) << 3);
 
-                                console.log(cpu.currentCycles+" CREG CSS "+ (val & 1));
+                                // console.log(cpu.currentCycles+" CREG CSS "+ (val & 1));
                                 break;
                         }
                         // NOT STRICTLY CORRECT - SHOULD BE ABLE TO FORCE CPINS SET/RESET
                         // this is just forcing them rather than latching anything
-                        console.log(cpu.currentCycles+" CREG  "+ (val ));
+                        // console.log(cpu.currentCycles+" CREG  "+ (val ));
                         self.portcpins = (self.portcpins & 0xF0) | css | speaker;
                         self.portCUpdated();
                         break;
