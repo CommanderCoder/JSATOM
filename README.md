@@ -5,7 +5,7 @@ This is based on https://github.com/mattgodbolt/jsbeeb
 
 Hopefully it will become integrated into JSBEEB but for the moment it is separate.
 
-It is available for testing at https://jsatom.commandercoder.com/?model=ATOM
+It is available for testing at https://jsatom.commandercoder.com/?model=ATOM-TAPE
 
 The rest of this README is from JSBEEB
 
