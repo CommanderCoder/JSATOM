@@ -886,13 +886,22 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         }
 
         function autoboot(image) {
-            var BBC = utils.BBC;
 
-            console.log("Autobooting disc");
-            utils.noteEvent('init', 'autoboot', image);
+            if (model.isAtom)
+            {
+                console.log("Autobooting MMC");
+                processor.atommc.configByte &= ~0x40;
 
-            // Shift-break simulation, hold SHIFT for 1000ms.
-            sendRawKeyboardToBBC([BBC.SHIFT, 1000], false);
+            }
+            else {
+                var BBC = utils.BBC;
+
+                console.log("Autobooting disc");
+                utils.noteEvent('init', 'autoboot', image);
+
+                // Shift-break simulation, hold SHIFT for 1000ms.
+                sendRawKeyboardToBBC([BBC.SHIFT, 1000], false);
+            }
         }
 
         function autoChainTape() {

@@ -228,13 +228,17 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
         var self = {
             reset: function (hard) {
 
-                this.configByte = 0x00; //eeprom[EE_SYSFLAGS];
+                if (hard) {
+                    // could store this to an EE file
+                    // EEPROM is 0xFF initially
+                    this.configByte = 0xff; //eeprom[EE_SYSFLAGS];
+                }
                 this.CWD = "";
             },
             MMCtoAtom: STATUS_BUSY,
             heartbeat: 0x55,
             MCUstatus: MMC_MCU_BUSY,
-            configByte: 0,
+            configByte: 0,  /// EEPROM
             byteValueLatch:0,
             globalData: new Uint8Array(256),
             globalIndex: 0,
@@ -733,13 +737,13 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                                 this.WriteDataPort(1);//(blVersion);
                             } else if (received == CMD_GET_CFG_BYTE) // read config byte
                             {
-                                // console.log("CMD_REG:CMD_GET_CFG_BYTE -> 0x" + this.configByte.toString(16));
+                                console.log("CMD_REG:CMD_GET_CFG_BYTE -> 0x" + this.configByte.toString(16));
                                 this.WriteDataPort(this.configByte);
                             } else if (received == CMD_SET_CFG_BYTE) // write config byte
                             {
                                 this.configByte = this.byteValueLatch;
 
-                                console.log("CMD_REG:CMD_SET_CFG_BYTE -> 0x" + STATUS_OK.toString(16));
+                                console.log("CMD_REG:CMD_SET_CFG_BYTE -> 0x" + this.configByte.toString(16));
 //                                WriteEEPROM(EE_SYSFLAGS, this.configByte);
                                 this.WriteDataPort(STATUS_OK);
                             } else if (received == CMD_READ_AUX) // read porta - latch & aux pin on dongle
