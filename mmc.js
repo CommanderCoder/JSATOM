@@ -226,8 +226,11 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
     function atommc2(cpu) {
 
         var self = {
+            gamepad: null,
+            attachGamepad: function (gamepad){
+                this.gamepad = gamepad;
+            },
             reset: function (hard) {
-
                 if (hard) {
                     // could store this to an EE file
                     // EEPROM is 0xFF initially
@@ -779,28 +782,25 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                             }
                             else if (received == CMD_READ_PORT) // read portb
                             {
-
                                 // SP3 JOYSTICK SUPPORT
-                                //
-                                // if (joyst)
-                                // {
-                                //     JOYSTICK = 255;
-                                //     poll_joystick();
-                                //
-                                //     if (joy_right)
-                                //         JOYSTICK ^= 1;
-                                //     if (joy_left)
-                                //         JOYSTICK ^= 2;
-                                //     if (joy_down)
-                                //         JOYSTICK ^= 4;
-                                //     if (joy_up)
-                                //         JOYSTICK ^= 8;
-                                //     if (joy[0].button[0].b) // Fire
-                                //         JOYSTICK ^= 16;
-                                //
-                                //     WriteDataPort(JOYSTICK);
-                                // }
-                                // else
+                                var JOYSTICK = 0xff;
+                                var joyst = true;
+                                if (joyst && this.gamepad.gamepadButtons != undefined)
+                                {
+                                    if (this.gamepad.gamepadButtons[15]) //right
+                                        JOYSTICK ^= 1;
+                                    if (this.gamepad.gamepadButtons[14]) //left
+                                        JOYSTICK ^= 2;
+                                    if (this.gamepad.gamepadButtons[13]) //down
+                                        JOYSTICK ^= 4;
+                                    if (this.gamepad.gamepadButtons[12]) //up
+                                        JOYSTICK ^= 8;
+                                    if (this.gamepad.gamepadButtons[0]) // Fire
+                                        JOYSTICK ^= 0x10;
+
+                                    this.WriteDataPort(JOYSTICK);
+                                }
+                                else
                                 {
                                     this.WriteDataPort(this.PORTB);
                                 }

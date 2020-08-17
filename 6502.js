@@ -1087,9 +1087,7 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                             for (i = 0xc0; i < 0x100; ++i) this.memStat[i] = this.memStat[256 + i] = 2; // 0xC000 onwards : 2 means ROM
 
                             if (model.useFdc) {
-                                // for FDC
-                                // - When you boot in MMC- or in TAPE mode, the diskcontroler area at #0A00 is read only and generates an error when written.
-                                // This causes a lot of AGD files fail to work.
+                                // FDC is reserved between 0a00 - 0a80  (0aff in this emulator)
                                 i = 0x0a;
                                 this.memStat[i] = this.memStat[256 + i] = 0;  // 0 means DEVICE/PERIPHERAL/IO
                             }

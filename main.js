@@ -20,7 +20,6 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         var tapeSth;
         var running;
         var model;
-        var gamepad = new Gamepad();
 
         var availableImages;
         var discImage;
@@ -167,6 +166,9 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         {
             discImage = "atom/disk0725.dsk"; // Graphics demos
         }
+
+        var gamepad = new Gamepad(model.isAtom);
+
 
         function sbBind(div, url, onload) {
             if (!url) return;
@@ -1362,6 +1364,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 var imageLoads = [];
                 // AcornAtom - not (Tape) version
                 if (processor.model.isAtom ){
+                    processor.atommc.attachGamepad(gamepad);
                     if (!processor.model.name.includes("(MMC)"))
                         mmcImage = null;
                     if (!processor.model.useFdc)
@@ -1583,7 +1586,12 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
                 window.requestAnimationFrame(draw);
             }
 
-            gamepad.update(processor.sysvia);
+            if (model.isAtom)
+                gamepad.update(processor.atomppia);
+            else
+                gamepad.update(processor.sysvia);
+
+
             syncLights();
             if (last !== 0) {
                 var cycles;

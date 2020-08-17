@@ -101,16 +101,16 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                 // FE6B_wait_for_flyback will loop until bit 7 of B002 is 1
 
                 //60 Hz sync signal - normally 1, but goes zero at start of  flyback.
-               if (level )
+               if ( level )
                {
                  self.latchc |= 0x80;
                }
                else
                {
-                self.latchc &= 0x7f;
+                self.latchc &= ~0x80;
                }
                self.recalculatePortCPins();
-                //console.log("xvblank "+level+"; portc "+self.portcpins);
+                // console.log("xvblank "+level+"; portc "+self.portcpins);
             },
 
             polltime: function (cycles) {
@@ -218,10 +218,12 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         // return the keys based on values in porta
                         // console.log("read portb "+self.portbpins);
                         // expecting 1 means unpressed, 0 means pressed: but keymap has 1 if pressed and 0 if unpressed
-                        var n = self.keys[self.portapins & 15];
-                        var r = 0;
+                        var keyrow = self.portapins & 0x0f;
+                        var n = self.keys[keyrow];
+                        var r = 0xff; // all keys unpressed
                         for (var b =0;b<16;b++)
-                            r+=!(n[b])<<b;
+                            r &= ~((n[b])<<b);
+
                         // if (self.portapins & 15 == 9)
                         //     console.log("reading "+(self.portapins & 15)+" and pressed "+n.toString(2)+" -> "+r.toString(2));
 
@@ -229,7 +231,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         // the keymap assumes CTRL and SHIFT read from row0
                         // fixup CTRL and SHIFT regardless of the row being read
                         var ctrl_shift = !self.keys[0][7]<<7 + !self.keys[0][6]<<6 ;
-                        r |= (ctrl_shift&0xc0);
+                        r &= ~(ctrl_shift&0xc0);
 
                         return r;
                     case PORTC:
@@ -300,7 +302,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                                 // console.log("#" + self.processor.pc.toString(16) + " ppia_read casin switched to " + self.prevcas + " } ");
                             }
 
-                            //console.log("} "+(flyback?"F":"_")+(rept?"_":"R")+(casin?"1":"0")+(hzin?"h":"_"));
+                            // console.log("} "+(flyback?"F":"_")+(rept?"_":"R")+(casin?"1":"0")+(hzin?"h":"_"));
 //                        console.log("} "+val.toString(2).padStart(10,'0'));
                         }
                         return val;

@@ -3,8 +3,14 @@ define(['utils'],
         "use strict";
 
         var BBC = utils.BBC;
+        var ATOM = utils.ATOM;
 
-        function GamePad() {
+        // NEED SELECTOR IN MENUS FOR JOYSTICK/JOYKEY INPUT
+        // JOYSTICK PORTB
+
+
+
+        function GamePad(isAtom = false) {
             this.gamepad0 = null;
 
             //this.gamepadMapping = [BBC.COLON_STAR, BBC.X, BBC.SLASH, BBC.Z,
@@ -14,17 +20,39 @@ define(['utils'],
 
             this.gamepadMapping = [];
 
-            // default: "snapper" keys
-            this.gamepadMapping[14] = BBC.Z;
-            this.gamepadMapping[15] = BBC.X;
-            this.gamepadMapping[13] = BBC.SLASH;
-            this.gamepadMapping[12] = BBC.COLON_STAR;
+            if (isAtom)
+            {
+                //mmcdefaults
 
-            // often <Return> = "Fire"
-            this.gamepadMapping[0] = BBC.RETURN;
-            // "start" (often <Space> to start game)
-            this.gamepadMapping[9] = BBC.SPACE;
+// 3-key pressed    left
+// G-key pressed    right
+// Q-key pressed    up
+// =-key pressed    down
+// rightarrow-key pressed   fire
 
+                this.gamepadMapping[14] = ATOM.K3;
+                this.gamepadMapping[15] = ATOM.G;
+                this.gamepadMapping[12] = ATOM.Q;
+                this.gamepadMapping[13] = ATOM.MINUS_EQUALS;
+
+                // often <Return> = "Fire"
+                this.gamepadMapping[0] = ATOM.RIGHT;
+                // "start" (often <Space> to start game)
+                this.gamepadMapping[9] = ATOM.SPACE;
+            }
+            else
+            {
+                // default: "snapper" keys
+                this.gamepadMapping[14] = BBC.Z;
+                this.gamepadMapping[15] = BBC.X;
+                this.gamepadMapping[13] = BBC.SLASH;
+                this.gamepadMapping[12] = BBC.COLON_STAR;
+
+                // often <Return> = "Fire"
+                this.gamepadMapping[0] = BBC.RETURN;
+                // "start" (often <Space> to start game)
+                this.gamepadMapping[9] = BBC.SPACE;
+            }
 
             // Gamepad joysticks
             this.gamepadAxisMapping = [
