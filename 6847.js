@@ -280,14 +280,14 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
 
             var modes = {
                 //chars,hsync,total,perchar    body,pos,total,  pixpb,lines, bpp
-                0xf0: [32,44,64,8,  192,264,324,  1, 1, 1], //clear4  256x192x2,  pixels 1w1h   MAIN MENU
-                0xb0: [16,21,32,16,  192,264,324,  2, 1, 1], //clear3  128x192x2, pixels  2w1h   BABIES
-                0x70: [16,21,32,16,  96,133,162,  2, 2, 1], //clear2  128x96x2, pixels  2w2h  3D ASTEROIDS
-                0x30: [16,13,24,16,  64,65,84,  2, 3, 1], //clear1   128x64x2 , pixels  3w4h (2w4h) 3D MAZE
-                0xd0: [32,44,64,8,  192,264,324,  2, 1, 2], //?#B000=#d0  128x192x4,pixels  2w1h CHUCKIE EGG
-                0x90: [32,44,64,8,  96,115,144,  2, 2, 2],//?#B000=#90  128x96x4, pixels 2w2h  FLAPPY BIRD
-                0x50: [16,21,32,16, 64,89,108,  4, 3, 2],//?#B000=#50  128x64x4 , pixels 3w3h (4w3h) <none found>
-                0x10: [8,9,15,32,  64,77,96,  8, 3, 2],//?#B000=#10  64x64x4 , pixels 4w3h  <none found>
+                0xf0: [32,44,64,8,  192,224,288,  1, 1, 1], //clear4  256x192x2,  pixels 1w1h   MAIN MENU
+                0xb0: [16,21,32,16,  192,224,288,  2, 1, 1], //clear3  128x192x2, pixels  2w1h   BABIES
+                0x70: [16,21,32,16,  96,128,160,  2, 2, 1], //clear2  128x96x2, pixels  2w2h  3D ASTEROIDS
+                0x30: [16,13,24,16,  64,80,96,  2, 3, 1], //clear1   128x64x2 , pixels  3w4h (2w4h) 3D MAZE
+                0xd0: [32,44,64,8,  192,224,288,  2, 1, 2], //?#B000=#d0  128x192x4,pixels  2w1h CHUCKIE EGG
+                0x90: [32,44,64,8,  96,128,160,  2, 2, 2],//?#B000=#90  128x96x4, pixels 2w2h  FLAPPY BIRD
+                0x50: [16,21,32,16, 64,80,96,  4, 3, 2],//?#B000=#50  128x64x4 , pixels 3w3h (4w3h) <none found>
+                0x10: [8,9,15,32,  64,80,96,  8, 3, 2],//?#B000=#10  64x64x4 , pixels 4w3h  <none found>
                 0x00: [32,44,64,8,  16,16,20,  0, 12, 2]  // clear0 //0,0 not used on Mode 0 (uses blitChar), pixelsPerBit, bpp
             };
             // DEFAULT to RG6 - 4 : resolution mode
@@ -386,7 +386,11 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
                 }
 
                 if (vSyncStarting || vSyncEnding) {
+                    // console.log(this.cpu.currentCycles + " : vert "+this.vertCounter+" :  "+this.inVSync);
                     this.ppia.setVBlankInt(this.inVSync);
+
+                    // test with: FOR N=1 TO 10*60; WAIT; NEXT N
+                    // should wait 10 seconds
                 }
 
                 // once the whole of the Vertical and Horizontal is complete then do this

@@ -27,7 +27,7 @@ define(['./utils'], function (utils) {
              0          Tape output
              1          Enable 2.4 kHz to cassette output
              2          Loudspeaker
-             3          Not used
+             3          Not used (Colour Set Select)
 
         Input bits:       Function:
              4          2.4 kHz input
@@ -240,8 +240,11 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         // only read top 4 bits
                         // if (self.portcpins & 0x20)
                         //     console.log("casin");
-                        // if (self.portcpins & 0x10) {
-                        //     console.log("hzin");
+                        if (self.portcpins & 0x10) {
+                            console.log(self.processor.cycleSeconds+"."+(self.processor.currentCycles/1000)+" : hzin");
+                        }
+                        // if (self.portcpins & 0x80) {
+                        //     console.log(self.processor.cycleSeconds+"."+(self.processor.currentCycles/1000)+" : vsync");
                         // }
 
                         // only read top 4 bits
