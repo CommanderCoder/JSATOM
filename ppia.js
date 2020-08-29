@@ -100,8 +100,8 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                 //then
                 // FE6B_wait_for_flyback will loop until bit 7 of B002 is 1
 
-                //60 Hz sync signal - normally 1, but goes zero at start of  flyback.
-               if ( level )
+                //60 Hz sync signal - normally 0, but goes 1 at start of flyback.
+               if ( !level )
                {
                  self.latchc |= 0x80;
                }
@@ -110,7 +110,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                 self.latchc &= ~0x80;
                }
                self.recalculatePortCPins();
-                // console.log("xvblank "+level+"; portc "+self.portcpins);
+               //console.log(" vblank "+level+"; portc 0x"+self.portcpins.toString(16));
             },
 
             polltime: function (cycles) {
@@ -144,9 +144,9 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         break;
 
                     case PORTB:
-                        self.latchb = val;
-                        // console.log("write portb "+self.latchb);
-                        self.recalculatePortBPins();
+                        // cannot write to port B
+                        console.log("cannot write portb "+val);
+                        // self.recalculatePortBPins();
                         break;
 
                     case PORTC:
@@ -221,7 +221,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         var keyrow = self.portapins & 0x0f;
                         var n = self.keys[keyrow];
                         var r = 0xff; // all keys unpressed
-                        for (var b =0;b<16;b++)
+                        for (var b =0;b<=9;b++)
                             r &= ~((n[b])<<b);
 
                         // if (self.portapins & 15 == 9)
@@ -230,7 +230,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         // for CTRL and SHIFT which doesn't use porta - they just set bit 6 and bit 7
                         // the keymap assumes CTRL and SHIFT read from row0
                         // fixup CTRL and SHIFT regardless of the row being read
-                        var ctrl_shift = !self.keys[0][7]<<7 + !self.keys[0][6]<<6 ;
+                        var ctrl_shift = ((self.keys[0][7]<<7) | (self.keys[0][6]<<6));
                         r &= ~(ctrl_shift&0xc0);
 
                         return r;
