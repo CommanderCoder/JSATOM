@@ -292,8 +292,8 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
                 0x30: [16,11,24,16,  64,88,104,  2, 3, 1, 11], //clear1   128x64x2 , pixels  3w4h (2w4h) 3D MAZE
                 0xd0: [32,44,64,8,  192,264,312,  2, 1, 2, 3], //?#B000=#D0  128x192x4,pixels  2w1h CHUCKIE EGG
                 0x90: [32,44,64,8,  96,132,156,  2, 2, 2, 3],//?#B000=#90  128x96x4, pixels 2w2h  FLAPPY BIRD
-                0x50: [16,22,32,16, 64,88,104,  4, 3, 2, 7],//?#B000=#50  128x64x4 , pixels 3w3h (4w3h) <none found>
-                0x10: [8,10,16,32,  64,88,104,  8, 3, 2, 15],//?#B000=#10  64x64x4 , pixels 4w3h  <none found>
+                0x50: [32,44,64,8, 64,88,104,  2, 3, 2, 7],//?#B000=#50  128x64x4 , pixels 3w3h (4w3h) BREAKOUT (maingame)
+                0x10: [16,22,32,16,  64,88,104,  4, 3, 2, 11],//?#B000=#10  64x64x4 , pixels 4w3h  FIZZLE BRICKS
                 0x00: [32,42,64,8,  16,22,26,  -1, 12, 1, 3]  // clear0 //0,0 not used on Mode 0 (uses blitChar), pixelsPerBit, bpp
             };
             // DEFAULT to RG6 - 4 : resolution mode
@@ -361,7 +361,7 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
             this.setValuesFromMode(mode);
 
 
-            // scanline is a line within a characgter (or element, 1line, 2 lines, 3lines or 12 lines)
+            // scanline is a line within a character (or element, 1line, 2 lines, 3lines or 12 lines)
             // vertCounter is a character line (16)
 
             // horizCounter is a character (8,16,32) on a line  (total row including border is 64)

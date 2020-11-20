@@ -1140,6 +1140,8 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
 
                         // random numbers
                         for (i = 8; i < 13; this.ramRomOs[i++] = 256 * Math.random() | 0);   // Random number seed address
+                        // randomise the video memory
+                        for (i = 0x8000; i < 0x9000; this.ramRomOs[i++] = 256 * Math.random() | 0);   // Random number seed address
                     }
                 }
                 this.tube.reset(hard);
