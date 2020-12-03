@@ -195,7 +195,7 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         }
         var cpuSpeed = model.isAtom ? 1 * 1000 * 1000 : 2 * 1000 * 1000;
         var clocksPerSecond = (cpuMultiplier * cpuSpeed) | 0;
-        var MaxCyclesPerFrame = clocksPerSecond / 10;
+        var MaxCyclesPerFrame = model.isAtom ? clocksPerSecond / 5 : clocksPerSecond / 10 ;
 
         var tryGl = true;
         if (parsedQuery.glEnabled !== undefined) {

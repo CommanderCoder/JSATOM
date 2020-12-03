@@ -190,8 +190,19 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
 
 
         this.paintAndClear = function() {
-            this.paint();
-            this.clearPaintBuffer();
+            // this.paint();
+            // this.clearPaintBuffer();
+
+// skip 5 frames
+            if (this.dispEnabled & FRAMESKIPENABLE) {
+                this.paint();
+                this.clearPaintBuffer();
+            }
+            // this.dispEnabled &= ~FRAMESKIPENABLE;
+            var enable = FRAMESKIPENABLE;
+            // if (this.frameCount % 5) enable = 0;
+            this.dispEnabled |= enable;
+
 
             this.bitmapY = 0;
         };
@@ -223,6 +234,7 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
             //     "and scanlinecounter = "+this.scanlineCounter +" === scanlineCounter" + this.charLinesreg9 +
             // " vbl : "+this.inVSync);
             this.vertCounter = (this.vertCounter + 1) & 0x1ff;
+            this.hadVSyncThisRow = false;
             this.scanlineCounter = 0;
         };
 
@@ -278,24 +290,34 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
             }
         };
 
+        //PAL based = 312 lines
+        //NTSC based = 262 lines
+        // initialiser is outside the function to improve performance
+        this.modes = {
+            //chars,hsync,total,perchar    body,pos,total,  pixpb,lines, bpp, CPUcyclesToDraw1Byte
+            0xf0: [32,44,64,8,  192,264,312,  1, 1, 1, 3], //clear4  256x192x2,  pixels 1w1h   MAIN MENU
+            0xb0: [16,22,32,16,  192,264,312,  2, 1, 1, 7], //clear3  128x192x2, pixels  2w1h   BABIES
+            0x70: [16,22,32,16,  96,132,156,  2, 2, 1, 7], //clear2  128x96x2, pixels  2w2h  3D ASTEROIDS
+            0x30: [16,11,24,16,  64,88,104,  2, 3, 1, 11], //clear1   128x64x2 , pixels  3w4h (2w4h) 3D MAZE
+            0xd0: [32,44,64,8,  192,264,312,  2, 1, 2, 3], //?#B000=#D0  128x192x4,pixels  2w1h CHUCKIE EGG
+            0x90: [32,44,64,8,  96,132,156,  2, 2, 2, 3],//?#B000=#90  128x96x4, pixels 2w2h  FLAPPY BIRD
+            0x50: [32,44,64,8, 64,88,104,  2, 3, 2, 7],//?#B000=#50  128x64x4 , pixels 3w3h (4w3h) BREAKOUT (maingame)
+            0x10: [16,22,32,16,  64,88,104,  4, 3, 2, 11],//?#B000=#10  64x64x4 , pixels 4w3h  FIZZLE BRICKS
+            0x00: [32,42,64,8,  16,22,26,  -1, 12, 1, 3]  // clear0 //0,0 not used on Mode 0 (uses blitChar), pixelsPerBit, bpp
+        };
+
+        this.lastmode = 0xff;
+
         this.setValuesFromMode = function(mode) {
 
             mode = mode & 0xf0;
 
-            //PAL based = 312 lines
-            //NTSC based = 262 lines
-            var modes = {
-                //chars,hsync,total,perchar    body,pos,total,  pixpb,lines, bpp, CPUcyclesToDraw1Byte
-                0xf0: [32,44,64,8,  192,264,312,  1, 1, 1, 3], //clear4  256x192x2,  pixels 1w1h   MAIN MENU
-                0xb0: [16,22,32,16,  192,264,312,  2, 1, 1, 7], //clear3  128x192x2, pixels  2w1h   BABIES
-                0x70: [16,22,32,16,  96,132,156,  2, 2, 1, 7], //clear2  128x96x2, pixels  2w2h  3D ASTEROIDS
-                0x30: [16,11,24,16,  64,88,104,  2, 3, 1, 11], //clear1   128x64x2 , pixels  3w4h (2w4h) 3D MAZE
-                0xd0: [32,44,64,8,  192,264,312,  2, 1, 2, 3], //?#B000=#D0  128x192x4,pixels  2w1h CHUCKIE EGG
-                0x90: [32,44,64,8,  96,132,156,  2, 2, 2, 3],//?#B000=#90  128x96x4, pixels 2w2h  FLAPPY BIRD
-                0x50: [32,44,64,8, 64,88,104,  2, 3, 2, 7],//?#B000=#50  128x64x4 , pixels 3w3h (4w3h) BREAKOUT (maingame)
-                0x10: [16,22,32,16,  64,88,104,  4, 3, 2, 11],//?#B000=#10  64x64x4 , pixels 4w3h  FIZZLE BRICKS
-                0x00: [32,42,64,8,  16,22,26,  -1, 12, 1, 3]  // clear0 //0,0 not used on Mode 0 (uses blitChar), pixelsPerBit, bpp
-            };
+            // if no change in mode then do nothing
+            if (this.lastmode === mode)
+                return;
+
+            this.lastmode = mode;
+
             // DEFAULT to RG6 - 4 : resolution mode
 
             //NEED TO INCLUDE PIXEL WIDTH INTO TIMING CALCULATIONS
@@ -303,22 +325,22 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
             // I.E. CLEAR 1 WIDTH IS 16*8= 128 PIXELS BUT WIDTH IS 2 GIVING THE 256 DOTS PER LINE
 
             // reg3	Horizontal and Vertical Sync Widths - not really used
-            this.vpulseWidth = 2; // clock cycles to go vertically
+            this.vpulseWidth = 15; // clock cycles to go vertically
             this.hpulseWidth = 4; // clock cycles to go horizontally
 
-            this.charsPerRowreg1 = modes[mode][0]; // 32 *
-            this.startHsyncreg2 = modes[mode][1];  // 32*8 = 256 (start of hsync
-            this.horizTotalreg0 = modes[mode][2]; // 64*8 = 512 (total width of canvas 2x2 canvas pixel per pixel)
-            this.pixelsPerChar = modes[mode][3]; // 8 pixels per element
+            this.charsPerRowreg1 = this.modes[mode][0]; // 32 *
+            this.startHsyncreg2 = this.modes[mode][1];  // 32*8 = 256 (start of hsync
+            this.horizTotalreg0 = this.modes[mode][2]; // 64*8 = 512 (total width of canvas 2x2 canvas pixel per pixel)
+            this.pixelsPerChar = this.modes[mode][3]; // 8 pixels per element
 
-            this.vertBodyreg6 = modes[mode][4];//topBorder+rowsPerScreen; // end of main body for FRAME COUNTER: 24 - 192
-            this.vertPosreg7 = modes[mode][5];//topBorder+rowsPerScreen+bottomBorder-1; // character end of bottom border START OF VSYNC  : 24 - 192 - 24
-            this.vertTotalreg4 = modes[mode][6];  // end of bottom border : 24 + 192 + 24 (12+96+12)
+            this.vertBodyreg6 = this.modes[mode][4];//topBorder+rowsPerScreen; // end of main body for FRAME COUNTER: 24 - 192
+            this.vertPosreg7 = this.modes[mode][5];//topBorder+rowsPerScreen+bottomBorder-1; // character end of bottom border START OF VSYNC  : 24 - 192 - 24
+            this.vertTotalreg4 = this.modes[mode][6];  // end of bottom border : 24 + 192 + 24 (12+96+12)
 
-            this.pixelsPerBit = this.bitmapPxPerPixel*modes[mode][7];
-            var linesPerRow = modes[mode][8]; // move to reg9
-            this.bpp = modes[mode][9];
-            this.pixelsSpeed = modes[mode][10];
+            this.pixelsPerBit = this.bitmapPxPerPixel*this.modes[mode][7];
+            var linesPerRow = this.modes[mode][8]; // move to reg9
+            this.bpp = this.modes[mode][9];
+            this.pixelsSpeed = this.modes[mode][10];
 
             this.charLinesreg9 = linesPerRow-1;//2  - scanlines per char
 
@@ -334,12 +356,12 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
             // in NTSC 60Hz which is 262 lines at 64 CPU cycles per line (1Mhz / (262*64)) = 60Hz
 
             // in PAL it should take 1Mhz/50 cycles to do one frame = 20000
-            // in NTS one frame is 16667
+            // in NTSC one frame is 16667
             // if VDG clock runs at 3.579545 then that is 71,591 cycles PAL (59,659 NTSC)
 
             // one clock from CPU is the same as 3.579545 cycles in the VDG
             // these are actually independent of one another - but not in this emulator
-            clocks = clocks * 3.579545;
+            clocks = Math.ceil(clocks * 3.579545);
 
             // there should be 64 CPU cycles per line and a line is 256 pixels wide (i.e. draw 4 pixels in a CPU cycle)
             // in character mode there are 32 characters or 64 groups of 4 bits - so a single character takes 2
@@ -409,13 +431,16 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
                 }
 
                 if (this.vertCounter === this.vertPosreg7 &&   // regs7	Vertical Sync position
-                    !this.inVSync ) {
+                    !this.inVSync  &&
+                    !this.hadVSyncThisRow ) {
                     vSyncStarting = true;
                     this.inVSync = true;
                 }
 
                 if (vSyncStarting && !vSyncEnding) {
+                    this.hadVSyncThisRow = true;
                     this.vpulseCounter = 0;
+                    // these two are always TRUE since on ATOM they cannot be configured like on the BBC
                     if (this.horizTotalreg0 && this.vertTotalreg4) {
                         this.paintAndClear();
                     }
@@ -423,9 +448,11 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
 
                 if (vSyncStarting || vSyncEnding) {
                     // console.log(this.cpu.currentCycles + " : vert "+this.vertCounter+" :  "+this.inVSync);
+                    // console.log(this.cpu.currentCycles + " : start "+vSyncStarting+" :  end "+vSyncEnding +" : in "+this.inVSync);
                     this.ppia.setVBlankInt(this.inVSync);
+                        // console.log("("+this.bitmapX+","+this.bitmapY+") V "+this.inVSync);
 
-                    // test with: FOR N=1 TO 10*60; WAIT; NEXT N
+                    // test with: CLEAR4;FOR N=1 TO 10*60; WAIT; NEXT N
                     // should wait 10 seconds
                 }
 

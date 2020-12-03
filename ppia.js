@@ -94,23 +94,34 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
             },
 
+            // lastvblank : 0,
+
             setVBlankInt: function (level) {
 //means - in VSync if true
                 // FE66_wait_for_flyback_start will loop until bit 7 of B002 is 0
                 //then
                 // FE6B_wait_for_flyback will loop until bit 7 of B002 is 1
 
+                //according to ATOMULATOR
+                // from videoline 192-223 the vblank should be 1
+                // from videoline 224-end the vblank should be 0
+                // from videoline 0 the vblank should be 0
+
                 //60 Hz sync signal - normally 0, but goes 1 at start of flyback.
-               if ( !level )
+               if ( level )
                {
+                   // set bit 7 to 1 - in vsync
                  self.latchc |= 0x80;
                }
                else
                {
+                   // set bit 7 to 0 - normal state
                 self.latchc &= ~0x80;
                }
+                // console.log(cpu.currentCycles+" vblank "+level+"; portc 0x"+self.portcpins.toString(16) + "("+(cpu.currentCycles-this.lastvblank)+") " +"F:"+ 1000000/(cpu.currentCycles-this.lastvblank));
+                // this.lastvblank=cpu.currentCycles;
                self.recalculatePortCPins();
-               //console.log(" vblank "+level+"; portc 0x"+self.portcpins.toString(16));
+
             },
 
             polltime: function (cycles) {
@@ -240,9 +251,13 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                         // only read top 4 bits
                         // if (self.portcpins & 0x20)
                         //     console.log("casin");
-                        if (self.portcpins & 0x10) {
-                            console.log(self.processor.cycleSeconds+"."+(self.processor.currentCycles/1000)+" : hzin");
-                        }
+
+                        // pump in the HZIN value - should be ???
+                        self.portcpins = (self.portcpins & 0xef) | (1 << 4);
+
+                        // if (self.portcpins & 0x10) {
+                        //     console.log(self.processor.cycleSeconds+"."+(self.processor.currentCycles/1000)+" : hzin");
+                        // }
                         // if (self.portcpins & 0x80) {
                         //     console.log(self.processor.cycleSeconds+"."+(self.processor.currentCycles/1000)+" : vsync");
                         // }
