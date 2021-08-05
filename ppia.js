@@ -103,14 +103,14 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                 // of B002 is not 1 (i.e until BMI fails when bit 7 is 0)
 
                 //60 Hz sync signal - normally 1 during the frame, but goes 0 at start of flyback (at the end of a frame).
-               if ( !level )
+               if ( level )
                {
-                // set bit 7 to 1 - in frame
+                // set bit 7 to 1 - in vsync
                 self.latchc |= 0x80;
                }
                else
                {
-                // set bit 7 to 0 - in vsync
+                // set bit 7 to 0 - in frame
                 self.latchc &= ~0x80;
                }
                self.recalculatePortCPins();
