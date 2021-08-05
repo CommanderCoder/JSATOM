@@ -94,32 +94,25 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
             },
 
-            // lastvblank : 0,
-
             setVBlankInt: function (level) {
-//means - in VSync if true
-                // FE66_wait_for_flyback_start will loop until bit 7 of B002 is 0
-                //then
-                // FE6B_wait_for_flyback will loop until bit 7 of B002 is 1
+                // level == 1 when in the vsync
+                // FE66_wait_for_flyback_start will loop until bit 7 (copied into N register using BIT)
+                // of B002 is not 0 (i.e until BPL fails when bit 7 is 1)
+                // then
+                // FE6B_wait_for_flyback will loop until bit 7 of B002 is (copied into N register using BIT)
+                // of B002 is not 1 (i.e until BMI fails when bit 7 is 0)
 
-                //according to ATOMULATOR
-                // from videoline 192-223 the vblank should be 1
-                // from videoline 224-end the vblank should be 0
-                // from videoline 0 the vblank should be 0
-
-                //60 Hz sync signal - normally 0, but goes 1 at start of flyback.
-               if ( level )
+                //60 Hz sync signal - normally 1 during the frame, but goes 0 at start of flyback (at the end of a frame).
+               if ( !level )
                {
-                   // set bit 7 to 1 - in vsync
-                 self.latchc |= 0x80;
+                // set bit 7 to 1 - in frame
+                self.latchc |= 0x80;
                }
                else
                {
-                   // set bit 7 to 0 - normal state
+                // set bit 7 to 0 - in vsync
                 self.latchc &= ~0x80;
                }
-                // console.log(cpu.currentCycles+" vblank "+level+"; portc 0x"+self.portcpins.toString(16) + "("+(cpu.currentCycles-this.lastvblank)+") " +"F:"+ 1000000/(cpu.currentCycles-this.lastvblank));
-                // this.lastvblank=cpu.currentCycles;
                self.recalculatePortCPins();
 
             },

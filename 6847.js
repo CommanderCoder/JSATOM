@@ -123,38 +123,18 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
         this.regs = new Uint8Array(32);
         this.bitmapX = 0;
         this.bitmapY = 0;
-        this.oddClock = false;
         this.frameCount = 0;
-        this.firstScanline = true;
         this.inHSync = false;
         this.inVSync = false;
-        this.hadVSyncThisRow = false;
 
-        this.checkVertAdjust = false;
-        this.endOfMainLatched = false;
-        this.endOfVertAdjustLatched = false;
-        this.endOfFrameLatched = false;
-        this.inVertAdjust = false;
-        this.inDummyRaster = false;
-        this.hpulseWidth = 0;
-        this.vpulseWidth = 0;
-        this.hpulseCounter = 0;
-        this.vpulseCounter = 0;
-        this.dispEnabled = 0;
         this.horizCounter = 0;
         this.vertCounter = 0;
         this.scanlineCounter = 0;
-        this.vertAdjustCounter = 0;
         this.addr = 0;
         this.lineStartAddr = 0;
         this.nextLineStartAddr = 0;
-        this.pixelsSpeed = 4;
 
         this.pixelsPerChar = 8;
-        this.halfClock = false;
-        this.interlacedSyncAndVideo = false;
-        this.doubledScanlines = true;
-        this.frameSkipCount = 0;
 
         this.bitmapPxPerPixel = 2;  // each pixel is 2 bitmap pixels wide and high
         this.pixelsPerBit = this.bitmapPxPerPixel;
@@ -190,8 +170,6 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
 
 
         this.paintAndClear = function() {
-            // this.paint();
-            // this.clearPaintBuffer();
 
 // skip 5 frames
             if (this.dispEnabled & FRAMESKIPENABLE) {
@@ -222,89 +200,28 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
             this.dispEnabled &= ~flag;
         };
 
-        this.endOfFrame = function () {
-            this.vertCounter = 0;
-            this.nextLineStartAddr = 0;
-            this.lineStartAddr = this.nextLineStartAddr;
-            this.dispEnableSet(VDISPENABLE);
-        };
-
-        this.endofCharacterLine = function () {
-            // console.log(this.cpu.currentCycles + " : vertcounter = "+this.vertCounter +" === "+this.vertPosreg7+"  " +
-            //     "and scanlinecounter = "+this.scanlineCounter +" === scanlineCounter" + this.charLinesreg9 +
-            // " vbl : "+this.inVSync);
-            this.vertCounter = (this.vertCounter + 1) & 0x1ff;
-            this.hadVSyncThisRow = false;
-            this.scanlineCounter = 0;
-        };
-
-        this.endofScanline = function() {
-            this.vpulseCounter = (this.vpulseCounter + 1) & 0x0F;
-
-            // done the whole scanline
-            var completedCharVertical = (this.scanlineCounter === this.charLinesreg9);  // regs9  - scanlines per char    // 9	Maximum Raster Address
-
-            if (completedCharVertical) {
-                this.lineStartAddr = this.nextLineStartAddr;
-            }
-
-            this.scanlineCounter = (this.scanlineCounter + 1) & 0x1f;
-
-            // Reset scanline if necessary.
-            if (completedCharVertical) {
-                this.endofCharacterLine();
-            }
-
-            if (this.endOfMainLatched) {
-                this.endOfMainLatched = false;
-
-                this.endofCharacterLine();
-                this.endOfFrame();
-            }
-
-            this.addr = this.lineStartAddr;
-        };
-
-        this.handleHSync = function()
-        {
-            this.hpulseCounter = (this.hpulseCounter + 1) & 0x0F;
-
-            var movingToNextScanline = (this.hpulseCounter === (this.hpulseWidth>>>1));
-            var atNextScanLine = (this.hpulseCounter === this.hpulseWidth);
-
-            if (movingToNextScanline)
-            {
-                // Start at -ve pos because new character is added before the pixel render.
-                this.bitmapX = -this.pixelsPerChar*this.bitmapPxPerPixel;
-
-                this.bitmapY += this.bitmapPxPerPixel;
-
-                if (this.bitmapY >= 768) {
-                    // Arbitrary moment when TV will give up and start flyback in the absence of an explicit VSync signal
-                    this.paintAndClear();
-                }
-            }
-            else if (atNextScanLine)
-            {
-                this.inHSync = false;
-            }
-        };
 
         //PAL based = 312 lines
         //NTSC based = 262 lines
         // initialiser is outside the function to improve performance
         this.modes = {
-            //chars,hsync,total,perchar    body,pos,total,  pixpb,lines, bpp, CPUcyclesToDraw1Byte
-            0xf0: [32,44,64,8,  192,264,312,  1, 1, 1, 3], //clear4  256x192x2,  pixels 1w1h   MAIN MENU
-            0xb0: [16,22,32,16,  192,264,312,  2, 1, 1, 7], //clear3  128x192x2, pixels  2w1h   BABIES
-            0x70: [16,22,32,16,  96,132,156,  2, 2, 1, 7], //clear2  128x96x2, pixels  2w2h  3D ASTEROIDS
-            0x30: [16,11,24,16,  64,88,104,  2, 3, 1, 11], //clear1   128x64x2 , pixels  3w4h (2w4h) 3D MAZE
-            0xd0: [32,44,64,8,  192,264,312,  2, 1, 2, 3], //?#B000=#D0  128x192x4,pixels  2w1h CHUCKIE EGG
-            0x90: [32,44,64,8,  96,132,156,  2, 2, 2, 3],//?#B000=#90  128x96x4, pixels 2w2h  FLAPPY BIRD
-            0x50: [32,44,64,8, 64,88,104,  2, 3, 2, 7],//?#B000=#50  128x64x4 , pixels 3w3h (4w3h) BREAKOUT (maingame)
-            0x10: [16,22,32,16,  64,88,104,  4, 3, 2, 11],//?#B000=#10  64x64x4 , pixels 4w3h  FIZZLE BRICKS
-            0x00: [32,42,64,8,  16,22,26,  -1, 12, 1, 3]  // clear0 //0,0 not used on Mode 0 (uses blitChar), pixelsPerBit, bpp
+            //perchar  ,  pixpb,lines, bpp
+            0xf0: [8, 1, 1, 1], //clear4  256x192x2,  pixels 1w1h   MAIN MENU
+            0xb0: [16,  2, 1, 1], //clear3  128x192x2, pixels  2w1h   BABIES
+            0x70: [16,  2, 2, 1], //clear2  128x96x2, pixels  2w2h  3D ASTEROIDS
+            0x30: [16,    2, 3, 1], //clear1   128x64x2 , pixels  3w4h (2w4h) 3D MAZE
+            0xd0: [8,    2, 1, 2], //?#B000=#D0  128x192x4,pixels  2w1h CHUCKIE EGG
+            0x90: [8,   2, 2, 2],//?#B000=#90  128x96x4, pixels 2w2h  FLAPPY BIRD
+            0x50: [16,  2, 3, 2],//?#B000=#50  128x64x4 , pixels 3w3h (4w3h) BREAKOUT (maingame)
+            0x10: [16,   4, 3, 2],//?#B000=#10  64x64x4 , pixels 4w3h  FIZZLE BRICKS
+            0x00: [8,   -1, 12, 1]  // clear0 //0,0 not used on Mode 0 (uses blitChar), pixelsPerBit, bpp
         };
+
+        // THESE MIDDLE THREE NUMBERS - THE SECOND AND THIRD ONE AFFECT THE VSYNC TIMING 
+        // first is end of frame - i.e. full lines to display
+        // second is vsync start based on vertcounter
+        // third is total lines in a full frame 
+        // vpulsewidth is how far through the individual scanline to end the vsync - i.e. sub scanline tine
 
         this.lastmode = 0xff;
 
@@ -318,216 +235,248 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
 
             this.lastmode = mode;
 
-            // DEFAULT to RG6 - 4 : resolution mode
-
-            //NEED TO INCLUDE PIXEL WIDTH INTO TIMING CALCULATIONS
-            //PROBABLY BPP TOO - 8 PIXELS
-            // I.E. CLEAR 1 WIDTH IS 16*8= 128 PIXELS BUT WIDTH IS 2 GIVING THE 256 DOTS PER LINE
-
-            // reg3	Horizontal and Vertical Sync Widths - not really used
-            this.vpulseWidth = 15; // clock cycles to go vertically
-            this.hpulseWidth = 4; // clock cycles to go horizontally
-
-            this.charsPerRowreg1 = this.modes[mode][0]; // 32 *
-            this.startHsyncreg2 = this.modes[mode][1];  // 32*8 = 256 (start of hsync
-            this.horizTotalreg0 = this.modes[mode][2]; // 64*8 = 512 (total width of canvas 2x2 canvas pixel per pixel)
-            this.pixelsPerChar = this.modes[mode][3]; // 8 pixels per element
-
-            this.vertBodyreg6 = this.modes[mode][4];//topBorder+rowsPerScreen; // end of main body for FRAME COUNTER: 24 - 192
-            this.vertPosreg7 = this.modes[mode][5];//topBorder+rowsPerScreen+bottomBorder-1; // character end of bottom border START OF VSYNC  : 24 - 192 - 24
-            this.vertTotalreg4 = this.modes[mode][6];  // end of bottom border : 24 + 192 + 24 (12+96+12)
-
-            this.pixelsPerBit = this.bitmapPxPerPixel*this.modes[mode][7];
-            var linesPerRow = this.modes[mode][8]; // move to reg9
-            this.bpp = this.modes[mode][9];
-            this.pixelsSpeed = this.modes[mode][10];
+            this.pixelsPerChar = this.modes[mode][0]; // 8 pixels per element
+            this.pixelsPerBit = this.bitmapPxPerPixel*this.modes[mode][1];
+            var linesPerRow = this.modes[mode][2]; // move to reg9
+            this.bpp = this.modes[mode][3];
 
             this.charLinesreg9 = linesPerRow-1;//2  - scanlines per char
 
 
         };
 
-        this.cyclesPerPixel = 0;
+        this.lastseconds = 0;
+
+        this.vdg_cycles = 0;
+        this.charTime = 0;
 
         // ATOM uses 6847 chip
         this.polltime = function (clocks) {
 
-            // in PAL 50Hz which is 312 lines at 64 CPU cycles per line (1Mhz / (312*64)) = 50Hz
-            // in NTSC 60Hz which is 262 lines at 64 CPU cycles per line (1Mhz / (262*64)) = 60Hz
 
-            // in PAL it should take 1Mhz/50 cycles to do one frame = 20000
-            // in NTSC one frame is 16667
-            // if VDG clock runs at 3.579545 then that is 71,591 cycles PAL (59,659 NTSC)
-
-            // one clock from CPU is the same as 3.579545 cycles in the VDG
-            // these are actually independent of one another - but not in this emulator
-            clocks = Math.ceil(clocks * 3.579545);
-
-            // there should be 64 CPU cycles per line and a line is 256 pixels wide (i.e. draw 4 pixels in a CPU cycle)
-            // in character mode there are 32 characters or 64 groups of 4 bits - so a single character takes 2
-            // CPU cycles
-            // i.e. it takes two cycles to draw one bytes from memory - the loop here is drawing the screen in 'bytes'
-            // so it takes two CPU cycles to draw one byte
-
-            // this is 256 pixels wide by 192 pixels high
-            // the canvas bitmap is 1024 x 625 (for BBC micro)
-            // so each atom pixel is two bitmap pixels using 512x384
-            // border left and right is 256-256
-            // border top and bottom is 120-121
-
-            //  video mode
             var mode = (this.ppia.portapins & 0xf0);
             var css = (this.ppia.portcpins & 0x08)>>>2;
-
-            // mode = 0x50;
             this.setValuesFromMode(mode);
 
 
-            // scanline is a line within a character (or element, 1line, 2 lines, 3lines or 12 lines)
-            // vertCounter is a character line (16)
+            var vdgcharclock = this.pixelsPerChar/2; // 4 or 8
+            var vdgclock = 3.579545;
+            this.vdg_cycles += clocks * vdgclock;
 
-            // horizCounter is a character (8,16,32) on a line  (total row including border is 64)
-            // character is 8,4,2 pixels wide (depending on bpp)
+            var vdgframelines = 262;
+            var vdglinetime = 228; // vdg cycles to do a line; not 227.5
 
-            // each clock advances the raster by 16 bitmap pixels (two bytes in memory)
-            while (clocks-- > 0) {
-                //delay some cycles before drawing the next pixel
-                this.cyclesPerPixel++;
-                if (this.cyclesPerPixel <= this.pixelsSpeed)
-                    continue;
+            var displayV = 192;
+            var topborder = 25;
+            var bottomborder = 25; // 26 + 6 = 32 =  time in vsync
+            var vertretrace = 6;
+            var vertblank = 13;
+            var leftborder = 60;
+            var displayH = 128;
 
-                this.cyclesPerPixel=0;
+            while(this.vdg_cycles >= 0)
+            {
+                this.vdg_cycles -= 1; 
+                this.charTime -= 1; 
 
-                this.bitmapX += this.pixelsPerChar*this.bitmapPxPerPixel;
+                var nextChar = this.charTime <= 0; 
 
-                // Handle HSync
+                if (nextChar)
+                {
+                    this.charTime += vdgcharclock;
+                    this.bitmapX += this.pixelsPerChar*this.bitmapPxPerPixel;
+                }
+
                 if (this.inHSync)
-                    this.handleHSync();
+                {
+                    // Start at -ve pos because new character is added before the pixel render
+                    this.bitmapX = -this.pixelsPerChar*this.bitmapPxPerPixel;
 
-                // Latch next line screen address in case we are in the last line of a character row
-                if (this.horizCounter === this.charsPerRowreg1)  // regs1  32 Horizontal Displayed
+                    this.bitmapY += this.bitmapPxPerPixel;
+
+                    if (this.bitmapY >= 768) {
+                        // Arbitrary moment when TV will give up and start flyback in the absence of an explicit VSync signal
+                        this.paintAndClear();
+                    }
+                    this.inHSync = false;
+
+                }
+
+                if (this.horizCounter === leftborder+displayH)
                     this.nextLineStartAddr = this.addr;
 
-                // Handle end of horizontal displayed.
-                // Also, the last scanline character never displays.
-                if ((this.horizCounter === this.charsPerRowreg1 ) ||  // regs1  32 Horizontal Displayed
-                    (this.horizCounter === this.horizTotalreg0 )) {  // regs0  64 Horizontal Total
+                    // Stop drawing outside the right border
+                if (this.horizCounter  === leftborder+displayH ){ 
                     this.dispEnableClear(HDISPENABLE);
                 }
 
-                // Initiate HSync.
-                // got to 32 characters
-                if (this.horizCounter === this.startHsyncreg2 && !this.inHSync) {
-                    this.inHSync = true;
-                    this.hpulseCounter = 0;
+                if (this.horizCounter === leftborder
+                  )
+                {
+                    this.dispEnableSet(HDISPENABLE);
+                    this.addr = this.lineStartAddr;
+                    this.charTime = 0;
+
                 }
+
+                if (this.vertCounter === vertblank+topborder
+                    )
+                {
+                    this.scanlineCounter = 0;
+                    this.nextLineStartAddr = 0;
+                    this.lineStartAddr = this.nextLineStartAddr;            
+                    this.dispEnableSet(VDISPENABLE);
+                }
+
+                if (this.vertCounter === vertblank+topborder+displayV)
+                {
+                    this.dispEnableClear(VDISPENABLE);
+                }
+
+                if (this.horizCounter === vdglinetime && !this.inHSync) {
+                    this.inHSync = true;
+                }
+
 
                 var vSyncEnding = false;
                 var vSyncStarting = false;
-                if (this.inVSync &&
-                    this.vpulseCounter === this.vpulseWidth) {  // vpulseWidth
+                if (this.vertCounter === vdgframelines &&
+                    this.inVSync)
+                {
                     vSyncEnding = true;
                     this.inVSync = false;
                 }
 
-                if (this.vertCounter === this.vertPosreg7 &&   // regs7	Vertical Sync position
-                    !this.inVSync  &&
-                    !this.hadVSyncThisRow ) {
+                if (this.vertCounter === vertblank+topborder+displayV+bottomborder+vertretrace-1 &&
+                    !this.inVSync  
+                    )
+                {
                     vSyncStarting = true;
                     this.inVSync = true;
                 }
+                
 
                 if (vSyncStarting && !vSyncEnding) {
-                    this.hadVSyncThisRow = true;
-                    this.vpulseCounter = 0;
-                    // these two are always TRUE since on ATOM they cannot be configured like on the BBC
-                    if (this.horizTotalreg0 && this.vertTotalreg4) {
-                        this.paintAndClear();
-                    }
+                    this.paintAndClear();
                 }
+
 
                 if (vSyncStarting || vSyncEnding) {
-                    // console.log(this.cpu.currentCycles + " : vert "+this.vertCounter+" :  "+this.inVSync);
-                    // console.log(this.cpu.currentCycles + " : start "+vSyncStarting+" :  end "+vSyncEnding +" : in "+this.inVSync);
                     this.ppia.setVBlankInt(this.inVSync);
-                        // console.log("("+this.bitmapX+","+this.bitmapY+") V "+this.inVSync);
 
-                    // test with: CLEAR4;FOR N=1 TO 10*60; WAIT; NEXT N
-                    // should wait 10 seconds
-                }
 
-                // once the whole of the Vertical and Horizontal is complete then do this
-                var insideBorder = (this.dispEnabled & (HDISPENABLE | VDISPENABLE)) === (HDISPENABLE | VDISPENABLE);
-                if (insideBorder) {
-                // if (true) {
-                //     read from video memory - uses this.addr
-                    var dat = this.readVideoMem();
-
-                    //left column should be RED and right is GREEN
-                    // visible bitmapY is 12 to 544 with a halfway at 266
-                    // visible bitmapX is 64 to 960
-
-                    var offset = this.bitmapY;
-                    offset = (offset * 1024) + this.bitmapX;
-                    // Render data depending on display enable state.
-                    if (this.bitmapX >= 0 && this.bitmapX < 1024 && this.bitmapY < 625)
+                    if (vSyncEnding)
                     {
-                        {
-                                if ((mode & 0x10 ) == 0) // MODE_AG - bit 4; 0x10 is the AG bit
-                                    // TODO: Add in the INTEXT modifiers to mode (if necessary)
-                                    // blit into the fb32 buffer which is painted by VIDEO
-                                    this.blitChar(this.video.fb32, dat, offset, this.pixelsPerChar, css);
-                                else
-                                    this.blitPixels(this.video.fb32, dat, offset, css);
-
-                        }
+                        var seconds = this.cpu.cycleSeconds+this.cpu.currentCycles/1000000.0;
+                        var diff = seconds - this.lastseconds;
+                        $("#vdg_text").html(
+                            "FPS "+(1/diff).toFixed(5)+"   ("+diff.toFixed(5)+")<br>"
+                        );
+                        this.lastseconds = seconds ?? 0;
                     }
 
+
+
+                }
+
+                if (nextChar)
+                {
+                    // once the whole of the Vertical and Horizontal is complete then do this
+                    var insideBorder = (this.dispEnabled & (HDISPENABLE | VDISPENABLE)) === (HDISPENABLE | VDISPENABLE);
+                    if (insideBorder) {
+                        //     read from video memory - uses this.addr
+                        var dat = this.readVideoMem();
+
+                        var offset = this.bitmapY;
+                        offset = (offset * 1024) + this.bitmapX;
+                        // Render data depending on display enable state.
+                        if (this.bitmapX >= 0 && this.bitmapX < 1024 && this.bitmapY < 625)
+                        {
+                            {
+                                    // TODO: Add in the INTEXT modifiers to mode (if necessary)
+                                    // blit into the fb32 buffer which is painted by VIDEO
+                                    if ((mode & 0x10 ) == 0) // MODE_AG - bit 4; 0x10 is the AG bit
+                                        this.blitChar(this.video.fb32, dat, offset, this.pixelsPerChar, css);
+                                    else
+                                        this.blitPixels(this.video.fb32, dat, offset, css);
+
+                            }
+                        }
+
+                    }
+                    else
+                    {
+                        // draw BLACK in the border
+                        var offset = this.bitmapY;
+                        offset = (offset * 1024) + this.bitmapX;
+                        if ((mode & 0x10 ) == 0) // MODE_AG - bit 4; 0x10 is the AG bit
+                            this.blitChar(this.video.fb32, 0x20, offset, this.pixelsPerChar, css);
+                        else
+                            this.blitPixels(this.video.fb32, 0x00, offset, css);
+                    }
+
+
+                    this.addr = (this.addr + 1) & 0x1fff;
+
+                }   
+
+                // end of horizontal line
+                if (this.horizCounter === vdglinetime)
+                {
+                    var completedCharVertical = (this.scanlineCounter === this.charLinesreg9);  // regs9  - scanlines per char    // 9	Maximum Raster Address
+
+                    //keep drawing same memory addresses until end of scanlines
+                    if (completedCharVertical) {
+                        this.lineStartAddr = this.nextLineStartAddr;
+                    }
+        
+                    this.scanlineCounter += 1;
+
+                    if (completedCharVertical) {
+
+                        // this.hadVSyncThisRow = false;
+                        this.scanlineCounter = 0;
+
+                    }
+
+                    // end of vertical frame was detected
+                    if (this.vertCounter === vdgframelines) { 
+                        this.vertCounter = 0;
+                    }
+
+                    this.vertCounter += 1;
+
+                    // start new horizontal line
+                    this.horizCounter = 0;          
                 }
                 else
                 {
-                    // draw BLACK in the border
-                    var offset = this.bitmapY;
-                    offset = (offset * 1024) + this.bitmapX;
-                    this.blitPixels(this.video.fb32, 0x00, offset, css);
+                    this.horizCounter += 1;
                 }
 
-                // CRTC MA always increments, inside display border or not.
-                // maximum 8k on ATOM
-                // however this can be reset by endofScanline() to lineStartAddr
-                this.addr = (this.addr + 1) & 0x1fff;
 
-
-                // first character in and got to 16th line and list line of the scan line
-                // done the main body
-                // vertcounter is based on vertical height of an element
-                if (this.horizCounter === 1) {
-                    if (this.vertCounter === this.vertTotalreg4 &&  // end of vertical  // regs4	Vertical Total
-                        this.scanlineCounter === this.charLinesreg9) {  // end of last scanline on vertical too  // regs9  - scanlines per char
-                        this.endOfMainLatched = true;
-                    }
-                }
-
-                // 16 bitmap pixels per char (64 * 16 = 1024)
-                if (this.horizCounter === this.horizTotalreg0) {  // regs0	Horizontal Total
-                    this.endofScanline();  // update this.addr in here from this.lineStartAddr
-                    this.horizCounter = 0;
-                    this.dispEnableSet(HDISPENABLE);
-                } else {
-                    this.horizCounter = (this.horizCounter + 1) & 0xff;
-                }
-
-                // regs6	Vertical Displayed
-                if (this.vertCounter === this.vertBodyreg6 &&
-                    (this.dispEnabled & VDISPENABLE)) {
-                    this.dispEnableClear(VDISPENABLE);
+                if (this.vertCounter === vdgframelines  )
+                {
                     this.frameCount++;
                 }
 
+
+                // // dump some data to CSV
+                // var a = this.cpu.cycleSeconds*1000000.0+this.cpu.currentCycles;
+                // var b = this.horizCounter;
+                // var c = this.vertCounter;
+                // var d = this.inVSync;
+
+
+                // //using template literals for strings substitution
+                // if (this.cpu.cycleSeconds==1 && this.cpu.currentCycles<60000 && this.horizCounter == 0)
+                // {
+                //     $("#csv_output").append(
+                //         `<br>${a},${b},${c},${d}`);
+                // }
             } // matches while
 
-        };
-
+        }
 
         this.blitPixels = function ( buf, data, destOffset, css)
         {
