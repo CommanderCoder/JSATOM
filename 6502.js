@@ -1195,7 +1195,10 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 if (!cycles) return;
                 this.peripheralCycles -= (cycles * this.cpuMultiplier) | 0;
                 this.sysvia.polltime(cycles);
-                this.uservia.polltime(cycles);
+                // make this twice a fast since BBC VIAs run half as fast as BBC CPU
+                // but ATOM VIAs run the same speed as ATOM VIAs
+                var atomviaCycles = model.isAtom?cycles<<1:cycles;
+                this.uservia.polltime(atomviaCycles);
                 this.scheduler.polltime(cycles);
                 this.tube.execute(cycles);
                 if (model.isAtom)
@@ -1208,7 +1211,10 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 this.currentCycles += cycles;
                 this.video.polltime(cycles);
                 this.sysvia.polltime(cycles);
-                this.uservia.polltime(cycles);
+                // make this twice a fast since BBC VIAs run half as fast as BBC CPU
+                // but ATOM VIAs run the same speed as ATOM VIAs
+                var atomviaCycles = model.isAtom?cycles<<1:cycles;
+                this.uservia.polltime(atomviaCycles); 
                 this.scheduler.polltime(cycles);
                 this.tube.execute(cycles);
                 if (model.isAtom) {

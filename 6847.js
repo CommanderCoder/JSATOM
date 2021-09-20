@@ -242,6 +242,9 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
 
             this.charLinesreg9 = linesPerRow-1;//2  - scanlines per char
 
+            //FIX FOR MODE SWITCH MID LINE
+            this.scanlineCounter = this.charLinesreg9;
+            this.horizCounter = 0;
 
         };
 
@@ -263,16 +266,18 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
             var vdgclock = 3.579545;
             this.vdg_cycles += clocks * vdgclock;
 
-            var vdgframelines = 262;
+            var vdgframelines = 262;//  312 PAL  262; // NTSC
             var vdglinetime = 228; // vdg cycles to do a line; not 227.5
 
-            var displayV = 192;
-            var topborder = 25;
-            var bottomborder = 25; // 26 + 6 = 32 =  time in vsync
-            var vertretrace = 6;
-            var vertblank = 13;
+            var displayH = 128; //256
             var leftborder = 60;
-            var displayH = 128;
+
+            var vertblank = 13;
+            var topborder = 25;
+            var displayV = 192;
+            var bottomborder = 26; // 26 + 6 = 32 =  time in vsync
+            var vertretrace = 6;
+            // ALL ADDS UP TO 262
 
             while(this.vdg_cycles >= 0)
             {
@@ -319,8 +324,8 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
 
                 }
 
-                if (this.vertCounter === vertblank+topborder
-                    )
+                // vertcounter runs from 1 to 262
+                if (this.vertCounter === vertblank+topborder )
                 {
                     this.scanlineCounter = 0;
                     this.nextLineStartAddr = 0;
@@ -338,16 +343,20 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
                 }
 
 
+                // image between 0 and 191 inc.
+                // vsync start (1) at line 192
+                // vsync end (0) at line 224
+
                 var vSyncEnding = false;
                 var vSyncStarting = false;
-                if (this.vertCounter === vdgframelines &&
+                if (this.vertCounter === vertblank+topborder+displayV+bottomborder+vertretrace &&
                     this.inVSync)
                 {
                     vSyncEnding = true;
                     this.inVSync = false;
                 }
 
-                if (this.vertCounter === vertblank+topborder+displayV+bottomborder+vertretrace-1 &&
+                if (this.vertCounter === vertblank+topborder+displayV &&
                     !this.inVSync  
                     )
                 {
@@ -364,16 +373,15 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
                 if (vSyncStarting || vSyncEnding) {
                     this.ppia.setVBlankInt(this.inVSync);
 
-
-                    if (vSyncEnding)
-                    {
-                        var seconds = this.cpu.cycleSeconds+this.cpu.currentCycles/1000000.0;
-                        var diff = seconds - this.lastseconds;
-                        $("#vdg_text").html(
-                            "FPS "+(1/diff).toFixed(5)+"   ("+diff.toFixed(5)+")<br>"
-                        );
-                        this.lastseconds = seconds ?? 0;
-                    }
+                    // if (vSyncEnding)
+                    // {
+                    //     var seconds = this.cpu.cycleSeconds+this.cpu.currentCycles/1000000.0;
+                    //     var diff = seconds - this.lastseconds;
+                    //     $("#vdg_text").html(
+                    //         "FPS "+(1/diff).toFixed(5)+"   ("+diff.toFixed(5)+")<br>"
+                    //     );
+                    //     this.lastseconds = seconds ?? 0;
+                    // }
 
 
 
@@ -466,13 +474,14 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
                 // var b = this.horizCounter;
                 // var c = this.vertCounter;
                 // var d = this.inVSync;
+                // var e = css;
 
 
                 // //using template literals for strings substitution
-                // if (this.cpu.cycleSeconds==1 && this.cpu.currentCycles<60000 && this.horizCounter == 0)
+                // if (this.cpu.cycleSeconds==10 && this.cpu.currentCycles<60000 && this.horizCounter == 0)
                 // {
                 //     $("#csv_output").append(
-                //         `<br>${a},${b},${c},${d}`);
+                //         `<br>${a},${b},${c},${d},${e}`);
                 // }
             } // matches while
 
