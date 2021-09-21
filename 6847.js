@@ -243,8 +243,8 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
             this.charLinesreg9 = linesPerRow-1;//2  - scanlines per char
 
             //FIX FOR MODE SWITCH MID LINE
-            this.scanlineCounter = this.charLinesreg9;
-            this.horizCounter = 0;
+            this.scanlineCounter = 0;//this.charLinesreg9;
+            this.horizCounter = 66;//leftborder+displayH;
 
         };
 
@@ -263,10 +263,10 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
 
 
             var vdgcharclock = this.pixelsPerChar/2; // 4 or 8
-            var vdgclock = 3.579545;
+            var vdgclock = 3.56369;//3.579545;
             this.vdg_cycles += clocks * vdgclock;
 
-            var vdgframelines = 262;//  312 PAL  262; // NTSC
+            var vdgframelines = 261;//  312 PAL  262; // NTSC
             var vdglinetime = 228; // vdg cycles to do a line; not 227.5
 
             var displayH = 128; //256
@@ -275,7 +275,7 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
             var vertblank = 13;
             var topborder = 25;
             var displayV = 192;
-            var bottomborder = 26; // 26 + 6 = 32 =  time in vsync
+            var bottomborder = 25; // 26 + 6 = 32 =  time in vsync
             var vertretrace = 6;
             // ALL ADDS UP TO 262
 
