@@ -63,7 +63,7 @@ body {
 #nec-tv-screen {
     position: absolute;
     z-index: -1;
-    top: 0px;
+    top: 32px;
     left: 0px;
     display: block;
     width: 830px;

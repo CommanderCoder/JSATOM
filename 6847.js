@@ -242,9 +242,10 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
 
             this.charLinesreg9 = linesPerRow-1;//2  - scanlines per char
 
-            //FIX FOR MODE SWITCH MID LINE
-            this.scanlineCounter = 0;//this.charLinesreg9;
-            this.horizCounter = 66;//leftborder+displayH;
+            //NEED TO RESET THE LINE IF 
+            //MODE SWITCH MID FRAME 
+            this.scanlineCounter = 0;
+            this.lineStartAddr = this.nextLineStartAddr;
 
         };
 
@@ -252,6 +253,7 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
 
         this.vdg_cycles = 0;
         this.charTime = 0;
+
 
         // ATOM uses 6847 chip
         this.polltime = function (clocks) {
@@ -263,21 +265,31 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
 
 
             var vdgcharclock = this.pixelsPerChar/2; // 4 or 8
-            var vdgclock = 3.56369;//3.579545;
+            var vdgclock = 3.638004; // This ought to be 3.579545, but this looks better with the INTs being used.
             this.vdg_cycles += clocks * vdgclock;
 
-            var vdgframelines = 261;//  312 PAL  262; // NTSC
+            var vdgframelines = 262;//  312 PAL (but no pal on standard atom)  262; // NTSC
             var vdglinetime = 228; // vdg cycles to do a line; not 227.5
 
-            var displayH = 128; //256
-            var leftborder = 60;
+            // full bordered width is 185.5 cycles
+            // (185.5+42 = 227.5)
+            var HBNK = 42;  // left border start (16.5+25.5)
+            var leftborder = 29; // 29.5
+            var displayH = 128; //cycles - 186 cycles including borders - 228 for full horizontal
+            var rightborder = 29; //28.5
 
-            var vertblank = 13;
-            var topborder = 25;
+            // total = 29+29+128+42 = 228
+
+            var vertblank = 13;  //13
+            var topborder = 25;  //25
             var displayV = 192;
-            var bottomborder = 25; // 26 + 6 = 32 =  time in vsync
-            var vertretrace = 6;
+            // var bottomborder = 26; // 26 + 6 = 32 =  time in vsync
+            // var vertretrace = 6;
             // ALL ADDS UP TO 262
+
+
+            // in vsync for 32 lines = bottomborder+vertretrace
+            // out vsync for 230 lines = vertblank+topborder+displayV
 
             while(this.vdg_cycles >= 0)
             {
@@ -307,16 +319,17 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
 
                 }
 
-                if (this.horizCounter === leftborder+displayH)
+                // right border - record addr for next FULL line
+                if (this.horizCounter === HBNK+leftborder+displayH)
                     this.nextLineStartAddr = this.addr;
 
-                    // Stop drawing outside the right border
-                if (this.horizCounter  === leftborder+displayH ){ 
+                // Stop drawing outside the right border
+                if (this.horizCounter  === HBNK+leftborder+displayH ){ 
                     this.dispEnableClear(HDISPENABLE);
                 }
 
-                if (this.horizCounter === leftborder
-                  )
+                // left border - start the next line (not necessarily the FULL line)
+                if (this.horizCounter === HBNK+leftborder)
                 {
                     this.dispEnableSet(HDISPENABLE);
                     this.addr = this.lineStartAddr;
@@ -324,7 +337,8 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
 
                 }
 
-                // vertcounter runs from 1 to 262
+                // vertcounter runs from 0 to 262
+                // got to the end, start again
                 if (this.vertCounter === vertblank+topborder )
                 {
                     this.scanlineCounter = 0;
@@ -338,7 +352,9 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
                     this.dispEnableClear(VDISPENABLE);
                 }
 
-                if (this.horizCounter === vdglinetime && !this.inHSync) {
+                // reached end of the vdgline - start the hsync
+                if (this.horizCounter === HBNK+leftborder+displayH+rightborder &&
+                     !this.inHSync) {
                     this.inHSync = true;
                 }
 
@@ -346,15 +362,10 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
                 // image between 0 and 191 inc.
                 // vsync start (1) at line 192
                 // vsync end (0) at line 224
+                // 32 lines between inVSync and !inVSync
 
                 var vSyncEnding = false;
                 var vSyncStarting = false;
-                if (this.vertCounter === vertblank+topborder+displayV+bottomborder+vertretrace &&
-                    this.inVSync)
-                {
-                    vSyncEnding = true;
-                    this.inVSync = false;
-                }
 
                 if (this.vertCounter === vertblank+topborder+displayV &&
                     !this.inVSync  
@@ -362,10 +373,21 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
                 {
                     vSyncStarting = true;
                     this.inVSync = true;
+                    // Frame Sync is high normally and
+                    // goes low when in VSync
+                    // in VSync for 32 lines, and 
+                    // out of VSync for 262-32 lines
+
                 }
                 
+                if (this.vertCounter === 0 &&
+                    this.inVSync)
+                {
+                    vSyncEnding = true;
+                    this.inVSync = false;
+                }
 
-                if (vSyncStarting && !vSyncEnding) {
+                if (!vSyncStarting && vSyncEnding) {
                     this.paintAndClear();
                 }
 
@@ -414,13 +436,19 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
                     }
                     else
                     {
+                        var dat = 0xff;
+                        // var insideTopBottomBorder = (this.dispEnabled & (HDISPENABLE | VDISPENABLE)) === (VDISPENABLE);
+                        // dat = 0x2f;
+                        // if (insideTopBottomBorder)
+                        //     dat = 0x11;
+
                         // draw BLACK in the border
                         var offset = this.bitmapY;
                         offset = (offset * 1024) + this.bitmapX;
                         if ((mode & 0x10 ) == 0) // MODE_AG - bit 4; 0x10 is the AG bit
                             this.blitChar(this.video.fb32, 0x20, offset, this.pixelsPerChar, css);
                         else
-                            this.blitPixels(this.video.fb32, 0x00, offset, css);
+                            this.blitPixels(this.video.fb32, dat, offset, css);
                     }
 
 
@@ -448,18 +476,20 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
                     }
 
                     // end of vertical frame was detected
-                    if (this.vertCounter === vdgframelines) { 
+                    if (this.vertCounter >= vdgframelines) { 
                         this.vertCounter = 0;
                     }
-
-                    this.vertCounter += 1;
+                    else
+                    {
+                        this.vertCounter = (this.vertCounter+1)&0x1ff;
+                    }
 
                     // start new horizontal line
-                    this.horizCounter = 0;          
+                    this.horizCounter = 0;   
                 }
                 else
                 {
-                    this.horizCounter += 1;
+                    this.horizCounter = (this.horizCounter+1)&0xff;
                 }
 
 
