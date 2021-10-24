@@ -1,5 +1,22 @@
 body {
-    padding-top: 50px;
+    background-color: #000 !important;
+}
+
+.modal {
+    color: #ddd;
+}
+
+.modal-content {
+    border-color: rgba(255, 255, 255, 0.2);
+    background-color: #212529;
+}
+
+.modal-header {
+    border-bottom-color: #666666;
+}
+
+.modal-footer {
+    border-top-color: #666666;
 }
 
 #outer {
@@ -38,12 +55,12 @@ body {
 
 .sidebar.right {
     right: -205px;
-    top: 0px;
+    top: 0;
 }
 
 .sidebar.left {
     left: -205px;
-    top: 0px;
+    top: 0;
 }
 
 .sidebar.bottom {
@@ -54,7 +71,7 @@ body {
     position: absolute;
     z-index: -1;
     top: 8px;
-    left: 0px;
+    left: 0;
     display: block;
     width: 896px;
     height: 600px;
@@ -64,7 +81,7 @@ body {
     position: absolute;
     z-index: -1;
     top: 32px;
-    left: 0px;
+    left: 0;
     display: block;
     width: 830px;
     height: 622px;
@@ -76,8 +93,8 @@ body {
     margin: 2px;
     padding: 2px;
     position: fixed;
-    bottom: 0px;
-    right: 0px;
+    bottom: 0;
+    right: 0;
     font-size: 8pt;
     font-family: monospace;
 }
@@ -89,7 +106,7 @@ body {
     padding: 2px;
     position: fixed;
     bottom: 80px;
-    left: 0px;
+    left: 0;
     font-size: 8pt;
     font-family: monospace;
 }
@@ -107,7 +124,7 @@ body {
     padding: 2px;
     position: fixed;
     top: 80px;
-    right: 0px;
+    right: 0;
     font-size: 8pt;
     font-family: monospace;
 }
@@ -149,8 +166,8 @@ span.accesskey {
     margin: 2px;
     padding: 2px;
     font-size: 8pt;
-    bottom: 0px;
-    left: 0px;
+    bottom: 0;
+    left: 0;
     position: fixed;
 }
 
@@ -178,8 +195,8 @@ span.accesskey {
     margin: 2px;
     padding: 2px;
     font-size: 8pt;
-    bottom: 0px;
-    right: 0px;
+    bottom: 0;
+    right: 0;
     position: fixed;
 }
 
@@ -340,7 +357,7 @@ div.modal-body > div:not(:first-child) {
 
 .label {
     color: white;
-    font-family: arial, tahoma;
+    font-family: arial, tahoma, sans-serif;
     font-weight: bold;
 }
 
@@ -366,6 +383,9 @@ div.modal-body > div:not(:first-child) {
     border: 1px solid #444;
 }
 
+.value {
+    color: #eee;
+}
 .changed {
     background-color: #772222;
 }

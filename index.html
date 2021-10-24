@@ -8,7 +8,7 @@
     <meta name="description" content="A Javascript Acorn Atom and BBC Micro emulator">
     <meta http-equiv="Content-Security-Policy"
           content="script-src 'self' 'unsafe-inline' 'unsafe-eval' *.google-analytics.com *.google.com;"/>
-    <title>jsatom - Javascript Acorn Atom and BBC Micro emulator</title>
+    <title>JSAcorn - Javascript Acorn Atom and BBC Micro emulator</title>
     <link rel="stylesheet" href="lib/bootstrap.min.css" type="text/css">
     <link rel="stylesheet" href="jsacorn.css" type="text/css">
     <link rel="shortcut icon" href="/favicon.ico">
@@ -40,8 +40,7 @@
 
 <nav id="header-bar" class="navbar navbar-dark bg-dark navbar-expand-lg not-electron" role="navigation">
     <div class="container-fluid">
-        <a class="navbar-brand" href="https://bbc.godbolt.org/" target="_top">jsbeeb</a>
-        <a class="navbar-brand" href="http://jsatom.commandercoder.com/" target="_top">jsatom</a>
+        <a class="navbar-brand" href="http://jsacorn.commandercoder.com/" target="_top">jsacorn</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
                 aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -78,30 +77,29 @@
                             </a>
                         </li>
                     </ul>
-
-                    <ul class="dropdown-menu dropdown-menu-dark" id="acornatom-sdcard-menu" aria-labelledby="navbarAtomMMC">
-                        <li><a href="#atommc" class="dropdown-item atommc" data-bs-toggle="modal" data-id="sdcards"
-                               data-bs-target="#atommc">SDCards (MMC)</a></li>
+                </li>
+                <li class="nav-item dropdown embed-hide">
+                    <a href="#" class="nav-link dropdown-toggle" id="navbarAtomMMC" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">SDCards (for MMC)</a>
+                       <ul class="dropdown-menu dropdown-menu-dark" id="acornatom-sdcard-menu" aria-labelledby="navbarAtomMMC">
                         <li>
                             <a href="#discs" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#sdcards">
-                                From local file
+                                            From local file
                             </a>
                         </li>
-                    </ul>
-
-
-                    <ul class="dropdown-menu dropdown-menu-dark" id="acornatom-tape-menu" aria-labelledby="navbarAtomCassettes">
-                        <li><a href="#atomtapes" class="dropdown-item atomtapes" data-bs-toggle="modal" data-id="atom-tapes"
-                               data-bs-target="#atomtapes">Atom Cassettes</a></li>
+                        </ul>
+                </li>
+                <li class="nav-item dropdown embed-hide">
+                    <a href="#" class="nav-link dropdown-toggle" id="navbarAtomCassettes" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">Atom Cassettes</a>
+                       <ul class="dropdown-menu dropdown-menu-dark" id="acornatom-tape-menu" aria-labelledby="navbarAtomCassettes">
                         <li><a data-id="rewind" class="dropdown-item">Rewind cassette</a></li>
                         <li>
                             <a href="#discs" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#atom-tapes">
                                 From local file
                             </a>
                         </li>
-                    </ul>
-        
-                        
+                        </ul>
                 </li>
                 <li class="nav-item dropdown embed-hide">
                     <a href="#" class="nav-link dropdown-toggle" id="navbarReset" role="button"
@@ -121,19 +119,16 @@
                         <li><a href="mailto:matt@godbolt.org" class="dropdown-item">Contact the Author</a></li>
                         <li><a href="http://xania.org/MattGodbolt" class="dropdown-item" rel="author" target="_blank">
                             About the Author</a></li>
+                        <li><a href="mailto:andrew@commandercoder.com" class="dropdown-item">Contact the Author (jsatom)</a></li>
+                        <li><a href="http://commandercoder.com/" class="dropdown-item" rel="author" target="_blank">
+                            About the Author (jsatom)</a></li>
                         <li><a href="#about" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#info"
                                id="about">
-                            About jsbeeb</a></li>
-
-                            <li><a href="mailto:andrew@commandercoder.com">Contact the Author (jsatom)</a></li>
-                            <li><a href="http://commandercoder.com/" rel="author" target="_blank">
-                                About the Author (jsatom)</a></li>
-                            <li><a href="#about" data-toggle="modal" data-target="#info" id="about">About jsacorn</a></li>
-    
+                            About jsbeeb and jsatom</a></li>
                     </ul>
                 </li>
             </ul>
-            <span class="navbar-text m-auto">
+            <span id="owlet" class="navbar-text m-auto">
                 Edit BBC BASIC interactively with Owlet at
                 <a href="https://bbcmic.ro/" target="_blank">bbcmic.ro</a>!
             </span>
@@ -159,7 +154,7 @@
             <div class="sidebar right"><img src="" alt=""></div>
             <div class="sidebar bottom"><img src="" alt=""></div>
         </div>
-        <div id="nec-tv" hidden="true">
+        <div id="nec-tv" aria-hidden="true">
             <img id="nec-tv-pic" width="1023" height="668" src="images/80s-nec-tv.png"
             alt="A fake NEC television">
             <div class="sidebar left"><img></div>
@@ -223,7 +218,7 @@
             </tbody>
         </table>
     </div>
-    <div id="cas-controls" hidden="true">
+    <div id="cas-controls" aria-hidden="true">
         <table>
             <thead>
             <tr>

@@ -575,6 +575,7 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                 var display_div = $("#counter_id");
                 var display_str = "";
                 display_str = self.tape_counter.toString().padStart(8,'0');
+                display_div.empty();
                 for (var i = 0; i < display_str.length; i++) {
                     display_div.append("<span class='cas counter num_tiles'>"+display_str[i]+"</span>");
                 }

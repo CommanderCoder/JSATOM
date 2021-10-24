@@ -285,17 +285,14 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
         // Acorn Atom menus
         if (model.isAtom)
         {
-            // $('#bbcmicro-disc-menu').addClass('hide');
-            $('#bbcmicro-tape-menu').addClass('hide');
-            $('#acornatom-sdcard-menu').removeClass('hide');
-            $('#acornatom-tape-menu').removeClass('hide');
+            $('#navbarCassettes').hide();
+            $('#owlet').hide();
         }
         else
         {
-            // $('#bbcmicro-disc-menu').removeClass('hide');
-            $('#bbcmicro-tape-menu').removeClass('hide');
-            $('#acornatom-sdcard-menu').addClass('hide');
-            $('#acornatom-tape-menu').addClass('hide');
+            $('#navbarAtomMMC').hide();
+            $('#navbarAtomCassettes').hide();
+            $('#owlet').show();
         }
 
         function keyCode(evt) {
@@ -525,8 +522,9 @@ require(['jquery', 'underscore', 'utils', 'video', 'soundchip', 'ddnoise', 'debu
             loadHTMLFile(file);
         });
 
+        $('#cub-monitor').hide();
+        $('#nec-tv').hide();
         var $cub = $('#cub-monitor');
-        $cub.hide();
         if (model.isAtom)
             $cub = $('#nec-tv');
         $cub.show();
