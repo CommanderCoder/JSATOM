@@ -7,7 +7,7 @@
   "name": "jsbeeb",
   "description": "Emulate a BBC Micro",
   "repository": "git@github.com:mattgodbolt/jsbeeb.git",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "engines": {
     "node": "8"
   },
@@ -17,8 +17,8 @@
   },
   "devDependencies": {
     "electron": "^11.5.0",
-    "electron-builder": "^22.7.0",
-    "jshint": "^2.11.1",
+    "electron-builder": "~22.10.5",
+    "jshint": "^2.13.1",
     "mocha": "^7.2.0",
     "node-png": "0.4.x",
     "requirejs": "^2.3.6"

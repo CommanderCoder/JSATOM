@@ -269,6 +269,24 @@ define(['./utils'], function (utils) {
                             temp &= 0x7f;
                             temp |= (self.t1_pb7 << 7);
                         }
+
+                        var buttons = this.getJoysticks();
+
+                        // clear PB4 and PB5
+                        temp = temp & 0xCF; // 11001111
+
+                        // AUG p418
+                        // PB4 and PB5 inputs
+                        // These are the inputs from the joystick FIRE buttons. They are
+                        // normally at logic 1 with no button pressed and change to 0
+                        // when a button is pressed
+                        if (!buttons.button1) {
+                            temp |= 1 << 4;
+                        }
+                        if (!buttons.button2) {
+                            temp |= 1 << 5;
+                        }
+
                         return temp;
 
                     case DDRA:
@@ -386,7 +404,7 @@ define(['./utils'], function (utils) {
         return self;
     }
 
-    function sysvia(cpu, video, soundChip, cmos, isMaster, initialLayout) {
+    function sysvia(cpu, video, soundChip, cmos, isMaster, initialLayout, getGamepads) {
         var self = via(cpu, 0x01);
 
         self.IC32 = 0;
@@ -552,12 +570,41 @@ define(['./utils'], function (utils) {
             // Note that if speech were fitted, it drives bit 7 low.
         };
 
+        self.getGamepads = function () {
+            if (getGamepads)
+                return getGamepads();
+            return null;
+        };
+
+        self.getJoysticks = function () {
+            var button1 = false;
+            var button2 = false;
+
+            var pads = self.getGamepads();
+            if (pads && pads[0]) {
+                var pad = pads[0];
+                var pad2 = pads[1];
+
+                button1 = pad.buttons[10].pressed;
+                // if two gamepads, use button from 2nd
+                // otherwise use 2nd button from first
+                button2 = pad2 ? (pad2.buttons[10].pressed) : (pad.buttons[11].pressed);
+            }
+
+            return {"button1": button1, "button2": button2};
+        };
+
         self.reset();
         return self;
     }
 
     function uservia(cpu, isMaster, userPortPeripheral) {
         var self = via(cpu, 0x02);
+
+        // nothing connected to user VIA
+        self.getJoysticks = function () {
+            return {button1: false, button2: false};
+        };
 
         self.portAUpdated = function () {
             // Printer port.
