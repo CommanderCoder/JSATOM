@@ -271,7 +271,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                     return 4; // no file
 
                 var ret = 0;
-                if (this.filenum == 0) {
+                if (this.filenum === 0) {
                     // spread operator '...'
                     var fname = String.fromCharCode(...this.globalData.slice(0,-1)).split('\0')[0];
                     fname = "/"+fname;
@@ -378,7 +378,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                     res = 4; //FR_ERROR
 
                  // if (self.FR_OK != res)
-                if (0 != res)
+                if (0 !== res)
                 {
                     self.WriteDataPort(STATUS_COMPLETE | res);
                     return;
@@ -392,7 +392,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
                 while (1) {
 
-                    if (self.MMCdata === undefined || self.MMCdata.names[self.dfn] === undefined || self.MMCdata.names.length == 0) {
+                    if (self.MMCdata === undefined || self.MMCdata.names[self.dfn] === undefined || self.MMCdata.names.length === 0) {
                         // done
                         var res = 0; // no error just empty
                         self.WriteDataPort(STATUS_COMPLETE | res);
@@ -450,8 +450,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                     return;
 
                 }
-            }
-            ,
+            },
             CWD:"",
             WFN_SetCWDirectory:function()
             {
@@ -482,15 +481,14 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                     this.CWD += '/'+dirname;
                 }
                 this.WriteDataPort(STATUS_COMPLETE);
-            }
-                ,
+            },
             WFN_FileSeek:function() {
                 console.log("WFN_FileSeek");
             },
             WFN_FileRead:function() {
                 // console.log("WFN_FileRead : " );
 
-                if (this.globalAmount == 0)
+                if (this.globalAmount === 0)
                 {
                     this.globalAmount = 256;
                 }
@@ -512,7 +510,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                 this.globalData = data;
                 this.fildataIndex = fildataEnd;
 
-                if (this.filenum > 0 && ret == 0 &&  this.globalAmount != read) {
+                if (this.filenum > 0 && ret === 0 &&  this.globalAmount !== read) {
                     this.WriteDataPort(STATUS_EOF); // normal file
                 } else {
                     // scratch file
@@ -607,13 +605,13 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                 else {
                     switch (addr & 0x0f) {
                         case CMD_REG:
-                            var received = val & 0xff;
+                            let received = val & 0xff;
 
                             // File Group 0x10-0x17, 0x30-0x37, 0x50-0x57, 0x70-0x77
                             // filenum = bits 6,5
                             // mask1 = 10011000 (test for file group command)
                             // mask2 = 10011111 (remove file number)
-                            if ((received & 0x98) == 0x10) {
+                            if ((received & 0x98) === 0x10) {
                                 self.filenum = (received >> 5) & 3;
                                 received &= 0x9F;
                             }
@@ -622,7 +620,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                             // filenum = bits 3,2
                             // mask1 = 11110000 (test for data group command)
                             // mask2 = 11110011 (remove file number)
-                            if ((received & 0xf0) == 0x20) {
+                            if ((received & 0xf0) === 0x20) {
                                 self.filenum = (received >> 2) & 3;
                                 received &= 0xF3;
                             }
@@ -634,18 +632,18 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
                             // Directory group, moved here 2011-05-29 PHS.
                             //
-                            if (received == CMD_DIR_OPEN) {
+                            if (received === CMD_DIR_OPEN) {
                                 // reset the directory reader
                                 //
                                 // when 0x3f is read back from this register it is appropriate to
                                 // start sending cmd 1s to get items.
                                 //
                                 this.worker = this.WFN_DirectoryOpen;
-                            } else if (received == CMD_DIR_READ) {
+                            } else if (received === CMD_DIR_READ) {
                                 // get next directory entry
                                 //
                                 this.worker = this.WFN_DirectoryRead;
-                            } else if (received == CMD_DIR_CWD) {
+                            } else if (received === CMD_DIR_CWD) {
                                 // set CWD
                                 //
                                 this.worker = this.WFN_SetCWDirectory;
@@ -653,15 +651,15 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
                                 // File group.
                             //
-                            else if (received == CMD_FILE_CLOSE) {
+                            else if (received === CMD_FILE_CLOSE) {
                                 // close the open file, flushing any unwritten data
                                 //
                                 this.worker = this.WFN_FileClose;
-                            } else if (received == CMD_FILE_OPEN_READ) {
+                            } else if (received === CMD_FILE_OPEN_READ) {
                                 // open the file with name in global data buffer
                                 //
                                 this.worker = this.WFN_FileOpenRead;
-                            } else if (received == CMD_FILE_OPEN_WRITE) {
+                            } else if (received === CMD_FILE_OPEN_WRITE) {
                                 // open the file with name in global data buffer for write
                                 //
                                 this.worker = this.WFN_FileOpenWrite;
@@ -669,27 +667,27 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
 // SP9 START
 
-                            else if (received == CMD_FILE_OPEN_RAF) {
+                            else if (received === CMD_FILE_OPEN_RAF) {
                                 // open the file with name in global data buffer for write/append
                                 //
-                                this.worker = WFN_FileOpenRAF;
+                                //this.worker = WFN_FileOpenRAF;
                             }
 
 // SP9 END
 
-                            else if (received == CMD_FILE_DELETE) {
+                            else if (received === CMD_FILE_DELETE) {
                                 // delete the file with name in global data buffer
                                 //
-                                this.worker = WFN_FileDelete;
+                                //this.worker = WFN_FileDelete;
                             }
 
 // SP9 START
 
-                            else if (received == CMD_FILE_GETINFO) {
+                            else if (received === CMD_FILE_GETINFO) {
                                 // return file's status byte
                                 //
                                 this.worker = this.WFN_FileGetInfo;
-                            } else if (received == CMD_FILE_SEEK) {
+                            } else if (received === CMD_FILE_SEEK) {
                                 // seek to a location within the file
                                 //
                                 this.worker = this.WFN_FileSeek;
@@ -697,7 +695,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
 // SP9 END
 
-                            else if (received == CMD_INIT_READ) {
+                            else if (received === CMD_INIT_READ) {
                                 // All data read requests must send CMD_INIT_READ before beggining reading
                                 // data from READ_DATA_PORT. After execution of this command the first byte
                                 // of data may be read from the READ_DATA_PORT.
@@ -707,7 +705,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                                 this.globalIndex = 1;
                                 // LatchedAddress
                                 self.lastaddr = READ_DATA_REG;
-                            } else if (received == CMD_INIT_WRITE) {
+                            } else if (received === CMD_INIT_WRITE) {
                                 // console.log("CMD_INIT_WRITE");
                                 // all data write requests must send CMD_INIT_WRITE here before poking data at
                                 // WRITE_DATA_REG
@@ -716,12 +714,12 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                                 this.globalData = new Uint8Array(256);
                                 this.globalIndex = 0;
                                 this.globalDataPresent = 0;
-                            } else if (received == CMD_READ_BYTES) {
+                            } else if (received === CMD_READ_BYTES) {
                                 // Replaces READ_BYTES_REG
                                 // Must be previously written to latch reg.
                                 this.globalAmount = this.byteValueLatch;
                                 this.worker = this.WFN_FileRead;
-                            } else if (received == CMD_WRITE_BYTES) {
+                            } else if (received === CMD_WRITE_BYTES) {
                                 // replaces WRITE_BYTES_REG
                                 // Must be previously written to latch reg.
                                 this.globalAmount = this.byteValueLatch;
@@ -730,29 +728,29 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
 
                                 //
                             // Exec a packet in the data buffer.
-                            else if (received == CMD_EXEC_PACKET) {
+                            else if (received === CMD_EXEC_PACKET) {
                                 this.worker = this.WFN_ExecuteArbitrary;
-                            } else if (received == CMD_GET_FW_VER) // read firmware version
+                            } else if (received === CMD_GET_FW_VER) // read firmware version
                             {
                                 this.WriteDataPort(VSN_MAJ << 4 | VSN_MIN);
-                            } else if (received == CMD_GET_BL_VER) // read bootloader version
+                            } else if (received === CMD_GET_BL_VER) // read bootloader version
                             {
                                 this.WriteDataPort(1);//(blVersion);
-                            } else if (received == CMD_GET_CFG_BYTE) // read config byte
+                            } else if (received === CMD_GET_CFG_BYTE) // read config byte
                             {
                                 console.log("CMD_REG:CMD_GET_CFG_BYTE -> 0x" + this.configByte.toString(16));
                                 this.WriteDataPort(this.configByte);
-                            } else if (received == CMD_SET_CFG_BYTE) // write config byte
+                            } else if (received === CMD_SET_CFG_BYTE) // write config byte
                             {
                                 this.configByte = this.byteValueLatch;
 
                                 console.log("CMD_REG:CMD_SET_CFG_BYTE -> 0x" + this.configByte.toString(16));
 //                                WriteEEPROM(EE_SYSFLAGS, this.configByte);
                                 this.WriteDataPort(STATUS_OK);
-                            } else if (received == CMD_READ_AUX) // read porta - latch & aux pin on dongle
+                            } else if (received === CMD_READ_AUX) // read porta - latch & aux pin on dongle
                             {
                                 this.WriteDataPort(this.LatchedAddress);
-                            } else if (received == CMD_GET_HEARTBEAT) {
+                            } else if (received === CMD_GET_HEARTBEAT) {
                                 // console.log("CMD_REG:CMD_GET_HEARTBEAT -> 0x" + self.heartbeat.toString(16));
                                 this.WriteDataPort(self.heartbeat);
                                 self.heartbeat ^= 0xff;
@@ -760,7 +758,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                                 //
                                 // Utility commands.
                             // Moved here 2011-05-29 PHS
-                            else if (received == CMD_GET_CARD_TYPE) {
+                            else if (received === CMD_GET_CARD_TYPE) {
                                 // console.log("CMD_REG:CMD_GET_CARD_TYPE -> 0x01");
                                 // get card type - it's a slowcmd despite appearance
                                 // disk_initialize(0);
@@ -769,23 +767,23 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                             }
 
                             // support for PORTs but really doing nothing!
-                            else if (received == CMD_GET_PORT_DDR) // get portb direction register
+                            else if (received === CMD_GET_PORT_DDR) // get portb direction register
                             {
                                 this.WriteDataPort(this.TRISB);
                             }
-                            else if (received == CMD_SET_PORT_DDR) // set portb direction register
+                            else if (received === CMD_SET_PORT_DDR) // set portb direction register
                             {
                                 this.TRISB = this.byteValueLatch;
 
                                 // this.WriteEEPROM(EE_PORTBTRIS, this.byteValueLatch);
                                 this.WriteDataPort(STATUS_OK);
                             }
-                            else if (received == CMD_READ_PORT) // read portb
+                            else if (received === CMD_READ_PORT) // read portb
                             {
                                 // SP3 JOYSTICK SUPPORT
                                 var JOYSTICK = 0xff;
                                 var joyst = true;
-                                if (joyst && this.gamepad.gamepadButtons != undefined)
+                                if (joyst && this.gamepad.gamepadButtons !== undefined)
                                 {
                                     if (this.gamepad.gamepadButtons[15]) //right
                                         JOYSTICK ^= 1;
@@ -808,7 +806,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                                 // END SP3
 
                             }
-                            else if (received == CMD_WRITE_PORT) // write port B value
+                            else if (received === CMD_WRITE_PORT) // write port B value
                             {
                                 this.LATB = this.byteValueLatch;
 
@@ -817,14 +815,14 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                             }
                             else
                             {
-                                console.log("unrecognised CMD: "+received)
+                                console.log("unrecognised CMD: "+received);
                             }
 
 
                             break;
 
                         case WRITE_DATA_REG: {
-                            var received = val & 0xff;
+                            let received = val & 0xff;
 
                             // console.log("WRITE_DATA_REG  <- " + this.globalIndex + ", received 0x" + received.toString(16));
 
@@ -837,7 +835,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                         }
 
                         case LATCH_REG: {
-                            var received = val & 0xff;
+                            let received = val & 0xff;
                             // console.log("LATCH_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16));
                             this.byteValueLatch = received;
                             this.WriteDataPort(this.byteValueLatch);
@@ -845,7 +843,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                         }
                         case STATUS_REG: {
                             // does nothing
-                            var received = val & 0xff;
+                            let received = val & 0xff;
                             // console.log("STATUS_REG 0x" + (addr & 0x0f).toString(16) + " <- received 0x" + received.toString(16));
                         }
                     }
@@ -862,7 +860,7 @@ define(['./utils', 'jsunzip'], function (utils, jsunzip) {
                 self.MMCdata = data;
             }
 
-        }
+        };
 
 
 

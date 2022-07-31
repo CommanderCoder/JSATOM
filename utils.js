@@ -916,7 +916,7 @@ define(['jsunzip', 'promise'], function (jsunzip) {
         }
 
         return keys2;
-    }
+    };
 
     exports.getKeyMap = function (keyLayout) {
         var keys2 = [];

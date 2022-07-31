@@ -191,13 +191,13 @@ define(['utils'], function (utils) {
                             if (isAtom) wavebits = Array.from(bit0pattern);
                         }
                     } else if (state < (1 + numDataBits)) {
-                        var bit = (curByte & (1 << (state - 1)));
+                        let bit = (curByte & (1 << (state - 1)));
                         acia.tone(bit ? (2 * baseFrequency) : baseFrequency);
                         // console.log("data "+bit.toString(2).padStart(8, '0') );
                         state++;
                         if (isAtom) wavebits = Array.from(bit?bit1pattern:bit0pattern);
                     } else if (state < (1 + numDataBits + numParityBits)) {
-                        var bit = parityOf(curByte);
+                        let bit = parityOf(curByte);
                         if (parity === 0x4E) bit = !bit;
                         acia.tone(bit ? (2 * baseFrequency) : baseFrequency);
                         // console.log("parity "+bit.toString(2).padStart(8, '0') );
@@ -284,7 +284,7 @@ define(['utils'], function (utils) {
                     return secsToClocks(gap);
                 case 0x0117:
                     var baud = curChunk.stream.readInt16();
-                    if (baud == 300)
+                    if (baud === 300)
                         baudMultiplier = 4;
                     console.log("Baud rate of " + baud);
                     break;

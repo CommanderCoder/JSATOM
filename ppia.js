@@ -1,4 +1,4 @@
-define(['./utils'], function (utils) {
+define(['jquery', './utils'], function ($, utils) {
     "use strict";
     const PORTA = 0x0,
         PORTB = 0x1,
@@ -582,6 +582,22 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
             }
         };
 
+        self.incrementCount = function(d_div) {
+            self.counterTimer = setInterval(function(){
+                // clear count
+                d_div.empty();
+
+                self.tape_counter++;
+                if (self.tape_counter > 100000) {
+                    self.tape_counter = 0; // reset count
+                }
+                var display_str = "";
+                display_str = self.tape_counter.toString().padStart(8,'0');
+                for (var i = 0; i < display_str.length; i++) {
+                    d_div.append("<span class='cas counter num_tiles'>"+display_str[i]+"</span>");
+                }
+            },1000);
+        };
 
         self.playTape = function () {
             if (self.tape) {
@@ -590,26 +606,11 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
                 self.runTape();
 
                 var display_div = $("#counter_id");
-                function incrementCount(){
-                    self.counterTimer = setInterval(function(){
-                        // clear count
-                        display_div.empty();
 
-                        self.tape_counter++;
-                        if (self.tape_counter > 100000) {
-                            self.tape_counter = 0; // reset count
-                        }
-                        var display_str = "";
-                        display_str = self.tape_counter.toString().padStart(8,'0');
-                        for (var i = 0; i < display_str.length; i++) {
-                            display_div.append("<span class='cas counter num_tiles'>"+display_str[i]+"</span>");
-                        }
-                    },1000);
-                }
 
 
                 // example of a counter.
-                incrementCount();
+                self.incrementCount(display_div);
 
             }
         };

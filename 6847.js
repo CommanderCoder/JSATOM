@@ -156,7 +156,7 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
         // USE PAINT from VIDEO
         this.paint = function () {
             this.video.paint();
-        }
+        };
 
         this.clearPaintBuffer = function() {
             this.video.interlacedSyncAndVideo = this.interlacedSyncAndVideo;
@@ -165,7 +165,7 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
             this.video.bitmapX = this.bitmapX;
             this.video.bitmapY = this.bitmapY;
             this.video.clearPaintBuffer();
-        }
+        };
         // END
 
 
@@ -425,7 +425,7 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
                             {
                                     // TODO: Add in the INTEXT modifiers to mode (if necessary)
                                     // blit into the fb32 buffer which is painted by VIDEO
-                                    if ((mode & 0x10 ) == 0) // MODE_AG - bit 4; 0x10 is the AG bit
+                                    if ((mode & 0x10 ) === 0) // MODE_AG - bit 4; 0x10 is the AG bit
                                         this.blitChar(this.video.fb32, dat, offset, this.pixelsPerChar, css);
                                     else
                                         this.blitPixels(this.video.fb32, dat, offset, css);
@@ -436,16 +436,16 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
                     }
                     else
                     {
-                        var dat = 0xff;
+                        let dat = 0xff;
                         // var insideTopBottomBorder = (this.dispEnabled & (HDISPENABLE | VDISPENABLE)) === (VDISPENABLE);
                         // dat = 0x2f;
                         // if (insideTopBottomBorder)
                         //     dat = 0x11;
 
                         // draw BLACK in the border
-                        var offset = this.bitmapY;
+                        let offset = this.bitmapY;
                         offset = (offset * 1024) + this.bitmapX;
-                        if ((mode & 0x10 ) == 0) // MODE_AG - bit 4; 0x10 is the AG bit
+                        if ((mode & 0x10 ) === 0) // MODE_AG - bit 4; 0x10 is the AG bit
                             this.blitChar(this.video.fb32, 0x20, offset, this.pixelsPerChar, css);
                         else
                             this.blitPixels(this.video.fb32, dat, offset, css);
@@ -515,7 +515,7 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
                 // }
             } // matches while
 
-        }
+        };
 
         this.blitPixels = function ( buf, data, destOffset, css)
         {
@@ -563,11 +563,11 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
 
                 // get just one bit
                 // RG modes
-                if (bpp == 1) {
+                if (bpp === 1) {
                     // get a bit
-                    var cval = (bitdef>>>j)&0x1;
+                    let cval = (bitdef>>>j)&0x1;
                     // - green / buff  & black
-                    colour = (cval!=0) ? this.collook[(css | 1)] : this.collook[0];
+                    colour = (cval!==0) ? this.collook[(css | 1)] : this.collook[0];
 
 
                     // two bitmap lines per 1 pixel
@@ -576,11 +576,11 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
                 }
                 else // CG modes
                 {
-                    //var cval = (bitdef>>>(j&0xe))&0x3;
-                    var cval = (bitdef>>>(j&0xe))&0x3;
+                    //let cval = (bitdef>>>(j&0xe))&0x3;
+                    let cval = (bitdef>>>(j&0xe))&0x3;
 
                     // 2 or 4 - green/yellow/blue/red
-                    var colindex = 1+(cval | (css<<1));
+                    let colindex = 1+(cval | (css<<1));
                     colour = this.collook[colindex];
 
                     // two bitmap lines per 1 pixel

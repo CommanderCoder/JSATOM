@@ -544,11 +544,11 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
 
                 // DEBUGGING TAPE READ ON ACORN ATOM
                 if (this.model.isAtom) {
-                    if (addr == 0x00c0 && this.pc == 0xfc1e)
+                    if (addr === 0x00c0 && this.pc === 0xfc1e)
                         // console.log("0x"+this.pc.toString(16)+" >> 0x"+ res.toString(16) +" << at " + this.cycleSeconds + "seconds, " + this.currentCycles + "cycles } ");
                         console.log("  " + res.toString(16) + " : " + String.fromCharCode(res));
 
-                    if (addr == 0x00dc && this.pc == 0xfc29)
+                    if (addr === 0x00dc && this.pc === 0xfc29)
                         console.log("0x" + this.pc.toString(16) + " >> 0x" + res.toString(16) + " << at " + this.cycleSeconds + "seconds, " + this.currentCycles + "cycles } ");
                 }
 
@@ -605,17 +605,21 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 switch (addr & ~0x0003) {
                     case 0x0a00:
                     case 0x0a04:
+                        {
                         // FDC (8271)
                         var res = this.fdc.read(addr);
                         // console.log("read fdc " + addr.toString(16)+" : " +res.toString(16) + " : " + String.fromCharCode(res));
                         return res;
+                        }
                     case 0xb000:  // mirror 0x3fc
                     case 0xb004:
+                        {
                         // PPIA 8255
-                        var res = this.atomppia.read(addr);
+                        let res = this.atomppia.read(addr);
                         // if (addr === 0xb002)
                         //     console.log("read PPIA 8255 0x"+addr.toString(16) +": 0x"+res.toString(16));
                         return res;
+                        }
                     case 0xb008:
                     case 0xb00c:
                         return 0x00;  //TODO: PPI
@@ -629,11 +633,13 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                     case 0xb804:
                     case 0xb808:
                     case 0xb80c:
+                        {
                         // only set up a single VIA - repurposing USERVIA from BBC
                         // VIA 6522
-                        var res = this.uservia.read(addr);
+                        let res = this.uservia.read(addr);
                         // console.log("read VIA  6522 0x"+addr.toString(16) +": 0x"+res.toString(16));
                         return res;
+                        }
                     case 0xbc10:
                     case 0xbc14:
                         // 1770 - not implemented
@@ -993,6 +999,7 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                 var capturedThis = this;
                 return utils.loadData(os).then(function (data) {
                     var len = data.length;
+                    var awaiting = [];
                     if (model.isAtom)
                     {
                         //Load 4K ATOM OS into 0xc000 + 0x3000 (i.e 0xf000)
@@ -1004,9 +1011,7 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                             ramRomOs[capturedThis.osOffset + i] = data[i];
                         }
 
-                        var awaiting = [];
-
-                        var romIndex = 5;
+                        let romIndex = 5;
 
                         for (i = 0; i < extraRoms.length; ++i) {
                             romIndex--;
@@ -1030,7 +1035,7 @@ define(['./utils', './6502.opcodes', './via', './acia', './serial', './tube', '.
                                 ramRomOs[destBase + j] = data[srcBase + j];
                             }
                         }
-                        var awaiting = [];
+
 
                         for (i = 0; i < extraRoms.length; ++i) {
                             romIndex--;
