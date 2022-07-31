@@ -1,15 +1,15 @@
 {
   "author": {
-    "name": "Matt Godbolt",
-    "email": "matt@godbolt.org",
-    "url": "https://xania.org"
+    "name": "Andrew Hague",
+    "email": "andrew.hague@commandercoder.com",
+    "url": "https://commandercoder.com"
   },
-  "name": "jsbeeb",
-  "description": "Emulate a BBC Micro",
-  "repository": "git@github.com:mattgodbolt/jsbeeb.git",
-  "version": "0.0.7",
+  "name": "jsacorn",
+  "description": "Emulate a BBC Micro and Acorn Atom",
+  "repository": "git@github.com:CommanderCoder/JSATOM.git",
+  "version": "0.0.7a",
   "engines": {
-    "node": "8"
+    "node": "17"
   },
   "main": "./app/app.js",
   "dependencies": {
@@ -19,8 +19,8 @@
     "electron": "^11.5.0",
     "electron-builder": "~22.10.5",
     "jshint": "^2.13.1",
+
     "mocha": "^7.2.0",
-    "node-png": "0.4.x",
     "requirejs": "^2.3.6"
   },
   "license": "GPL-3.0-or-later",
