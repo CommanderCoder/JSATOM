@@ -1,0 +1,180 @@
+===========================================================================
+
+           AtomCom v1.10 (c) Wouter Ras, Delft, Dec 97 - Mar 98
+
+===========================================================================
+
+
+CONTENTS
+--------
+1. Requirements
+2. Connector Cable
+3. Transferring files
+    3.1 From PC to ATOM
+    3.2 From ATOM to PC
+4. Question & Answer
+5. References
+6. Contacts
+
+
+
+1. REQUIREMENTS
+---------------
+AtomCom is a small utility for transferring files between a PC and the ATOM.
+This program requires the following configuration:
+
+-80286 CPU,
+-SoundBlaster 2.0 or better.
+
+
+
+2. CONNECTOR CABLE
+------------------
+When transferring files from the ATOM to the PC or vice versa, use the
+following pinconfigurations:
+
++-----
+|
+|     ÉÍÍÍÍÍÍÍÍÍ»        -When transferring files from the ATOM to the PC,
+|   ÉÍ¼    þ    ÈÍ»       connect the LINE IN plug on your sound card to
+|   º  þ   2   þ  º       the ATOM's tape port, using pin 2 as ground and
+|   º             º       pin 1 as output signal from the ATOM.
+|   º þ1       3þ º
+|   º             º      -When transferring files from the PC to the ATOM,
+|   º  þ       þ  º       connect the LINE OUT or SPEAKERS plug on your
+|   ÈÍ»   ÚÄ¿   ÉÍ¼       sound card to the ATOM's tape port, using pin 2
+|     ÈÍÍÍ¾ ÔÍÍÍ¼         as ground and pin 3 as input signal to the ATOM.
+|                         On my ATOM, the input signal needs to be pretty
+| Female connector SK2    strong. It might be convenient to disconnect your
+|     on the ATOM         speakers while transferring files to the ATOM.
+|
++-----
+
+
+
+3. TRANSFERRING FILES
+---------------------
+Start the AtomCom utility. The sound card will be identified and its
+parameters will be shown on screen. You'll enter the main menu:
+
++-----
+|
+|  M A I N   M E N U
+|
+|  1   : Transfer data from PC to ATOM,
+|  2   : Transfer data from ATOM to PC,
+|  Esc : Return to OS.
+|
++-----
+
+
+3.1 FROM PC TO ATOM
+~~~~~~~~~~~~~~~~~~~
+You'll be asked for a filename to be transferred. It must be an .ATM file.
+See documentation of the Acorn Atom Emulator for more information.
+The file's parameters will then be shown, e.g.
+
++-----
+|
+|  INVADERS          2900 3C00 CE86
+|
++-----
+
+The first number being the start address, the second the end address + 1,
+and the last the execution address (all hexadecimal).
+You will then be asked to enter the rate at which data will be transferred,
+either 300 bps or 1200 bps. Then you will be asked to enter a start address
+and end address for this file. They must be within the range just shown,
+which are the default values (in other words: the complete file). After that,
+transfer will start. Be sure to have the Atom ready, by typing the following:
+
++-----
+|
+|  FCOS <Enter>                 (set tape speed to 1200 bps, if available)
+|  LOAD "<filename>" <2xEnter>  (any COS command may be used, i.e. *LOAD,
+|                                *RUN, *FLOAD).
++-----
+
+While data traffic takes place, the PC will show its progress.
+
+
+3.2 FROM ATOM TO PC
+~~~~~~~~~~~~~~~~~~~
+The following message will appear on the screen:
+
++-----
+|
+|  Receive status:
+|  Waiting for control block...
+|
++-----
+
+Now, type the following on your ATOM:
+
++-----
+|
+|  FCOS <Enter>                 (set tape speed to 1200 bps, if available)
+|  SAVE "<filename>" <2xEnter>  (the COS command *SAVE may also be used)
+|
++-----
+
+The PC will automatically recognize both 300 bps and 1200 bps. It is not
+necessary to select a speed first.
+While data traffic takes place, the PC will show its progress.
+
+If the PC encounters an error (e.g. checksum error), you will be asked if
+you would like to save the data reveiced prior to the occurrance of the
+error or not. Transfer will then have to be restarted.
+Concatenating incomplete files has to be done manually. Please refer to the
+documentation of the Atom Emulator for information on the .ATM file format.
+
+
+
+4. QUESTION & ANSWER
+--------------------
+Q.  When transferring files from the ATOM to the PC, the PC complains about
+    a corrupted control block or misformed wave patterns.
+A1. Check the baudrate on both machines.
+A2. You must always use named files, i.e. files which are devided into 256
+    byte blocks preceded by control blocks.
+A3. Check the connector cable between ATOM and PC. See also A3 of the next
+    question.
+
+Q.  The ATOM doesn't receive files from the PC or gives checksum errors.
+A1. Check the baudrate on both machines.
+A2. Use a higher output volume.
+A3. Check the connector cable between ATOM and PC. I use a cable of about
+    1.5 meters without problems. On the PC's side is the jack plug; on the
+    ATOM's side of the cable I soldered ironwires two both wires and stuck
+    those into the ATOM's tape port in the appropiate pinholes.
+
+Q.  I have some more ATOM files, that are not on your page yet. Would you
+    like to have them?
+A.  Yes please! I'd love to see them. See chapter 6 for my addresses.
+
+
+
+5. REFERENCES
+-------------
+-Munnik, Josha and Oosterdorp, Eric: "Werken met de Sound Blaster", 3de druk
+ november 1993, Sybex Uitgeverij b.v., Soest.
+
+-Baresel, Andr‚ and Jackson, Craig: "Basic Sound Blaster Programming",
+ Programming Information v0.90, 29 january 1995.
+
+
+
+6. CONTACTS
+-----------
+You can contact me at the following e-mail address:
+
+  avio@casema.net
+
+
+You can also use snail-mail:
+
+  Wouter Ras
+  Nieuwe Schoolstraat 48
+  2613 SJ  Delft
+  The Netherlands
+

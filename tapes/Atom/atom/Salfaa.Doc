@@ -1,0 +1,267 @@
+Salfaa v2.0                                                    B.Poot/J.Jobse
+=============================================================================
+
+
+INTRODUCTION
+------------
+With SALFAA, developed by B.Poot, and later expanded by J.Jobse, it is
+possible to enter assembler language programs is a very user friendly
+manner.
+
+
+
+LISTING
+-------
+The layout of the translation-listing can be made according to your own
+preferences. Behind the directives .FIRST, .LIST and .HARD parameters are
+allowed. The most expanded form looks like this:
+
+  .LIST switch,label-tab,instruction-tab,comment-tab
+
+The switch parameter must be one of only two values: 1=ON and 0=OFF.
+The tab parameters point to starting position on the line where the
+respective variable will be printed. If the first parameter is larger than
+1, it is automatically interpreted as label-tab. De switch value takes its
+default value of 1. A few examples:
+
+  .LIST 1 or .LIST   - screen on, tabs unaltered
+  .LIST 0            - screen off, tabs unaltered
+  .LIST 0,26,28,40   - screen off, ltab=26, itab=28, ctab=40
+  .LIST 30,34,48     - screen on, ltab=30, itab=34, ctab=48
+  .LIST 1,25         - screen on, ltab=25, rest unaltered
+
+The directive tab always equals the itab-1. If comment is the first item on
+the line of after a semi-colon, the itab applies to it.
+
+
+EXPRESSIONS
+-----------
+With the .OPTIONS directive, immediate addressing and in declarations,
+binary numbers and ASCII characters are allowed. They may, however, not
+be used in expressions. A few examples:
+
+  :two      = :10         LDA @:01101011       :comma = ";"
+  :five     = 7-two       LDX @thousand%256    CMP @";"
+  :thousand = five*200    LDY @thousand/256    CMP @CH"A"-1
+
+
+SYMBOL TABLE
+------------
+If memory is not reserved using .TABLE or .XTERN, then automatically a new
+symbol table will be initialized at the default lower boundary (#8200). The
+easiest and most common situation is a single table, to which during the
+first pass new symbol are added, and from which during the second pass
+symbols are read. This read/write table is called the active symbol table.
+
+It is, however, also possible to use existing tables. These can be standard
+tables or tables that have been produced by other modules (program parts).
+Such an external table can only be read. Een external table differs from an
+active table, because the external table is not "forgotten" with repeated
+RUNning.
+Of course, during the construction, the external table is an active table.
+It can be made external, using ASM-XTERN. Using ASM-TABLE, the start and
+end address can be inquired, e.g. 8200 83A0 9000, after which the table
+can be written with *SAVE"NAME.TBL"8200 83A0.
+On the next occasion, it must be loaded direcly from the lower boundary into
+the reserved memory area, e.g. *LOAD"NAME.TBL"8600.
+Using, for example, .XTERN #8600,#8C00, at the top address of the external
+table (#87A0) a new table will be initialized.
+
+It is possible to use more than one external table at a time. They must be
+loaded from the lower boundary, right behind each other. The start address of
+a table must be equal to the end address of the previous one.
+
+After developing a program, using one or more external tables, it can become
+handy to print the integral, sorted table. This is possible by using
+ASM-JOIN, which merges the last two present table to one external table.
+When there are more external tables, repeat this action.
+It is advised, when printing, to select a line width of 16, 32, 48 etc.
+
+
+ERROR MESSAGES
+--------------
+When an error occurs, the line number is automatically shown on screen. There
+is one error that deserves extra attention: UNMATCHED LABEL VALUE. This error
+is generated when the assembler during the second pass notices a movement of
+the CODE pointer in relation to the first pass. This happens with so called
+"zero page forward references". This means that a symbolic zero page address
+is used as an operand in an instruction, before it is declared. This can be
+avoided by making all 8-bit declations at the start of a program.
+
+In addition, there can be error messages without an explanation (the ATOMs
+traditional way). Their meaning can be found in standard ATOM documentation.
+The page cross message is the only one in the form of a warning.
+
+
+STATUS BYTE
+-----------
+bit   description
+ 7     0=6502 mode                  1=R65C02 mode
+ 6     0=P-CHARME at #1000          1=no P-CHARME
+ 5     0=no page cross messages     1=page cross messages
+ 4     0=don't print RAM-pointer    1=print RAM-pointer
+ 3     -
+ 2     reserved
+ 1     0=write code to memory       1=don't write code
+ 0     0=first pass (pass0)         1=second pass (pass1)
+
+
+SYMBOLS
+-------
+Symbols can be composed from: A..Z a..z 0..9 ' en _ (underscore).
+The following restriction must be taken into account:
+
+1. A symbol may not start with a number
+2. A symbol may not exist of only one capital
+3. If a symbol starts with a capital, then:
+   a. the second character must be a capital too
+   b. the second character may not be the same as the first one
+   c. the symbol may not start with an existing BASIC function
+
+Examples:  wrong: 1st        correct: '1st
+                  B                   b
+                  B1                  b1
+                  B'                  b'
+                  Address             ADDRESS
+                  OOPS                oops
+                  LENGTH              length
+
+A single capital in an expresion IS allowed, because then it is interpreted
+as a BASIC variable. The 6502 register may be refered to with capitals
+(A,X,Y) as well as with lower case letters (a,x,y). This implies that BASIC
+variable A and the symbol a, may not be used as an operand address in an
+instruction.
+
+
+STATEMENTS
+----------
+SALFAA       - prints all SALFAA statements and their entry points.
+
+PASS expr    - copies the two lowest bits of the expression into the STATUS
+               BYTE, ?#06FF.
+
+CALL expr    - sets new BRK-vector (1). Further, acts exactly the same as
+               LINK. In addition, the least significant bit of the variable C
+               is copied into the 6502 carry flag.
+
+SYM expr     - sets new BRK-vector (1) and prints the value of the (symbolic)
+               expression hexadecimally. This statement is especially designed
+               for usage in direct mode.
+
+(x           - opens long comment, until closure x) is encountered, where x
+               is any character.
+
+\            - opens short comment, until semi-colon (;) or carriage return.
+
+ASM-stat     - executes the assembler statement, specified in the first letter
+               after the -. The rest is regarded as comment until ; or CR.
+
+ASM-BEGIN    - is the same as ASM-INIT, followed by ASM-CONTINUE
+
+ASM-CONTINE  - turns off screen, sets new BRK-vector (1) and turns on SALFAA
+               assembler mode.
+
+ASM-END      - restores previous value of the BRK-vector (2)
+
+ASM-INIT     - initializes symbol table boundaries var S at #8200,#9000
+               initializes CODE-pointer var P at #9000
+               initializes RAM-poitner var O at #0000
+               initializes ltab, itab, ctab at resp. 22,24,39
+               resets internal table flag during first pass: If a symbol
+               table was present, it will be forgotten.
+
+ASM-JOIN     - merges the last two tables to one external table.
+
+ASM-LAST     - prints the last symbol table, followed by ASM-WARNINGS.
+
+ASM-SYMBOL   - prints complete symbol table, followed by ASM-WARNINGS.
+
+ASM-TABLE    - prints symbol table boundaries, with in between table-top(s).
+
+ASM-UNRAVEL  - sorts the last symboltable.
+
+ASM-VERSION  - prints the SALFAA version number.
+
+ASM-WARNINGS - prints the number of warnings.
+
+ASM-XTERN    - converts the active table to external table.
+
+(1) The BRK-vector is compared to the SALFAA-BRK. If not equal, the current
+    value is saved first.
+
+(2) It is checked that the BRK-vector compares to the SALFAA-BRK.
+
+
+DIRECTIVES
+----------
+A directive consists of a dot, followed by one or more characters. The first
+character behind the dot, decides which directive it is. The rest is ignored.
+
+.ASCII data   - puts 8-bit data into memory. (1)
+                example: .ASCII 6,"text",cr,lf,"more text", etc.
+
+.BYTE data    - identical to .ASCII.
+
+.CODE expr    - places the value of expression into the CODE-pointer, var P.
+
+.DBYTE data   - puts 16-bit data into memory, high byte first. (1)
+                example: .DBYTE "TEXT",address, etc.
+
+.END          - turns off printer, turns on screen, puts SALFAA back into
+                BASIC mode.
+
+.FIRST par    - turns on screen during first pass (par: see LISTING).
+
+.GOTO line    - jumps to specified line (number of label).
+
+.HARD par     - turns on printer during second pass (par: see LISTING).
+
+.IF expr      - executes rest of the line only, if (testable) expression is
+                TRUE (non-zero result).
+
+.LIST par     - turns on screen during second pass (par: see LISTING).
+
+.NEWLINE expr - prints the number of line feeds specified in expr.
+
+.OPTION expr  - copies the highest 6 bits from expr into the STATUS BYTE.
+
+.PRINTe,e...  - sends 7-bit codes to the printer (also 2,3 and ?#FE)
+
+.RAM expr     - places the value of expression into the RAM-pointer, var O.
+
+.SYMBOL       - prints the complete symbol table and warnings, during second
+                pass. With LAST as parameter, only the last table will be
+                printed.
+
+.TABLE e1,e2  - reserves memory for the symbol table. The first expression is
+                the lower boundary, the second the upper boundary. If no
+                upper boundary is specified, then the present RAM memory will
+                decide the upper boundary. Both values will be placed in the
+                var S. During the first pass, at the lower boundary an empty
+                active table will be initialized.
+
+.UNRAVEL      - sorts the last symbol table during the second pass.
+
+.VERSION      - prints SALFAA version number.
+
+.WORD data    - puts 16-bit data into memory, low byte first. (1)
+                example: .WORD address,"TEXT", etc.
+
+.XTERN e1,e2  - same as .TABLE, but this directive initializes a table behind
+                the present external table(s).
+
+(1) Data may consist of strings, expression separated by a comma.
+
+
+ASSEMBLER
+---------
+In assembler mode there are the following possibilities:
+
+instr        - 6502 or R65C02 instruction
+!instr       - SWEET16 instruction
+.dir         - directive
+:symbol=expr - declares a symbol, which gets the value of the expression
+:label       - declares a label, which gets the value of CODE-pointer
+\comment     - short comment, until ; or CR
+(x           - long comment until x)
+*stat        - asterisk-statement

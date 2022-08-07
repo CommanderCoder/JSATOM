@@ -1,0 +1,439 @@
+WE-ROM ACORN ATOM UTILITY ROM
+(c) 1983 Watford Electronics
+
+Introduction
+
+WE-ROM is a set of extensions to ATOM BASIC designed to make the life
+of the occasional machine-code user easier. The average user will only
+need to make use of the ATOM's built in assembler to modify existing
+assembler programs and to create short sequences of machine-code to
+speed up BASIC operation. The former is usually to do such things as
+modify purchased games software to use their own joysticks etc. Such
+users find such tools as a disassembler essential. WE-ROM's tools for
+modification of machine-code programs are especially easy to use,
+primarily by keeping the 'assemble to' pointer set to the current
+location being viewed. In addition to the machine-code aspects, WE-ROM
+also provides some of the most useful extensions to ATOM BASIC. Some
+examples are: high speed tape interface, two key rollover on the
+keyboard, easier scanning of the keyboard from programs, and easily
+expandable without recourse to assembler.
+
+
+The commands
+
+For a better understanding of the commands, try typing in the
+examples given.
+
+ABDO            Abort DO loop                           ABD.
+
+Use when leaving from the middle of a DO loop.
+ 10 DO
+ 20 ABDO; GOTO 40
+ 30 PRINT "This will never happen"; UNTIL 0
+ 40 PRINT "I will do this indefinitely"'
+ 50 GOTO 10
+
+Use of ABDO prevents BASIC giving ERROR 18 in this example.
+
+
+ABFOR            Abort FOR...NEXT loop                  A.
+
+Use when leaving from the middle of a FOR...NEXT loop, exactly as
+ABDO, preventing ERROR 111.
+
+
+ABSUB           Abort subroutine                        ABS.
+
+This removes references to a current subroutine, so that you can
+jump directly from the subroutine to any point in the main
+program, rather than going back to the command after the GOSUB
+which called the subroutine. Prevents BASIC error 2.
+
+
+AUTO            Automatic line numbering                AU.
+
+AUTO start, increment
+This will generate line numbers startin gwith 'stat', and
+incrementing by 'increment' each successive line. The increment
+can be negative if desired. If any line number outside 0...32767
+is generated the command aborts. Both 'start' and 'increment'
+default to 10 if not specified.
+Certain control codes have meaning within the AUTO mode:
+ Control A (or ESC) cancels the current line and leaves AUTO.
+ Control X cancels the current line and reissues the current
+     line number.
+ Control B cancels the current line and issues the _previous_
+     line number.
+ Control N cancels the current line and issues the next
+     line number.
+
+
+BREAK           Set machine-code breakpoint             BR.
+Used to trap the assembler 'BRK' execution (and hence BASIC
+errors) displaying all processor registers and flags. Restores
+text mode.
+Eg. BREAK #2800;GENERATE AN ERROR
+ PC  AC STATUS   IX IY SP
+C55C 53 -V-B---C 08 01 1FD
+
+The address specified in the BREAK instruction is the address at
+which 'BRK' assembler instruction is to be placed. The previous
+contents of that location are saved, and restored when the BREAK
+instruction is used with no address after it.
+NB. BASIC rests its own 'BRK' trapping prior to each prompt
+('>'), so if BREAK is used in immediate mode the RUN or LINK
+etc. must be on the same line as the BREAK instruction.
+    Only the most recent use of BREAK can be restored.
+
+
+CHAIN           Load and RUN a BASIC program            CH.
+
+Used in the same way as LOAD, but RUNs the program automatically
+after loading.
+Unlike the use of '*RUN', this command correctly sets up 'TOP' and
+the array pointers.
+
+
+CURSOR          Moves the cursor                        CU.
+
+CURSOR horizontal position, vertical position
+The cursor is moved to the desired position on the text screen.
+Eg. CURSOR 13,4;PRINT "HERE I AM"
+
+NB. The top left hand corner is 0,0.
+
+
+DATA            Used with READ and RESTORE              DA.
+
+This command is ignored upon execution. It contains data to be
+read byt a READ statement. Each data item is spearated from
+others on the same line by a comma. Numeric data can be an
+expression within brackets, or a constant. If string data needs
+leading spaces or commas the whole string must be enclosed within
+quotes.
+Eg. 1000DATA 3,(2*A+RND%5),A STRING," A STRING, WITH A ,"
+
+NB. When DATA statements appear in your program, _NEVER_
+abbreviate DO to D., otherwise statements after the D. will be
+treated as data. Placing the data beyond all statements and
+'RESTORE'ing to the first line of DATA relaxes this requirement.
+
+
+DELETE          Delete blocks of BASIC lines            DE.
+
+DELETE first line number, last line number
+Deletes all lines numbered between the two specified lines
+inclusive.
+
+
+DISASSEMBLE     Disassemble an area of memory           DI.
+
+DISASSEMBLE first address, last address
+ If first address is omitted contents of variable N is used.
+ If last address is omitted 65535 is assumed.
+ If no commas appear first address = last address is assumed.
+
+If ',P' is appended to the command the disassembly listing is
+appended to the current program.
+If ',W' is appended to the command the listing pauses at the end
+of each line. Only one of the P or W may be specified.
+Eg. DISASSEMBLE #A002,#A040,W
+
+Upon exit from disassembly, two BASIC variables are altered:
+ N points to the next location to be disassembled.
+ P points to the last location disassembled (for patching).
+Eg. DISASSEMBLE #2800
+ 2800  08        PHP
+[INY
+    0 2800 C8       INY
+DISASSEMBLE
+ 2801  C4 0A     CPY #0A
+[LDA @1
+    0 2801 A9 01    LDA @1
+
+
+DUMP            Dump memory to the screen               DU.
+
+DUMP first address, last address
+Parameters are entered as for DISASSEMBLE, except the ',P' has no
+effect. Thus DUMP can conveniently start where DISASSEMBLE leaves
+off.
+Ef. DISASSEMBLE #A03C,#A03E
+ A03C  6C 52 00  JMP (#0052)
+DUMP,#A050
+A03F 4B 45 59 AC E7 52 KEY--R
+A045 45 41 44 A8 54 43 EAD-TC
+A04B 55 52 53 4F 52 AC URSOR-
+Control codes (0...31) are typed as '.'.
+
+Upon exit BASCI variable N contains the next address to be dumped.
+
+
+EXIT            Leave user defined command              EX.
+
+This command is described fully in the section 'Extending even
+further'
+
+
+FIND            Searches programs                       FIND
+
+This command lists all lines containing a particular string,
+which may be enclosed in quotes.
+Eg. FIND PRINT
+    FIND " THEN"
+
+
+KBD             Engages two key rollover                KB.
+
+Selects for all further input, a two key rollover/debounced input
+routine.
+
+KEY             Keyboard scanner                        K.
+
+KEY variable
+Scans the keyboard and stores key value (ASCII) in 'variable'. If
+no key is pressed 0 is returned.
+
+KEY variable, key number
+Scans the key with ASCII value 'key number' and stores in
+'variable' either true (-1) or false (0), depending on whether
+the key is pressed.
+
+This command uses some non-standarad key numbers:
+ 129 - SHIFT                    135 - REPT., CTRL. and SHIFT
+ 130 - CONTROL                  136 - LOCK
+ 131 - SHIFT and CONTROL        137 - <->
+ 132 - REPEAT                   138 - |
+ 133 - REPEAT and SHIFT         139 - COPY
+ 134 - REPEAT and CONTROL
+
+
+MODIFY          Memory modification                     M.
+
+MODIFY address
+Enters monitor mode with address specified, displaying:
+Addess    HEX contents   ASCII   ':' prompt
+After the prompt any of the following may be entered:
+    -         Move back one byte
+    "string   Enter string into memory without trailing return
+    @char     Enter 'Control' char into memory eg. @L
+    ;basic    Execute BASIC commands eg. ;DUMP
+    [assem    Assemble into memory eg. [LDA 8
+    'return'  Advance one byte
+Anything else is taken (if possible) as two HEX digits and stored.
+NB: Variable P points to the current modifable byte, so to change
+the location use ';P=...'. Use ESC to leave MODIFY.
+
+
+ONERROR         BASIC error trapping                    O.
+
+Eg. ONERROR GOTO 1000
+When an error occurs within a BASIC program the statements
+following the ONERROR are executed. In the example, when an error
+occurs in the program, control is transferred to line 1000 with
+the GOTO statement.
+ONERROR OFF or the BASIC prompt will restore standard error
+handling.
+NB. ?0 = Error number, ?1, ?2 = Error line number.
+
+
+READ            Read data into variables                REA.
+
+Eg. READ A,$#2800
+Standard BASIC read; copies data from DATA statements into specified variables.
+An example of the use of READ is:
+ 10RESTORE;REM VERY important!
+ 20READ N;REM number to do
+ 30FOR A=1 TO N
+ 40READ B
+ 50PRINT B
+ 60NEXT A
+ 70END
+ 80DATA 5,1,2,3,4,5
+
+NB. RESTORE _must_ be executed before the first READ.
+
+
+RESTORE         Set data pointer                        RES.
+
+Eg. RESTORE
+Subsequent searches for DATA will begin from the beginning of the
+program.
+Eg. RESTORE 20
+Subsequent searches for DATA will start from line 20. A label can
+be used instead of a line number.
+
+
+TAPE            Select tape speed                       T.
+
+Eg. TAPE 0
+Selects 300 baud
+Eg. TAPE 1
+Selects 1200 baud
+Both routines indicate operation by placing each transferred byte
+at the top right corner of the screen.
+NB. When using 1200 baud, you may find a higher incidence of tape
+errors. This is because there is less redundancy in the stored
+information. It is therefore recommended that all important
+programs are saved at 300 baud also.
+
+
+
+
+Extending even further
+
+To add a new BASIC command, select an unused text space (ie. ?18=...;
+NEW). Type a line 0 containing '0REM$%command name'. Then enter a
+program in BASIC to perform the desired operation. The command is
+ended by using the EXIT statement.
+Eg.
+?18=#82;REM in screen memory
+NEW; REM clean up the new text space
+ 0REM$%HELLO
+ 10PRINT "Hello There!"'
+ 20EXIT
+HELLO;REM Test the new command
+Hello There!
+>
+NB. Command names must not start with a space.
+
+Parameters can be transferred to the command, by placing them after
+the command name eg. 'HELLO 3'. Parameters are read within the command
+by the use of the READ statement. All parameters (there can be more
+than one, separated by commas) must be READ otherwise an error will
+occur upon EXIT from the command.
+
+Eg.
+?18=#82;REM select a text space
+NEW; REM be tidy
+ 0REM$%MP
+ 5REM This command is called MP
+ 10READ Q,$#2800;REM READ a number and a string
+ 20IF Q<1 THEN EXIT 23;REM If printing less than once give error 23
+ 30FOR P=1 TO Q;PRINT $#2800;NEXT P
+ 40EXIT
+MP 3,"*"
+***>MP 0,"*"
+
+ERROR 23
+>MP 5,"HELLO"
+HELLOHELLOHELLOHELLOHELLO>
+
+If an expression is put after the EXIT command, the expression is
+evaluated, and the calling program is given the ERROR of that value.
+
+Labels should not be used within commands.
+'RESTORE' should not be used within a command.
+Variables P and Q are local to the command, so their values are
+restored on EXIT.
+Always leave commands via EXIT or END.
+Do _NOT_ allow a command to call itself.
+Commands need 19 bytes workspace at their end, so do not use any
+locations below TOP+19.
+All possible text spaces from #400 to #A000 are scanned for possible
+commands.
+
+
+A sample editing session using WE-ROM commands
+
+Set up a program to put '*'s in the top half of the screen.
+>P=#2800
+[LDY @0;LDA @#2A;STA #8000,Y;INY;BNE #2804;RTS;]
+   0 2800 A0 00    LDY @0
+   0 2802 A9 2A    LDA @#2A
+   0 2804 99 00 80 STA #8000,Y
+   0 2807 C8       INY
+   0 2808 D0 FA    BNE #2804
+   0 280A 60       RTS
+Try it out.
+>LINK #2800
+
+Check register contents after first loop.
+>BREAK #2808;LINK #2800
+  PC  AC STATUS   IX IY SP
+ 2808 2A ---B---- AF 01 1FD
+
+Disengage breaking, and restore program.
+>BREAK
+
+We want to fill with something else...
+>DISASSEMBLE #2800,,W
+ 2800  A0 00     LDY @#00
+ 2802  A9 2A     LDA @#2A
+
+A graphic character will do...
+>[LDA @#41
+    0 2802 A9 41    LDA @#41
+
+Check the rest of the program.
+>DISASSEMBLE ,,W
+ 2804  99 00 80  STA #8000,Y
+ 2807  C8        INY
+ 2808  D0 FA     BNE #2804
+ 280A  60        RTS
+
+Try it out.
+>LINK #2800
+
+Changing the fill character another way...
+>MODIFY #2800
+ 2800 A0  ;
+ 2801 00 .;
+ 2802 A9 -;
+ 2803 41 A:"C
+ 2804 99 9:-
+ 2803 43 C:2A
+ 2804 99 9:-
+ 2803 2A *:>
+
+The fill character was changed twice, once to 'C' and then back to
+'*'.
+
+
+
+Error codes used by your ROM
+
+ 1   Invalid variable name in KEY statement.
+
+ 21  Error in use of AUTO, either used within a program, or
+     comma not used between operands.
+
+ 22  Out of DATA in a READ statement.
+
+ 110 FIND used within a program.
+
+ 175 Comma missing in CURSOR statement.
+
+ 208 Error in DELETE command, either DELETE used within a
+     program, or no comma between operands, or first line to
+     be DELETEd is after the last.
+
+ 221 Error in READ statement, READing into an invalid
+     variable or a string in page zero,  or comma missing
+     within a DATA statement.
+
+Nore: BASIC will issue an ERROR 175, if an expression is used in
+place of a number as a paramter to these commands, without
+placing the expression in brackets. Variables on their own need
+not be parenthesised.
+
+
+Memory usage by the utility ROM
+
+The ROM uses locations #50-#7F as short term working storage.
+
+Locations #238-#23D are used as semi-permanent storage, thus:
+ #238   Flag for READ =0 If 'RESTOREd'
+		       255 If READing parameters for user command.
+ #239,A DATA pointer for READ.
+ #23B,C Location to replace stored byte for BREAK.
+ #23D   Stored byte for BREAK.
+
+Locations #21C,D are used by the AUTO command temporarily to
+store the old vector for reading a character from the keyboard.
+
+There is within the Utility ROM another keyboard input routine
+other than that selceted by 'KBD', this is similar to that
+selected by 'KBD', but editing is disabled, and editing keys
+return 'ASCII' codes greater than 128 (See 'KEY' command). Select
+this input routine by '?#20A=#34;?#20B=#AD'.

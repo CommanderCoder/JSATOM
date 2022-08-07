@@ -1,0 +1,20 @@
+====================================================================
+Acorn Atom Emulator v1.32 (c) Wouter Ras, Delft, Oct 1997 - May 1998
+====================================================================
+
+To start the emulator, type
+
+  ATOM <Enter>
+
+During emulation, use the following keys:
+  F4        : Toggle between standard and alternate keyboard,
+  F5        : Toggle between original and maximum speed,
+  F6        : Show extension box information,
+  F8        : Enter emulator desktop, disk screen,
+  F9        : Enter emulator desktop, tape screen,
+  F10       : Enter emulator desktop, options screen,
+  F11       : Enter emulator desktop, built-in monitor,
+  Shift+F12 : Temporarily go to DOS,
+  Ctrl+F12  : Exit emulator.
+
+For more information, please see the ATOM.DOC file.

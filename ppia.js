@@ -1,11 +1,12 @@
-define(['jquery', './utils'], function ($, utils) {
-    "use strict";
-    const PORTA = 0x0,
-        PORTB = 0x1,
-        PORTC = 0x2,
-    CREG=0x3; // control register
+"use strict";
+import * as utils from "./utils.js";
 
-    /*
+const PORTA = 0x0,
+    PORTB = 0x1,
+    PORTC = 0x2,
+    CREG = 0x3; // control register
+
+/*
  http://mdfs.net/Docs/Comp/Acorn/Atom/atap25.htm
 
  25.5 Input/Output Port Allocations
@@ -80,49 +81,48 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
 
              */
 
-    function ppia(cpu, irq) {
-        var self = {
-            latcha:0, latchb:0, latchc:0,
-            portapins:0, portbpins:0, portcpins: 0,
-            cr:0,
-            processor:cpu,
-            speaker:0,
+function ppia(cpu) {
+    var self = {
+        latcha: 0,
+        latchb: 0,
+        latchc: 0,
+        portapins: 0,
+        portbpins: 0,
+        portcpins: 0,
+        cr: 0,
+        processor: cpu,
+        speaker: 0,
 
-            reset: function (hard) {
-                //http://members.casema.nl/hhaydn/8255_pin.html
-                self.latcha = self.latchb = self.latchc = 0x00;
+        reset: function () {
+            //http://members.casema.nl/hhaydn/8255_pin.html
+            self.latcha = self.latchb = self.latchc = 0x00;
+        },
 
-            },
+        setVBlankInt: function (level) {
+            // level == 1 when in the vsync
+            // FE66_wait_for_flyback_start will loop until bit 7 (copied into N register using BIT)
+            // of B002 is not 0 (i.e until BPL fails when bit 7 is 1)
+            // then
+            // FE6B_wait_for_flyback will loop until bit 7 of B002 is (copied into N register using BIT)
+            // of B002 is not 1 (i.e until BMI fails when bit 7 is 0)
 
-            setVBlankInt: function (level) {
-                // level == 1 when in the vsync
-                // FE66_wait_for_flyback_start will loop until bit 7 (copied into N register using BIT)
-                // of B002 is not 0 (i.e until BPL fails when bit 7 is 1)
-                // then
-                // FE6B_wait_for_flyback will loop until bit 7 of B002 is (copied into N register using BIT)
-                // of B002 is not 1 (i.e until BMI fails when bit 7 is 0)
-
-                //60 Hz sync signal - normally 1 during the frame, but goes 0 at start of flyback (at the end of a frame).
-                //opposite of the 'level'
-               if ( !level )
-               {
+            //60 Hz sync signal - normally 1 during the frame, but goes 0 at start of flyback (at the end of a frame).
+            //opposite of the 'level'
+            if (!level) {
                 // set bit 7 to 1 - in frame
                 self.latchc |= 0x80;
-               }
-               else
-               {
+            } else {
                 // set bit 7 to 0 - in vsync
                 self.latchc &= ~0x80;
-               }
-               self.recalculatePortCPins();
+            }
+            self.recalculatePortCPins();
+        },
 
-            },
+        // polltime: function (cycles) {
+        //     cycles |= 0;
 
-            polltime: function (cycles) {
-                cycles |= 0;
-
-            },
-/*
+        // },
+        /*
  Port C - #B002
         Output bits:      Function:
              0          Tape output
@@ -138,518 +138,492 @@ input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
  The port C output lines, bits 0 to 3, may be used for user applications when the cassette interface is not being used.
 
  */
-            write: function (addr, val) {
+        write: function (addr, val) {
+            val |= 0;
+            switch (addr & 0xf) {
+                case PORTA:
+                    self.latcha = val;
+                    // console.log("write porta "+self.latcha);
+                    self.recalculatePortAPins();
+                    break;
 
-                val |= 0;
-                switch (addr & 0xf) {
-                    case PORTA:
-                        self.latcha = val;
-                        // console.log("write porta "+self.latcha);
-                        self.recalculatePortAPins();
-                        break;
+                case PORTB:
+                    // cannot write to port B
+                    console.log("cannot write portb " + val);
+                    // self.recalculatePortBPins();
+                    break;
 
-                    case PORTB:
-                        // cannot write to port B
-                        console.log("cannot write portb "+val);
-                        // self.recalculatePortBPins();
-                        break;
+                case PORTC:
+                    //11110000 - 0xF0
+                    //00001111 - 0x0F -- only write to the bottom 4 bits
+                    self.latchc = (self.portcpins & 0xf0) | (val & 0x0f);
 
-                    case PORTC:
-                        //11110000 - 0xF0
-                        //00001111 - 0x0F -- only write to the bottom 4 bits
-                        self.latchc = (self.portcpins & 0xF0) | (val & 0x0F);
+                    // if (self.portcpins & 0x01) {
+                    //     console.log("casout");
+                    // }
+                    // if (self.portcpins & 0x02) {
+                    //     console.log("hzout");
+                    // }
+                    // if ((self.portcpins & 0x04) !== (self.latchc & 0x04)) {
+                    // console.log(cpu.currentCycles+" PORTC Speaker "+ (self.latchc & 0x04));
+                    // speaker = val & 4;
+                    // portc pins - not separate variable
 
-                        // if (self.portcpins & 0x01) {
-                        //     console.log("casout");
+                    // }
+                    // if ((self.portcpins & 0x08) !== (self.latchc & 0x08)) {
+                    // console.log(cpu.currentCycles+" PORTC CSS "+ (self.latchc & 0x08));
+                    // css = (val & 8) >> 2;
+                    // portc pins - not separate variable
+                    // }
+
+                    //     console.log("spk "+(self.portcpins & 0x04)+ " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
+
+                    // console.log("write portc "+self.latchc);
+                    self.recalculatePortCPins();
+                    break;
+                case CREG:
+                    // bit 7 is 0 for Bit Set/Reset (BSR) mode of PPIA
+                    // using the CREG to quickly activate B2,B1,B0 of port C
+                    // bit 0 is the set/reset value
+                    var speaker = 0;
+                    var css = 0;
+                    switch (val & 0xe) {
+                        case 0x4: //0xxx010v is port C pin 2 set to v
+                            speaker = (val & 1) << 2;
+                            // console.log(cpu.currentCycles+" CREG Speaker "+ (val & 1));
+                            break;
+
+                        case 0x6: //0xxx011v is port C pin 3 set to v
+                            css = (val & 1) << 3;
+
+                            // console.log(cpu.currentCycles+" CREG CSS "+ (val & 1));
+                            break;
+                    }
+                    // NOT STRICTLY CORRECT - SHOULD BE ABLE TO FORCE CPINS SET/RESET
+                    // this is just forcing them rather than latching anything
+                    // console.log(cpu.currentCycles+" CREG  "+ (val ));
+                    self.portcpins = (self.portcpins & 0xf0) | css | speaker;
+                    self.portCUpdated();
+                    break;
+            }
+        },
+
+        read: function (addr) {
+            switch (addr & 0xf) {
+                case PORTA:
+                    self.recalculatePortAPins();
+                    // console.log("read porta "+self.portapins);
+                    return self.portapins;
+                case PORTB:
+                    self.recalculatePortBPins();
+                    // return the keys based on values in porta
+                    // console.log("read portb "+self.portbpins);
+                    // expecting 1 means unpressed, 0 means pressed: but keymap has 1 if pressed and 0 if unpressed
+                    var keyrow = self.portapins & 0x0f;
+                    var n = self.keys[keyrow];
+                    var r = 0xff; // all keys unpressed
+                    for (var b = 0; b <= 9; b++) r &= ~(n[b] << b);
+
+                    // if (self.portapins & 15 == 9)
+                    //     console.log("reading "+(self.portapins & 15)+" and pressed "+n.toString(2)+" -> "+r.toString(2));
+
+                    // for CTRL and SHIFT which doesn't use porta - they just set bit 6 and bit 7
+                    // the keymap assumes CTRL and SHIFT read from row0
+                    // fixup CTRL and SHIFT regardless of the row being read
+                    var ctrl_shift = (self.keys[0][7] << 7) | (self.keys[0][6] << 6);
+                    r &= ~(ctrl_shift & 0xc0);
+
+                    return r;
+                case PORTC:
+                    self.recalculatePortCPins();
+                    // console.log("read portc "+self.portcpins);
+                    // only read top 4 bits
+                    // if (self.portcpins & 0x20)
+                    //     console.log("casin");
+
+                    // pump in the HZIN value - should be ???
+                    self.portcpins = (self.portcpins & 0xef) | (1 << 4);
+
+                    // if (self.portcpins & 0x10) {
+                    //     console.log(self.processor.cycleSeconds+"."+(self.processor.currentCycles/1000)+" : hzin");
+                    // }
+                    // if (self.portcpins & 0x80) {
+                    //     console.log(self.processor.cycleSeconds+"."+(self.processor.currentCycles/1000)+" : vsync");
+                    // }
+
+                    // only read top 4 bits
+                    var val = self.portcpins & 0xf0;
+
+                    // var flyback = self.portcpins & 0x80;
+                    // var rept = self.portcpins & 0x40;  // low when pressed
+                    var casin = self.portcpins & 0x20; //
+                    // var hzin = self.portcpins & 0x10;
+
+                    var casbit = casin ? 1 : 0;
+
+                    // make sure REPT key bit is HIGH (low means pressed)
+                    var rept_key = (!self.keys[1][6] << 6) & 0x40;
+                    val |= rept_key;
+
+                    // include speaker and css values
+                    val |= 0x0f; // initially high
+                    if (!(self.portcpins & 0x04))
+                        // speaker
+                        val &= ~4;
+                    if (!(self.portcpins & 0x08))
+                        // css
+                        val &= ~8;
+
+                    // TAPE - 0xfc0a  (every 3.340ms/3340us), -OSBGET Get Byte from Tape subroutine; get a bit and count duration of tape pulse (using FCD2)
+                    // TAPE - 0xfcd2  (every 0.033ms/3.3us), -Test state of #B002 tape input pulse subroutine (has there been a change?)
+                    // TAPE - 0xFCC2 (every 8.446ms/8446us), -Count Duration of Tape Pulse subroutine (<8 loops, >=8 loops)
+                    // FLYBACK - 0xfe6e, 0XFE9D, 0xfe69,
+                    var myPC = self.processor.pc;
+                    if (![0xfe6e, 0xfe9d, 0xfe69, 0xfcd2].includes(myPC)) {
+                        var clocksPerSecond = (1 * 1000 * 1000) | 0;
+                        var millis =
+                            self.processor.cycleSeconds * 1000 +
+                            self.processor.currentCycles / (clocksPerSecond / 1000);
+                        // var tt = millis - self.lastTime;
+                        self.lastTime = millis;
+
+                        // for fc0a - it is called every 3.34ms and in this time it should change from 0 to 1 either
+                        // 8 or 16 times (which the ASM compares against 12)
+
+                        // this is called once every 33 clock cycles from FCCF
+                        // there are 6 calls this between every change
+                        // of a bit due to 'receiveBit'.
+
+                        // if([0xfc0a,0xFCC2].includes(myPC) )
+                        // {
+                        //     console.log("." + myPC.toString(16) + " ppia_read " + ((val&0x20)>>5) + " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles ("+tt+") } ");
                         // }
-                        // if (self.portcpins & 0x02) {
-                        //     console.log("hzout");
-                        // }
-                        // if ((self.portcpins & 0x04) !== (self.latchc & 0x04)) {
-                            // console.log(cpu.currentCycles+" PORTC Speaker "+ (self.latchc & 0x04));
-                            // speaker = val & 4;
-                            // portc pins - not separate variable
-
-                        // }
-                        // if ((self.portcpins & 0x08) !== (self.latchc & 0x08)) {
-                            // console.log(cpu.currentCycles+" PORTC CSS "+ (self.latchc & 0x08));
-                            // css = (val & 8) >> 2;
-                            // portc pins - not separate variable
+                        // else
+                        // {
+                        //     console.log("#" + self.processor.pc.toString(16) + " ppia_read " + val.toString(2).padStart(8, '0') + " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles ("+tt+") } ");
                         // }
 
-                        //     console.log("spk "+(self.portcpins & 0x04)+ " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
-
-                        // console.log("write portc "+self.latchc);
-                        self.recalculatePortCPins();
-                        break;
-                    case CREG:
-                        // bit 7 is 0 for Bit Set/Reset (BSR) mode of PPIA
-                        // using the CREG to quickly activate B2,B1,B0 of port C
-                        // bit 0 is the set/reset value
-                        var speaker = 0;
-                        var css = 0;
-                        switch (val & 0xE)
-                        {
-                            case 0x4:  //0xxx010v is port C pin 2 set to v
-                                speaker = (val & 1)<<2;
-                                // console.log(cpu.currentCycles+" CREG Speaker "+ (val & 1));
-                                break;
-
-                            case 0x6: //0xxx011v is port C pin 3 set to v
-                                css = ((val & 1) << 3);
-
-                                // console.log(cpu.currentCycles+" CREG CSS "+ (val & 1));
-                                break;
+                        if (casbit !== self.prevcas) {
+                            //                            var t = millis - self.lasttime;
+                            //                            self.lasttime = millis;
+                            self.prevcas = casbit;
+                            // console.log("#" + self.processor.pc.toString(16) + " ppia_read casin switched to " + self.prevcas + " } ");
                         }
-                        // NOT STRICTLY CORRECT - SHOULD BE ABLE TO FORCE CPINS SET/RESET
-                        // this is just forcing them rather than latching anything
-                        // console.log(cpu.currentCycles+" CREG  "+ (val ));
-                        self.portcpins = (self.portcpins & 0xF0) | css | speaker;
-                        self.portCUpdated();
-                        break;
 
-                }
-            },
+                        // console.log("} "+(flyback?"F":"_")+(rept?"_":"R")+(casin?"1":"0")+(hzin?"h":"_"));
+                        //                        console.log("} "+val.toString(2).padStart(10,'0'));
+                    }
+                    return val;
+                default:
+                    throw "Unknown PPIA read";
+            }
+        },
 
-            read: function (addr) {
+        prevcas: 0,
 
-                switch (addr & 0xf) {
-                    case PORTA:
-                        self.recalculatePortAPins();
-                        // console.log("read porta "+self.portapins);
-                        return self.portapins;
-                    case PORTB:
-                        self.recalculatePortBPins();
-                        // return the keys based on values in porta
-                        // console.log("read portb "+self.portbpins);
-                        // expecting 1 means unpressed, 0 means pressed: but keymap has 1 if pressed and 0 if unpressed
-                        var keyrow = self.portapins & 0x0f;
-                        var n = self.keys[keyrow];
-                        var r = 0xff; // all keys unpressed
-                        for (var b =0;b<=9;b++)
-                            r &= ~((n[b])<<b);
+        recalculatePortAPins: function () {
+            self.portapins = self.latcha;
+            self.drivePortA();
+            self.portAUpdated();
+        },
 
-                        // if (self.portapins & 15 == 9)
-                        //     console.log("reading "+(self.portapins & 15)+" and pressed "+n.toString(2)+" -> "+r.toString(2));
+        recalculatePortBPins: function () {
+            self.portbpins = self.latchb;
+            self.drivePortB();
+            self.portBUpdated();
+        },
 
-                        // for CTRL and SHIFT which doesn't use porta - they just set bit 6 and bit 7
-                        // the keymap assumes CTRL and SHIFT read from row0
-                        // fixup CTRL and SHIFT regardless of the row being read
-                        var ctrl_shift = ((self.keys[0][7]<<7) | (self.keys[0][6]<<6));
-                        r &= ~(ctrl_shift&0xc0);
+        recalculatePortCPins: function () {
+            self.portcpins = self.latchc;
+            self.drivePortC();
+            self.portCUpdated();
+        },
+    };
+    return self;
+}
 
-                        return r;
-                    case PORTC:
-                        self.recalculatePortCPins();
-                        // console.log("read portc "+self.portcpins);
-                        // only read top 4 bits
-                        // if (self.portcpins & 0x20)
-                        //     console.log("casin");
+export function AtomPPIA(cpu, video, initialLayout, scheduler, soundChip) {
+    var self = ppia(cpu);
 
-                        // pump in the HZIN value - should be ???
-                        self.portcpins = (self.portcpins & 0xef) | (1 << 4);
-
-                        // if (self.portcpins & 0x10) {
-                        //     console.log(self.processor.cycleSeconds+"."+(self.processor.currentCycles/1000)+" : hzin");
-                        // }
-                        // if (self.portcpins & 0x80) {
-                        //     console.log(self.processor.cycleSeconds+"."+(self.processor.currentCycles/1000)+" : vsync");
-                        // }
-
-                        // only read top 4 bits
-                        var val =  self.portcpins & 0xF0;
-
-                        var flyback = self.portcpins & 0x80;
-                        var rept = self.portcpins & 0x40;  // low when pressed
-                        var casin = self.portcpins & 0x20; //
-                        var hzin = self.portcpins & 0x10;
-
-                        var casbit = casin?1:0;
-
-                        // make sure REPT key bit is HIGH (low means pressed)
-                        var rept_key = (!self.keys[1][6]<<6)&0x40;
-                        val |= rept_key;
-
-
-                        // include speaker and css values
-                        val |= 0x0f; // initially high
-                        if (!(self.portcpins&0x04)) // speaker
-                            val &= ~4;
-                        if (!(self.portcpins&0x08)) // css
-                            val &= ~8;
-
-                        // TAPE - 0xfc0a  (every 3.340ms/3340us), -OSBGET Get Byte from Tape subroutine; get a bit and count duration of tape pulse (using FCD2)
-                        // TAPE - 0xfcd2  (every 0.033ms/3.3us), -Test state of #B002 tape input pulse subroutine (has there been a change?)
-                        // TAPE - 0xFCC2 (every 8.446ms/8446us), -Count Duration of Tape Pulse subroutine (<8 loops, >=8 loops)
-                        // FLYBACK - 0xfe6e, 0XFE9D, 0xfe69,
-                        var myPC = self.processor.pc;
-                        if (!([0xfe6e, 0XFE9D, 0xfe69, 0xfcd2].includes(myPC)))
-                        {
-                            var clocksPerSecond = (1 * 1000 * 1000) | 0;
-                            var millis = self.processor.cycleSeconds * 1000 + self.processor.currentCycles / (clocksPerSecond / 1000);
-                            var tt = millis - self.lastTime;
-                            self.lastTime = millis;
-
-                            // for fc0a - it is called every 3.34ms and in this time it should change from 0 to 1 either
-                            // 8 or 16 times (which the ASM compares against 12)
-
-                            // this is called once every 33 clock cycles from FCCF
-                            // there are 6 calls this between every change
-                            // of a bit due to 'receiveBit'.
-
-                            // if([0xfc0a,0xFCC2].includes(myPC) )
-                            // {
-                            //     console.log("." + myPC.toString(16) + " ppia_read " + ((val&0x20)>>5) + " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles ("+tt+") } ");
-                            // }
-                            // else
-                            // {
-                            //     console.log("#" + self.processor.pc.toString(16) + " ppia_read " + val.toString(2).padStart(8, '0') + " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles ("+tt+") } ");
-                            // }
-
-                            if (casbit !== self.prevcas) {
-
-//                            var t = millis - self.lasttime;
-//                            self.lasttime = millis;
-                                self.prevcas = casbit;
-                                // console.log("#" + self.processor.pc.toString(16) + " ppia_read casin switched to " + self.prevcas + " } ");
-                            }
-
-                            // console.log("} "+(flyback?"F":"_")+(rept?"_":"R")+(casin?"1":"0")+(hzin?"h":"_"));
-//                        console.log("} "+val.toString(2).padStart(10,'0'));
-                        }
-                        return val;
-                    default:
-                        throw "Unknown PPIA read";
-                }
-            },
-
-            prevcas:0,
-
-            recalculatePortAPins: function () {
-                self.portapins = self.latcha;
-                self.drivePortA();
-                self.portAUpdated();
-            },
-
-            recalculatePortBPins: function () {
-                self.portbpins = self.latchb;
-                self.drivePortB();
-                self.portBUpdated();
-            },
-
-            recalculatePortCPins: function () {
-                self.portcpins = self.latchc;
-                self.drivePortC();
-                self.portCUpdated();
-            },
-
-        };
-        return self;
+    self.keys = [];
+    for (var i = 0; i < 16; ++i) {
+        self.keys[i] = new Uint8Array(16);
     }
 
-    function atomppia(cpu, video, initialLayout, scheduler, soundChip) {
-        var self = ppia(cpu, 0x01);
+    self.setKeyLayoutAtom = function (map) {
+        self.keycodeToRowCol = utils.getKeyMapAtom(map);
+    };
 
-        self.keys = [];
-        for (var i = 0; i < 16; ++i) {
-            self.keys[i] = new Uint8Array(16);
+    self.setKeyLayoutAtom(initialLayout);
+
+    self.keyboardEnabled = true;
+
+    function clearKeys() {
+        for (var i = 0; i < self.keys.length; ++i) {
+            for (var j = 0; j < self.keys[i].length; ++j) {
+                self.keys[i][j] = false;
+            }
         }
+        self.updateKeys();
+    }
 
-        self.setKeyLayoutAtom = function (map) {
-            self.keycodeToRowCol = utils.getKeyMapAtom(map);
-        };
+    self.clearKeys = clearKeys;
 
-        self.setKeyLayoutAtom(initialLayout);
+    self.disableKeyboard = function () {
+        self.keyboardEnabled = false;
+        clearKeys();
+    };
 
+    self.enableKeyboard = function () {
         self.keyboardEnabled = true;
+        clearKeys();
+    };
 
-        function clearKeys() {
-            for (var i = 0; i < self.keys.length; ++i) {
-                for (var j = 0; j < self.keys[i].length; ++j) {
-                    self.keys[i][j] = false;
-                }
-            }
-            self.updateKeys();
+    self.set = function (key, val, shiftDown) {
+        if (!self.keyboardEnabled) {
+            return;
         }
 
-        self.clearKeys = clearKeys;
+        var colrow = self.keycodeToRowCol[!!shiftDown][key];
+        if (!colrow) {
+            console.log("Unknown keycode: " + key);
+            console.log("Please check here: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent.keyCode");
+            return;
+        }
 
-        self.disableKeyboard = function () {
-            self.keyboardEnabled = false;
-            clearKeys();
-        };
+        // console.log(" keycode: " + colrow[0] +","+colrow[1]+":"+val);
+        self.keys[colrow[0]][colrow[1]] = val;
+        self.updateKeys();
+    };
+    self.keyDown = function (key, shiftDown) {
+        self.set(key, 1, shiftDown);
+    };
+    self.keyUp = function (key) {
+        // set up for both keymaps
+        // (with and without shift)
+        self.set(key, 0, true);
+        self.set(key, 0, false);
+    };
 
-        self.enableKeyboard = function () {
-            self.keyboardEnabled = true;
-            clearKeys();
-        };
-
-        self.set = function (key, val, shiftDown) {
-            if (!self.keyboardEnabled) {
-                return;
-            }
-
-            var colrow = self.keycodeToRowCol[!!shiftDown][key];
-            if (!colrow) {
-                console.log("Unknown keycode: " + key);
-                console.log("Please check here: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent.keyCode");
-                return;
-            }
-
-            // console.log(" keycode: " + colrow[0] +","+colrow[1]+":"+val);
-            self.keys[colrow[0]][colrow[1]] = val;
-            self.updateKeys();
-        };
-        self.keyDown = function (key, shiftDown) {
-            self.set(key, 1, shiftDown);
-        };
-        self.keyUp = function (key) {
-            // set up for both keymaps
-            // (with and without shift)
-            self.set(key, 0, true);
-            self.set(key, 0, false);
-        };
-
-        self.keyDownRaw = function (colrow) {
-            self.keys[colrow[0]][colrow[1]] = 1;
-            self.updateKeys();
-        };
-        self.keyUpRaw = function (colrow) {
-            self.keys[colrow[0]][colrow[1]] = 0;
-            self.updateKeys();
-        };
-        self.keyToggleRaw = function (colrow) {
-            self.keys[colrow[0]][colrow[1]] = 1 - self.keys[colrow[0]][colrow[1]];
-            self.updateKeys();
-        };
-        self.hasAnyKeyDown = function () {
-            // 10 for ATOM
-            var numCols = 10;
-            var i, j;
-            for (i = 0; i < numCols; ++i) {
-                for (j = 0; j < 8; ++j) {
-                    if (self.keys[i][j]) {
-                        return true;
-                    }
+    self.keyDownRaw = function (colrow) {
+        self.keys[colrow[0]][colrow[1]] = 1;
+        self.updateKeys();
+    };
+    self.keyUpRaw = function (colrow) {
+        self.keys[colrow[0]][colrow[1]] = 0;
+        self.updateKeys();
+    };
+    self.keyToggleRaw = function (colrow) {
+        self.keys[colrow[0]][colrow[1]] = 1 - self.keys[colrow[0]][colrow[1]];
+        self.updateKeys();
+    };
+    self.hasAnyKeyDown = function () {
+        // 10 for ATOM
+        var numCols = 10;
+        var i, j;
+        for (i = 0; i < numCols; ++i) {
+            for (j = 0; j < 8; ++j) {
+                if (self.keys[i][j]) {
+                    return true;
                 }
             }
-            return false;
-        };
+        }
+        return false;
+    };
 
-        self.updateKeys = function () {
+    self.updateKeys = function () {};
 
+    self.polltime = function (cycles) {
+        soundChip.updateSpeaker(!!self.speaker, self.processor.currentCycles, self.processor.cycleSeconds, cycles);
+    };
 
-        };
+    self.portAUpdated = function () {
+        self.updateKeys();
+    };
 
-        self.polltime = function(cycles)
-        {
-            soundChip.updateSpeaker(!!(self.speaker), self.processor.currentCycles, self.processor.cycleSeconds);
-        };
+    self.portBUpdated = function () {};
 
-        self.portAUpdated = function () {
-            self.updateKeys();
-        };
+    self.portCUpdated = function () {
+        self.speaker = (self.portcpins & 0x04) >>> 2;
+    };
 
-        self.portBUpdated = function () {
-        };
+    self.drivePortA = function () {
+        self.updateKeys();
+    };
 
-        self.portCUpdated = function () {
-            self.speaker = (self.portcpins & 0x04)>>>2;
-        };
+    self.drivePortB = function () {
+        // Nothing driving here.
+    };
 
-        self.drivePortA = function () {
-            self.updateKeys();
-        };
+    self.drivePortC = function () {
+        // Nothing driving here.
+    };
 
-        self.drivePortB = function () {
-            // Nothing driving here.
-        };
+    self.reset();
 
-        self.drivePortC = function () {
-            // Nothing driving here.
-        };
+    // ATOM TAPE SUPPORT
 
-        self.reset();
+    // set by TAPE
+    self.tone = function (freq) {
+        if (!freq) soundChip.toneGenerator.mute();
+        else soundChip.toneGenerator.tone(freq);
+    };
 
-        // ATOM TAPE SUPPORT
-
-        // set by TAPE
-        self.tone = function (freq) {
-            if (!freq) soundChip.toneGenerator.mute();
-            else soundChip.toneGenerator.tone(freq);
-        };
-
-        // set by TAPE
-        self.setTapeCarrier = function (level) {
-            if (!level) {
-                self.tapeCarrierCount = 0;
-                self.tapeDcdLineLevel = false;
+    // set by TAPE
+    self.setTapeCarrier = function (level) {
+        if (!level) {
+            self.tapeCarrierCount = 0;
+            self.tapeDcdLineLevel = false;
+        } else {
+            self.tapeCarrierCount++;
+            // The tape hardware doesn't raise DCD until the carrier tone
+            // has persisted for a while. The BBC service manual opines,
+            // "The DCD flag in the 6850 should change 0.1 to 0.4 seconds
+            // after a continuous tone appears".
+            // Star Drifter doesn't load without this.
+            // We use 0.174s, measured on an issue 3 model B.
+            // Testing on real hardware, DCD is blipped, it lowers about
+            // 210us after it raises, even though the carrier tone
+            // may be continuing.
+            if (self.tapeCarrierCount === 209) {
+                self.tapeDcdLineLevel = true;
             } else {
-                self.tapeCarrierCount++;
-                // The tape hardware doesn't raise DCD until the carrier tone
-                // has persisted for a while. The BBC service manual opines,
-                // "The DCD flag in the 6850 should change 0.1 to 0.4 seconds
-                // after a continuous tone appears".
-                // Star Drifter doesn't load without this.
-                // We use 0.174s, measured on an issue 3 model B.
-                // Testing on real hardware, DCD is blipped, it lowers about
-                // 210us after it raises, even though the carrier tone
-                // may be continuing.
-                if (self.tapeCarrierCount === 209) {
-                    self.tapeDcdLineLevel = true;
-                } else {
-                    self.tapeDcdLineLevel = false;
-                }
+                self.tapeDcdLineLevel = false;
             }
-            self.dcdLineUpdated();
-        };
-        self.dcdLineUpdated = function () {
+        }
+        self.dcdLineUpdated();
+    };
+    self.dcdLineUpdated = function () {};
 
-        };
+    self.lastTime = 0;
+    // receive is set by the TAPE POLL
+    self.receiveBit = function (bit) {
+        // var clocksPerSecond = (1 * 1000 * 1000) | 0;
+        // var millis = self.processor.cycleSeconds * 1000 + self.processor.currentCycles / (clocksPerSecond / 1000);
 
-        self.lastTime = 0;
-        // receive is set by the TAPE POLL
-        self.receiveBit = function (bit) {
-            var clocksPerSecond = (1 * 1000 * 1000) | 0;
-            var millis = self.processor.cycleSeconds * 1000 + self.processor.currentCycles / (clocksPerSecond / 1000);
+        //           var t = millis - self.lasttime;
+        //           self.lasttime = millis;
+        bit |= 0;
+        // var casin = (self.portcpins & 0x20)>>5; //
 
+        self.latchc = (self.portcpins & 0xdf) | (bit << 5);
 
- //           var t = millis - self.lasttime;
- //           self.lasttime = millis;
-            bit |= 0;
-            var casin = (self.portcpins & 0x20)>>5; //
+        // this is called once every 208 clock cycles (208us or 0.2ms at 1Mhz)
 
-            self.latchc = (self.portcpins & 0xdf) | (bit << 5);
-
-            // this is called once every 208 clock cycles (208us or 0.2ms at 1Mhz)
-
-            /*
+        /*
             for this to be recognised as a '1'; it needs to be 4 cycles at 1.2khz (or is this '0') - duration of tape pulse < 8
             for this to be recognised as a '0'; it needs to be 8 cycles at 2.4khz (or is this '1')
              leader tone is a '1' - so reading 8 half cycles at 2.4khz
 
              */
 
-            // console.log("#  receiveBit " + self.latchc.toString(2).padStart(8, '0') + " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
+        // console.log("#  receiveBit " + self.latchc.toString(2).padStart(8, '0') + " at " + self.processor.cycleSeconds + "seconds, " + self.processor.currentCycles + "cycles } ");
 
-            // if (casin != bit) {
-            //     // var flyback = self.latchc & 0x80;
-            //     // var rept = self.latchc & 0x40;  // low when pressed
-            //     casin = self.latchc & 0x20; //
-            //     var hzin = self.latchc & 0x10;
-            //     console.log("> " + millis.toFixed(1) + " portcpins " + (casin | hzin).toString(2).padStart(10, '0'));
+        // if (casin != bit) {
+        //     // var flyback = self.latchc & 0x80;
+        //     // var rept = self.latchc & 0x40;  // low when pressed
+        //     casin = self.latchc & 0x20; //
+        //     var hzin = self.latchc & 0x10;
+        //     console.log("> " + millis.toFixed(1) + " portcpins " + (casin | hzin).toString(2).padStart(10, '0'));
+        // }
+    };
+
+    self.receive = function (_byte) {
+        _byte |= 0;
+        // if (self.sr & 0x01) {
+        //     // Overrun.
+        //     // TODO: this doesn't match the datasheet:
+        //     // "The Overrun does not occur in the Status Register until the
+        //     // valid character prior to Overrun has been read."
+        //     console.log("Serial overrun");
+        //     self.sr |= 0xa0;
+        // } else {
+        //     self.dr = byte;
+        //     self.sr |= 0x81;
+        // }
+
+        console.log("]- 0x" + _byte.toString(16).padStart(2, "0") + " : " + String.fromCharCode(_byte));
+        updateIrq();
+    };
+
+    self.setTape = function (tape) {
+        self.tape = tape;
+    };
+
+    // self.counterTimer = null;
+    // self.tape_counter = 0;
+
+    self.rewindTape = function () {
+        if (self.tape) {
+            console.log("rewinding tape");
+            self.tape.rewind();
+            // self.tape_counter = 0;
+            // var display_div = $("#counter_id");
+            // var display_str = "";
+            // display_str = self.tape_counter.toString().padStart(8,'0');
+            // display_div.empty();
+            // for (var i = 0; i < display_str.length; i++) {
+            //     display_div.append("<span class='cas counter num_tiles'>"+display_str[i]+"</span>");
             // }
-        };
-
-
-        self.receive = function (byte) {
-            byte |= 0;
-            // if (self.sr & 0x01) {
-            //     // Overrun.
-            //     // TODO: this doesn't match the datasheet:
-            //     // "The Overrun does not occur in the Status Register until the
-            //     // valid character prior to Overrun has been read."
-            //     console.log("Serial overrun");
-            //     self.sr |= 0xa0;
-            // } else {
-            //     self.dr = byte;
-            //     self.sr |= 0x81;
-            // }
-
-            console.log("[ "+byte.toString(16) + " : " + String.fromCharCode(byte));
-            updateIrq();
-        };
-
-        self.setTape = function (tape) {
-            self.tape = tape;
-        };
-
-        self.counterTimer = null;
-        self.tape_counter = 0;
-
-        self.rewindTape = function () {
-            if (self.tape) {
-                console.log("rewinding tape");
-                self.tape.rewind();
-                self.tape_counter = 0;
-                var display_div = $("#counter_id");
-                var display_str = "";
-                display_str = self.tape_counter.toString().padStart(8,'0');
-                display_div.empty();
-                for (var i = 0; i < display_str.length; i++) {
-                    display_div.append("<span class='cas counter num_tiles'>"+display_str[i]+"</span>");
-                }
-            }
-        };
-
-        self.incrementCount = function(d_div) {
-            self.counterTimer = setInterval(function(){
-                // clear count
-                d_div.empty();
-
-                self.tape_counter++;
-                if (self.tape_counter > 100000) {
-                    self.tape_counter = 0; // reset count
-                }
-                var display_str = "";
-                display_str = self.tape_counter.toString().padStart(8,'0');
-                for (var i = 0; i < display_str.length; i++) {
-                    d_div.append("<span class='cas counter num_tiles'>"+display_str[i]+"</span>");
-                }
-            },1000);
-        };
-
-        self.playTape = function () {
-            if (self.tape) {
-                console.log("playing tape");
-                //start
-                self.runTape();
-
-                var display_div = $("#counter_id");
-
-
-
-                // example of a counter.
-                self.incrementCount(display_div);
-
-            }
-        };
-
-        self.stopTape = function () {
-            if (self.tape) {
-                console.log("stopping tape");
-
-                soundChip.toneGenerator.mute();
-                self.runTapeTask.cancel();
-                self.setTapeCarrier(false);
-
-                clearInterval(self.counterTimer);
-                self.counterTimer = null;
-            }
-        };
-
-        function runTape() {
-            if (self.tape) self.runTapeTask.reschedule(self.tape.poll(self));
         }
+    };
 
-        function updateIrq()
-        {}
+    // self.incrementCount = function(d_div) {
+    //     self.counterTimer = setInterval(function(){
+    //         // clear count
+    //         d_div.empty();
 
-        self.updateIrq = updateIrq;//?
-        self.runTape = runTape;// ?
+    // self.tape_counter++;
+    // if (self.tape_counter > 100000) {
+    //     self.tape_counter = 0; // reset count
+    // }
+    // var display_str = "";
+    // display_str = self.tape_counter.toString().padStart(8,'0');
+    // for (var i = 0; i < display_str.length; i++) {
+    //     d_div.append("<span class='cas counter num_tiles'>"+display_str[i]+"</span>");
+    // }
+    // },1000);
+    // };
 
-        self.runTapeTask = scheduler.newTask(runTape);
+    self.playTape = function () {
+        if (self.tape) {
+            console.log("playing tape");
+            //start
+            self.runTape();
 
+            // var display_div = $("#counter_id");
 
+            // example of a counter.
+            // self.incrementCount(display_div);
+        }
+    };
 
-        return self;
+    self.stopTape = function () {
+        if (self.tape) {
+            console.log("stopping tape");
+
+            soundChip.toneGenerator.mute();
+            self.runTapeTask.cancel();
+            self.setTapeCarrier(false);
+
+            // clearInterval(self.counterTimer);
+            // self.counterTimer = null;
+        }
+    };
+
+    function runTape() {
+        if (self.tape) self.runTapeTask.reschedule(self.tape.poll(self));
     }
 
-    return {
-        AtomPPIA: atomppia
-    };
-});
+    function updateIrq() {}
 
+    self.updateIrq = updateIrq; //?
+    self.runTape = runTape; // ?
+
+    self.runTapeTask = scheduler.newTask(runTape);
+
+    return self;
+}
 
 /*
 pia 8255 - 0x3fc mirror : device read/write

@@ -1,0 +1,254 @@
+Atomic Windows 1.0                                                 K. van Oss
+=============================================================================
+This manual is translated from Dutch.
+
+
+
+Introduction
+------------
+At last... After hours of thinking, trying, compressing, inhaling,
+transpiring and experimenting it's been done. The ATOMIC WINDOWS ROM is
+finished!!! The result is a ROM in which there is a number of commands to
+create so called dialogue windows in CLEAR 4. These windows are used to
+interact with the user.
+It has now become very easy to select between several options, to select or
+deselect an option, to enter text, or to place an icon. Pulldown menus or
+icon menus can be made as well.
+All this can be done with or without a mouse, in an original ATOM, a software
+ATOM emulator or the Atom-in-PC (a hardware Atom emulator). The possibilities
+are unlimited, well... Limited to the programmers imagination.
+
+
+
+What is Atomic Windows
+----------------------
+Atomic Windows (AW) is a ROM with which the programmer can build a graphical
+interface by placing objects in order to achieve interaction with the user.
+One can use icons and push buttons to execute parts of a program. One can
+use text input areas. One can create a selection list. The whole building of
+the screen (which would normally occupy a large part of the programs size)
+has become a lot easier, when using AW-commands. Most of the objects are also
+known in Microsoft Windows.
+
+
+
+System requirements
+-------------------
+To get AW to work, the ROM is required at A000h. There is no further hardware
+required. The software inside the ROM can be used to control the hardware
+mouse.
+
+
+
+Atomic Windows Commands
+-----------------------
+The commands in the ROM can be split into three divisions: General commands,
+Active objects, and Passive commands. In their turn, active objects can be
+split into two groups, namely Active-Exit and Active-Loop objects.
+
+
+General commands
+~~~~~~~~~~~~~~~~
+AW
+  Shows version number of the ROM.
+
+
+DLGBASE <Address>
+  With this command a memory block from <address> to <address+06FFh> is
+  reserved for a FontDataTable and an IconDataTable; From <address+0700h>
+  onwards, there is space for object parameters.
+
+    address       : address+02FFh   FontDataTable
+    address+0300h : address+06FFh   IconDataTable
+    address+0700h : ...             WindowsEventTable
+
+
+DLGCLS
+  Fills the entire screen with a raster pattern.
+
+
+DLGCREATE <ExitVar>,<Text$>,<Style>,<x>,<y>,<w>,<h>
+  Defines a Window on position <x>,<y> with width <w> and height <h>, titled
+  <Text$>. Whenever a selection is made, and the interaction mode is exited
+  the selection (ExitCode) is transferred to <ExitVar>.
+  <Style> allows the following options for <Text$> (which by the way applies
+  to all other objects as well):
+
+    bit 7 : Place a CANCEL button (DLGCREATE only),
+    bit 6 : Place an OK button (DLGCREATE only),
+    bit 5 : Double height,
+    bit 4 : Greyscale, selectable objects are then no longer selectable,
+    bit 3 : Invert,
+    bit 2 : Underline,
+    bit 1 : Italic,
+    bit 0 : Bold.
+
+  Combinations of several bits are allowed. If, for example, you'd like a
+  bold, inverted text, select Style = 1 + 8 = 9.
+
+
+DLGEND
+  Goes to interaction mode. The <COPY> key selects the next object; the
+  <DELETE> key the previous object. The <ESCAPE> key exits the interaction
+  mode. The <SPACEBAR> is used to execute an action. If you're using a
+  mouse, the left mouse button has the same effect as the <SPACEBAR>.
+
+DLGPOINTER <number>
+  Assigns mouse pointer <number>. There are 32 predefined mouse cursors
+  available.
+    bit 7    : 0=Pointer on,
+               1=Pointer off.
+    bits 0-4 : Mouse cursor number.
+
+
+Active-Exit objects
+~~~~~~~~~~~~~~~~~~~
+Active-Exit objects are objects then exit the interaction mode, when they
+are selected. When the interaction mode is exited, the object's ExitCode
+is transferred to the ExitVar, defined with DLGCREATE. The commands to
+place such an objects are the following:
+
+DLGPUSHBUTTON <ExitCode>,<Text$>,<Style>,<x>,<y>
+  Places a push button at position <x>,<y>, with header <Text$> and is
+  selectable.
+
+
+DLGOPTION <ExitCode>,<Text$>,<Style>,<x>,<y>
+  Places <Text$> at position <x>,<y> and is selectable.
+
+
+DLGICON <ExitCode>,<IconNr>,<Text$>,<Style>,<x>,<y>
+  Places an icon [0..31] at position <x>,<y>, with subscript <Text$> and is
+  selectable.
+
+
+DLGHOTSPOT <ExitCode>,<x>,<y>,<w>,<h>,<VarX>,<VarY>
+  Marks a rectangle at position <x>,<y> with width <w> and height <h>, in
+  which any point can be clicked. The relative x- and y-values of this
+  point are stored into <VarX> and <VarY>.
+
+
+DLGLISTBOX <ExitCode>,<Var>,<x>,<y>,<w>,<h>,<MaxRec>,<Pointer>
+  Places a rectangle at position <x>,<y> with width <w> and height <h>, and
+  attached to it a scrollbar. In the rectangle strings, defined in the array
+  <Var>, are placed. The format of the array is as follows:
+    Selected string + 0Dh,
+    1 byte with number of strings in array,
+    1 byte with stringnumber of first string in window,
+    1 byte with stringnumber of selected string,
+    First string in array + 0Dh,
+    Second string in array + 0Dh,
+    ....
+    MaxRec string in array + 0Dh.
+
+  Whenever the [up-arrow] in the scrollbar is clicked, all strings are
+  scrolled down one position, and vice versa for the [down-arrow].
+  If one clicks on a string inside the rectangle, it will be selected and
+  transferred to the selected string. <Var> therefore always holds the
+  latest selected string.
+
+
+Active-Loop objects
+~~~~~~~~~~~~~~~~~~~
+Active-Loop objects change a variable, but do not exit the interaction mode.
+The commands are the following:
+
+DLGRADIOBUTTON <Var>,<Text$>,<Style>,<x>,<y>
+  Places a radio button at position <x>,<y> with behind it <Text$> which is
+  selectable. The first radio button is bit 0 of <Var>, the second radio
+  button is bit 1 of <Var>, etc. Thus, there is a maximum of eight radio
+  buttons per <Var>, of which only one can be selected.
+
+
+DLGCHECKBOX <Var>,<Text$>,<Style>,<x>,<y>
+  Places a check box at position <x>,<y> with behind it <Text$> which is
+  selectable. If the check box is empty, <Var> will be 0. If the check box
+  is selected, <Var> is not 0.
+
+
+DLGTEXT <StringVar>,<Text$>,<Style>,<x>,<y>,<w>
+  Places <Text$> at position <x>,<y> with behind an input area with width
+  <w>. As default, this input area contains $<StringVar>. On leaving the
+  input area with the <RETURN> key, $<StringVar> is adjusted. On leaving the
+  input area with the <ESCAPE> key, $<StringVar> is not adjusted.
+
+
+Passive objects
+~~~~~~~~~~~~~~~
+Passtive objects are objects, that are not selectable. The commands to place
+such an object are the following:
+
+DLGFRAME <Text$>,<Style>,<x>,<y>,<w>,<h>
+  Places a rectangle at position <x>,<y> with width <w> and height <h> and
+  is not selectable. <Text$> is placed right above the rectangle and is
+  centred horizontally.
+
+
+DLGLABEL <Text$>,<Style>,<x>,<y>
+  Places <Text$> at position <x>,<y> and is not selectable.
+
+
+Remark
+~~~~~~
+All <x> and <y> coordinates (except DLGCREATE) are relative, i.e. (0,0) is
+the upper left hand corner of the DLGCREATE window, undepending on the
+position of the window on the screen.
+
+
+
+How to use AW
+-------------
+1. Assign a memory range for storage of data (DLGBASE).
+2. Create a window, in which the object are to be placed (DLTGREATE).
+3. Place several objects in the window, by using the AW commands.
+4. Go to interaction mode (DLGEND).
+5. Whenever the interaction mode is exited, take action depending on the
+   value of ExitVar.
+6. Repeat this procedure from point 2 until the program is ended.
+
+
+
+Memory usage
+------------
+  AW uses the following memory:
+    0080h - 0090h : Workspace hardware dependend routines,
+    00C0h - 00D0h : Workspace command routines,
+    0140h - 017Fh : Buffer area and storage global variables,
+    A000h - AFFFh : AW-ROM,
+    BFE0h - BFE2h : Hardware mouse.
+
+  The ROM is divided into three parts, namely:
+    Interpreter,
+    Command routines,
+    Data storage AW-characters (ASCII 0-31).
+
+  The workspace for the hardware dependend routines (80h-90h) and for the
+  commands (C0h-D0h) is temporary. The usage of the buffer area (0140h-
+  017Fh) is temporary as well, except for DlgBaseAddress (016Dh-016Eh) and
+  DlgBasePointer (016Fh-0170h).
+
+  The Data storage area is assigned by DLGBASE, and can be split into three
+  parts, namely:
+    0000h - 02FFh : FontDataTable, storage of ASCII characters 32-127. Each
+                    characters consists of 8x8 pixels.
+    0300h - 06FFh : IconDataTable, storage of 32 pieces, 16x16 pixels. An
+                    icon is made up of 2 columns of 16 bytes. The first byte
+                    in the upper left hand corner, the sixteenth byte in the
+                    lower left hand corner, the seventeenth byte in the
+                    upper right hand corner, and the thirtysecond byte in
+                    the lower right hand corner.
+    0700h - ...   : WindowsEventTable; each selectable object takes 12 bytes.
+                    In this table, parameters of selectable objects are
+                    stored temporarily. The storage is as follows:
+                      Byte 0 : X focus min
+                      Byte 1 : X focus max
+                      Byte 2 : Y focus min
+                      Byte 3 : Y focus max
+                      Byte 4 : Mode
+                      Byte 5 : Var or ExitCode or IconNr
+                      Byte 6 : Length Text$ or ExitCode or VarX
+                      Byte 7 : Style or VarY
+                      Byte 8 : X
+                      Byte 9 : Y
+                      Byte A : W
+                      Byte B : H of BitMasker

@@ -1,16 +1,15 @@
-const {requirejs} = require('./r');
-const assert = require('assert');
-const {describe, it} = require("mocha");
+import { describe, it } from "mocha";
+import assert from "assert";
 
-const Fifo = requirejs('utils').Fifo;
+import { Fifo } from "../../utils.js";
 
-describe('FIFO tests', function () {
+describe("FIFO tests", function () {
     "use strict";
-    it('creates ok', function (done) {
+    it("creates ok", function (done) {
         new Fifo(16);
         done();
     });
-    it('works for simple cases', function (done) {
+    it("works for simple cases", function (done) {
         const f = new Fifo(16);
         assert.strictEqual(0, f.size);
         f.put(123);
@@ -20,7 +19,7 @@ describe('FIFO tests', function () {
         done();
     });
 
-    it('works when full', function (done) {
+    it("works when full", function (done) {
         const f = new Fifo(4);
         assert.strictEqual(0, f.size);
         f.put(123);
