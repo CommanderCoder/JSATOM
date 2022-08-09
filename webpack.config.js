@@ -35,6 +35,9 @@ function getPlugins() {
                     from: "discs/*.[ds]sd",
                 },
                 {
+                    from: "discs/atom/*.[ds]sd",
+                },
+                {
                     from: "tapes/*.uef",
                 },
                 {
