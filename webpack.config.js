@@ -41,6 +41,9 @@ function getPlugins() {
                     from: "tapes/*.tape",
                 },
                 {
+                    from: "mmc/SDcard.zip",
+                },
+                {
                     from: "sounds/**/*.wav",
                 },
                 {
