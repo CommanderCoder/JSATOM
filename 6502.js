@@ -546,26 +546,26 @@ export function Cpu6502(model, dbgr, video_, soundChip_, ddNoise_, music5000_, c
         if (this._debugRead) this._debugRead(addr, 0, res);
 
         // DEBUGGING TAPE READ ON ACORN ATOM
-        if (this.model.isAtom) {
-            if (addr === 0x00c0 && this.pc === 0xfc1e)
-                // console.log("0x"+this.pc.toString(16)+" >> 0x"+ res.toString(16) +" << at " + this.cycleSeconds + "seconds, " + this.currentCycles + "cycles } ");
-                console.log(
-                    "  " + res.toString(16) + " : " + String.fromCharCode(res) + " [0x" + addr.toString(16) + "]"
-                );
+        // if (this.model.isAtom) {
+        //     if (addr === 0x00c0 && this.pc === 0xfc1e)
+        //         // console.log("0x"+this.pc.toString(16)+" >> 0x"+ res.toString(16) +" << at " + this.cycleSeconds + "seconds, " + this.currentCycles + "cycles } ");
+        //         console.log(
+        //             "  " + res.toString(16) + " : " + String.fromCharCode(res) + " [0x" + addr.toString(16) + "]"
+        //         );
 
-            if (addr === 0x00dc && this.pc === 0xfc29)
-                console.log(
-                    "0x" +
-                        this.pc.toString(16) +
-                        " >> 0x" +
-                        res.toString(16) +
-                        " << at " +
-                        this.cycleSeconds +
-                        "seconds, " +
-                        this.currentCycles +
-                        "cycles } "
-                );
-        }
+        //     if (addr === 0x00dc && this.pc === 0xfc29)
+        //         console.log(
+        //             "0x" +
+        //                 this.pc.toString(16) +
+        //                 " >> 0x" +
+        //                 res.toString(16) +
+        //                 " << at " +
+        //                 this.cycleSeconds +
+        //                 "seconds, " +
+        //                 this.currentCycles +
+        //                 "cycles } "
+        //         );
+        // }
 
         return res | 0;
     };

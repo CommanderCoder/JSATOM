@@ -528,8 +528,8 @@ export function AtomPPIA(cpu, video, initialLayout, scheduler, soundChip) {
         // }
     };
 
-    self.receive = function (_byte) {
-        _byte |= 0;
+    self.receive = function (/*_byte*/) {
+        // _byte |= 0;
         // if (self.sr & 0x01) {
         //     // Overrun.
         //     // TODO: this doesn't match the datasheet:
@@ -542,7 +542,7 @@ export function AtomPPIA(cpu, video, initialLayout, scheduler, soundChip) {
         //     self.sr |= 0x81;
         // }
 
-        console.log("]- 0x" + _byte.toString(16).padStart(2, "0") + " : " + String.fromCharCode(_byte));
+        // console.log("]- 0x" + _byte.toString(16).padStart(2, "0") + " : " + String.fromCharCode(_byte));
         updateIrq();
     };
 

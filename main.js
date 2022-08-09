@@ -1083,7 +1083,6 @@ var tapeload = function (evt) {
     reader.readAsBinaryString(file);
 };
 $("#tape_load").change(tapeload);
-// $('#tape_load_atom').change(tapeload);
 
 function anyModalsVisible() {
     return $(".modal:visible").length !== 0;
@@ -1297,12 +1296,20 @@ function guessModelFromUrl() {
     return "B-DFS1.2";
 }
 
+if (model.isAtom) {
+    $("#leds").hide();
+    $("#playcas").show();
+    $("#stopcas").show();
+} else {
+    $("#leds").show();
+    $("#playcas").hide();
+    $("#stopcas").hide();
+}
 $("#tape-menu a").on("click", function (e) {
     var type = $(e.target).attr("data-id");
     if (type === undefined) return;
 
     if (model.isAtom) {
-        $("#leds").hide();
         if (type === "rewind") {
             console.log("Rewinding tape to the start");
 
@@ -1319,7 +1326,6 @@ $("#tape-menu a").on("click", function (e) {
             console.log("unknown type", type);
         }
     } else {
-        $("#leds").show();
         if (type === "rewind") {
             console.log("Rewinding tape to the start");
 
@@ -1706,6 +1712,7 @@ function stop(debug) {
         }
         $cubMonitor.height(height).width(width);
         $cubMonitorPic.height(height).width(width);
+        if (processor.model.isAtom) width = 0.8 * width; // atom screen, slightly narrower because of speaker grill on the NEC-TV
         $screen.height(height * cubToScreenHeightRatio).width(width * cubToScreenWidthRatio);
     }
 
