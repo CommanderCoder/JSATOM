@@ -135,24 +135,24 @@ function UefTape(stream) {
                     state = 0;
                     curByte = curChunk.stream.readByte();
                     acia.tone(baseFrequency); // Start bit
-                    console.log("start " + "0".padStart(8, "0"));
+                    // console.log("start " + "0".padStart(8, "0"));
                 } else if (state < 9) {
                     if (state === 0) {
                         // Start bit
                         acia.tone(baseFrequency);
-                        console.log("start " + "0".padStart(8, "0"));
+                        // console.log("start " + "0".padStart(8, "0"));
                         if (isAtom) wavebits = Array.from(bit0pattern);
                     } else {
                         var bit = curByte & (1 << (state - 1));
                         acia.tone(bit ? 2 * baseFrequency : baseFrequency);
-                        console.log("data " + bit.toString(2).padStart(8, "0"));
+                        // console.log("data " + bit.toString(2).padStart(8, "0"));
                         if (isAtom) wavebits = Array.from(bit ? bit1pattern : bit0pattern);
                     }
                     state++;
                 } else {
                     acia.receive(curByte);
                     acia.tone(2 * baseFrequency); // Stop bit
-                    console.log("stop " + "1".padStart(8, "0"));
+                    // console.log("stop " + "1".padStart(8, "0"));
                     if (curChunk.stream.eof()) {
                         state = -1;
                     } else {
@@ -166,9 +166,9 @@ function UefTape(stream) {
                 acia.setTapeCarrier(false);
                 if (state === -1) {
                     numDataBits = curChunk.stream.readByte();
-                    parity = curChunk.stream.readByte() & 0xff;
-                    numStopBits = curChunk.stream.readByte() & 0xff;
-                    numParityBits = parity !== "N" ? 1 : 0; // 'N' value in condition
+                    parity = curChunk.stream.readByte();
+                    numStopBits = curChunk.stream.readByte();
+                    numParityBits = String.fromCharCode(parity) !== "N" ? 1 : 0; // 'N' value in condition
                     if (isAtom && numStopBits & 0x80) {
                         // negative
                         numStopBits = Math.abs(numStopBits - 256);
@@ -188,33 +188,33 @@ function UefTape(stream) {
                         state = -1;
                     } else {
                         curByte = curChunk.stream.readByte() & ((1 << numDataBits) - 1);
-                        console.log("Sending 0x" + curByte.toString(16) + " = " + String.fromCharCode(curByte));
+                        // console.log("Sending 0x" + curByte.toString(16) + " = " + String.fromCharCode(curByte));
                         acia.tone(baseFrequency); // Start bit
-                        console.log("start " + "0".padStart(8, "0"));
+                        // console.log("start " + "0".padStart(8, "0"));
                         state++;
                         if (isAtom) wavebits = Array.from(bit0pattern);
                     }
                 } else if (state < 1 + numDataBits) {
                     let bit = curByte & (1 << (state - 1));
                     acia.tone(bit ? 2 * baseFrequency : baseFrequency);
-                    console.log("data " + bit.toString(2).padStart(8, "0"));
+                    // console.log("data " + bit.toString(2).padStart(8, "0"));
                     state++;
                     if (isAtom) wavebits = Array.from(bit ? bit1pattern : bit0pattern);
                 } else if (state < 1 + numDataBits + numParityBits) {
                     let bit = parityOf(curByte);
-                    if (parity === "N") bit = !bit;
+                    if (String.fromCharCode(parity) === "N") bit = !bit;
                     acia.tone(bit ? 2 * baseFrequency : baseFrequency);
-                    console.log("parity : " + bit);
+                    // console.log("parity : " + bit);
                     state++;
                     if (isAtom) wavebits = Array.from(bit ? bit1pattern : bit0pattern);
                 } else if (state < 1 + numDataBits + numParityBits + numStopBits) {
                     acia.tone(2 * baseFrequency); // Stop bits
-                    console.log("stop " + "1".padStart(8, "0"));
+                    // console.log("stop " + "1".padStart(8, "0"));
                     state++;
                     if (isAtom) wavebits = Array.from(bit1pattern);
                 } else if (state < 1 + numDataBits + numParityBits + numStopBits + shortWave) {
                     acia.tone(2 * baseFrequency); // Extra short wave - one cycle bits
-                    console.log("short " + "1".padStart(8, "0"));
+                    // console.log("short " + "1".padStart(8, "0"));
                     state++;
                     if (isAtom) wavebits = Array.from(bit1pattern);
                 } else {

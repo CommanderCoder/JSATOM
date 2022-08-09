@@ -55,7 +55,7 @@ function getPlugins() {
             filename: isDev ? "[name].css" : "[name].[contenthash].css",
         }),
         new HtmlWebpackPlugin({
-            title: "jsbeeb - Javascript BBC Micro emulator",
+            title: "jsacorn - Javascript Acorn Atom & BBC Micro emulator",
             template: "index.html",
         }),
     ];
