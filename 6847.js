@@ -204,7 +204,7 @@ export function Video6847(video) {
         0x30: [16, 2, 3, 1], //clear1   128x64x2 , pixels  3w4h (2w4h) 3D MAZE
         0xd0: [8, 2, 1, 2], //?#B000=#D0  128x192x4,pixels  2w1h CHUCKIE EGG
         0x90: [8, 2, 2, 2], //?#B000=#90  128x96x4, pixels 2w2h  FLAPPY BIRD
-        0x50: [16, 2, 3, 2], //?#B000=#50  128x64x4 , pixels 3w3h (4w3h) BREAKOUT (maingame)
+        0x50: [8, 2, 3, 2], //?#B000=#50  128x64x4 , pixels 3w3h (4w3h) BREAKOUT (maingame)
         0x10: [16, 4, 3, 2], //?#B000=#10  64x64x4 , pixels 4w3h  FIZZLE BRICKS
         0x00: [8, -1, 12, 1], // clear0 //0,0 not used on Mode 0 (uses blitChar), pixelsPerBit, bpp
     };
