@@ -350,6 +350,10 @@ function Tube6502(model, cpu) {
         if (this.romPaged && (offset & 0xf000) === 0xf000) {
             return this.rom[offset & 0xfff];
         }
+
+        // video generator needs to know when CPU is accessing memory so it can make snow
+        if (model.isAtom && model.snow) this.video.video6847.cpuAddrAccess(offset & 0xffff);
+
         return this.memory[offset & 0xffff];
     };
     this.readmemZpStack = function (offset) {
@@ -833,6 +837,10 @@ export function Cpu6502(model, dbgr, video_, soundChip_, ddNoise_, music5000_, c
         if (this._debugWrite) this._debugWrite(addr, b);
         if (this.memStat[this.memStatOffset + (addr >>> 8)] === 1) {
             var offset = this.memLook[this.memStatOffset + (addr >>> 8)];
+
+            // video generator needs to know when CPU is accessing memory so it can make snow
+            if (model.isAtom && model.snow) this.video.video6847.cpuAddrAccess(offset + addr);
+
             this.ramRomOs[offset + addr] = b;
             return;
         }

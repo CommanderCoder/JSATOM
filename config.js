@@ -13,6 +13,8 @@ export function Config(onClose) {
         this.set65c02(this.model.tube);
         this.setTeletext(this.model.hasTeletextAdaptor);
         this.setMusic5000(this.model.hasMusic5000);
+        this.setSnowstorm(this.model.snow);
+        setModelMenus(this.model.name);
     });
 
     $configuration.addEventListener("hide.bs.modal", () => onClose(changed));
@@ -46,8 +48,24 @@ export function Config(onClose) {
         this.addRemoveROM("ats-3.0.rom", enabled);
     };
 
+    this.setSnowstorm = function (enabled) {
+        enabled = !!enabled;
+        $("#showAtomSnowstorm").prop("checked", enabled);
+        this.model.snow = enabled;
+    };
+
     function setDropdownText(modelName) {
         $("#bbc-model-dropdown .bbc-model").text(modelName);
+    }
+
+    function setModelMenus(modelname) {
+        // set BBC and ATOM stuff
+        let atom = modelname.includes("Atom");
+
+        $("#65c02").prop("disabled", atom);
+        $("#hasTeletextAdaptor").prop("disabled", atom);
+        $("#hasMusic5000").prop("disabled", atom);
+        $("#showAtomSnowstorm").prop("disabled", !atom);
     }
 
     $(".model-menu a").on(
@@ -57,6 +75,7 @@ export function Config(onClose) {
             changed.model = modelName;
 
             setDropdownText($(e.target).text());
+            setModelMenus(modelName);
         }.bind(this)
     );
 
@@ -78,6 +97,13 @@ export function Config(onClose) {
         "click",
         function () {
             changed.hasMusic5000 = $("#hasMusic5000").prop("checked");
+        }.bind(this)
+    );
+
+    $("#showAtomSnowstorm").on(
+        "click",
+        function () {
+            changed.snow = $("#showAtomSnowstorm").prop("checked");
         }.bind(this)
     );
 

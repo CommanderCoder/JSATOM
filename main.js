@@ -166,7 +166,8 @@ var config = new Config(function (changed) {
         changed.model ||
         changed.coProcessor !== undefined ||
         changed.hasMusic5000 !== undefined ||
-        changed.hasTeletextAdaptor !== undefined
+        changed.hasTeletextAdaptor !== undefined ||
+        changed.snow !== undefined
     ) {
         areYouSure(
             "Changing model requires a restart of the emulator. Restart now?",
@@ -193,6 +194,7 @@ config.setKeyLayout(keyLayout);
 config.set65c02(parsedQuery.coProcessor);
 config.setMusic5000(parsedQuery.hasMusic5000);
 config.setTeletext(parsedQuery.hasTeletextAdaptor);
+config.setSnowstorm(parsedQuery.snow);
 
 model = config.model;
 

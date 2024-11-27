@@ -178,9 +178,38 @@ export function Video6847(video) {
         this.bitmapY = 0;
     };
 
+    /* 
+    Snow is caused by the CPU changing the address bus for 500ns at the 
+    same time as the VDG is expecting to get data from the address it has
+    requested, which takes 1100ns (1.1us).  This only occurs if the cpu is
+    access graphics memory.  So while the VDG is generating a scanline, the address
+    will change for 500ns based on the CPU memory accesses (read or write) and
+    the VDG will read 'noise' from the CPU addressed memory location instead.
+    */
+
+    this.cpuAddr = 0;
+    this.cpuAddrAccess = function (addr) {
+        // CPU has read from memory here
+        // VDG can read from this address for a cycle if it was video memory
+        // to generate snow
+        this.cpuAddr = addr;
+    };
+
     // atom video memory is 0x8000->0x9fff (8k but only bottom 6k used)
+    // effecively goes up to 0x9800
     this.readVideoMem = function () {
-        var memAddr = this.addr & 0x1fff; //6k
+        let cpuaddr = this.cpuAddr;
+
+        this.cpuAddr = 0; // reset the memory access by cpu but if it tries again it'll be set again
+
+        // during a vdg cycle, cpu might be active
+        if (this.vdg_cycles >= 0 && this.vdg_cycles < 1) {
+            if (cpuaddr > 0x8000 && this.cpuAddr <= 0x9800) {
+                return this.cpu.videoRead(cpuaddr);
+            }
+        }
+
+        var memAddr = this.addr & 0x1fff;
         memAddr |= 0x8000;
         return this.cpu.videoRead(memAddr);
     };
