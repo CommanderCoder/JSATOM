@@ -55,23 +55,35 @@ http://members.casema.nl/hhaydn/howel/logic/6847_clone.htm
 64 = 64/8 = 8      8x2bpp     = reg1:16 (xscale*2)  0x10
 
 
+# Data on PORTA used to set the screen mode;  0x10 means graphics mode, and then 0x20, 0x40, 0x80 are used to set the graphics mode.
+# Data on PORTC used to set the colour select bit, which is used in conjunction with the graphics mode bits to select the colour of the screen.
+# css = 0 means Black/Green
+# css = 1 means Black/Orange
+
+# PORTA is #b000 and PORTC is #b002
+# bits 4-7 on #b000 are used to set the graphics mode, )
+# and bit 3 on #b002 is used to set the colour select bit. (CSS connected to PC3 on 8255 via)
+# eight bits 0-7
+
+
 	// video mode constants
-	//ppai PORTA
-	 MODE_AG      = 0x10;  // alpha or graphics
-	 MODE_GM2     = 0x80;  // only used if AG is 1
-	 MODE_GM1     = 0x40; // only used if AG is 1
-	 MODE_GM0     = 0x20; // only used if AG is 1
+	//ppia PORTA
+	 MODE_GM2     = 0x80;  // only used if AG is 1 (bit 7)
+	 MODE_GM1     = 0x40; // only used if AG is 1 (bit 6)
+	 MODE_GM0     = 0x20; // only used if AG is 1 (bit 5)
+	 MODE_AG      = 0x10;  // alpha or graphics (bit 4)
 
-//ppai PORTC
-	 MODE_CSS     = 0x08;  // colour select
+    //ppia PORTC
+	 MODE_CSS     = 0x08;  // colour select (bit 3)
 
+when reading a byte from the VDG, looking at 
 	 // WITHIN THE VIDEO MEMORY (bit 6, 6, 7)  (AS, INTEXT, INV resp.)
-	 // A/S, INT/EXT, CSS and INV can be changed character by character
-	 // these not used if AG is 1, GM not used if AG is 0
-	 MODE_AS      = 0x04;
-	 MODE_INTEXT  = 0x02;
-	 MODE_INV     = 0x01;
+       (INT/EXT & A/S connected to D6, and INV connected to D7 from CPU 
 
+       This means D6 switches between internal alphanumeric, and semigraphics 6 (SG6)
+
+	 // A/S-INT/EXT, INV can be changed character by character, and CSS on interrupt from CPU
+	 // these not used if AG is 1, GM not used if AG is 0
 
 	 for bits
 
@@ -96,6 +108,9 @@ only 1 bit is used of SG6 - to get yellow/red, cyan/orange
 //     MODE_GM1  = 0x20,
 //     MODE_GM0  = 0x10;
 
+// constant for the graphics mode
+const MODE_AG = 0x10; // graphics mode
+
 export function Video6847(video) {
     this.video = video;
     this.levelDEW = false;
@@ -105,9 +120,21 @@ export function Video6847(video) {
     //
     this.collook = utils.makeFast32(
         new Uint32Array([
-            0xff000000, 0xff00ff00, 0xff00ffff, 0xffff0000, 0xff0000ff, 0xffffffff, 0xffffff00, 0xffff00ff, 0xff0080ff,
+            0xff000000, // #00000000, // black
+            0xff03b91e, // #00ff00, // green
+            0xff00ffff, // #ffff00, // yellow
+            0xffff083b, // #3b08ff, // blue
+            0xff0516b9, // #b91605, // red
+            0xff018eb4, // #b48e01, // buff
+            0xffeb9200, // #0092eb, // cyan
+            0xffff1cff, // #ff1cff, // magenta
+            0xff005bbd, // #bd5b00, // orange
+
+            0xff000600, // dark green (char background)  #000600
+            0xff000d1c, // dark orange (char background)  #1c0d00
         ])
     );
+
     // { 0,  0,  0  }, /*Black 0*/
     // { 0,  63, 0  }, /*Green 1*/
     // { 63, 63, 0  }, /*Yellow 2*/
@@ -116,7 +143,10 @@ export function Video6847(video) {
     // { 63, 63, 63 }, /*Buff 5*/
     // { 0,  63, 63 }, /*Cyan 6*/
     // { 63, 0,  63 }, /*Magenta 7*/
-    // { 63, 32,  0  }, /*Orange 8 - actually red on the Atom*/
+    // { 63, 32,  0  }, /*Orange 8 - can be red on the Atom*/
+
+    // /* dark green 9 */
+    // /* dark orange 10 */
 
     this.regs = new Uint8Array(32);
     this.bitmapX = 0;
@@ -272,11 +302,16 @@ export function Video6847(video) {
     this.vdg_cycles = 0;
     this.charTime = 0;
 
+    this.bordercolour = 0x00; // 0x00 black   0x01 // green or orange depending on CSS
+
     // ATOM uses 6847 chip
     this.polltime = function (clocks) {
         var mode = this.ppia.portapins & 0xf0;
         var css = (this.ppia.portcpins & 0x08) >>> 2;
         this.setValuesFromMode(mode);
+        // Note: Polltime is called from the CPU many times during a frame.  Once the VDG has drawn a bit of a frame
+        // it returns, and then comes back here later to continue the same frame.  That's how the snow is able to work
+        // it doesn't draw the whole frame.  It regularly gives control back to the CPU.
 
         var vdgcharclock = this.pixelsPerChar / 2; // 4 or 8
         var vdgclock = 3.638004; // This ought to be 3.579545, but this looks better with the INTs being used.
@@ -399,6 +434,13 @@ export function Video6847(video) {
                 //     );
                 //     this.lastseconds = seconds ?? 0;
                 // }
+
+                // fix the border colour at the end/start of a frame
+                // it won't change within a frame
+                let AGM = (mode & MODE_AG) === 0;
+
+                if (AGM) this.bordercolour = 0x00; // black
+                else this.bordercolour = 0x01; // green orange
             }
 
             if (nextChar) {
@@ -415,26 +457,17 @@ export function Video6847(video) {
                         {
                             // TODO: Add in the INTEXT modifiers to mode (if necessary)
                             // blit into the fb32 buffer which is painted by VIDEO
-                            if ((mode & 0x10) === 0)
+                            if ((mode & MODE_AG) === 0)
                                 // MODE_AG - bit 4; 0x10 is the AG bit
                                 this.blitChar(this.video.fb32, dat, offset, this.pixelsPerChar, css);
                             else this.blitPixels(this.video.fb32, dat, offset, css);
                         }
                     }
                 } else {
-                    let dat = 0xff;
-                    // var insideTopBottomBorder = (this.dispEnabled & (HDISPENABLE | VDISPENABLE)) === (VDISPENABLE);
-                    // dat = 0x2f;
-                    // if (insideTopBottomBorder)
-                    //     dat = 0x11;
-
                     // draw BLACK in the border
                     let offset = this.bitmapY;
                     offset = offset * 1024 + this.bitmapX;
-                    if ((mode & 0x10) === 0)
-                        // MODE_AG - bit 4; 0x10 is the AG bit
-                        this.blitChar(this.video.fb32, 0x20, offset, this.pixelsPerChar, css);
-                    else this.blitPixels(this.video.fb32, dat, offset, css);
+                    this.blitBorder(this.video.fb32, this.bordercolour, offset, css);
                 }
 
                 this.addr = (this.addr + 1) & 0x1fff;
@@ -489,6 +522,24 @@ export function Video6847(video) {
         } // matches while
     };
 
+    this.blitBorder = function (buf, data, destOffset, css) {
+        var bpp = this.bpp;
+        var pixelsPerBit = this.pixelsPerBit / bpp;
+        var numPixels = 8 * pixelsPerBit; //per char
+        var fb32 = buf;
+        var i = 0;
+        for (i = 0; i < numPixels; ++i) {
+            var n = numPixels - 1 - i; // pixels in reverse order
+
+            var colour = this.collook[css ? 5 : 1]; // buff or green
+            if (data === 0x00) {
+                colour = this.collook[0]; // black
+            }
+            fb32[destOffset + n] = fb32[destOffset + n + 1024] = // two lines
+                colour;
+        }
+    };
+
     this.blitPixels = function (buf, data, destOffset, css) {
         // var scanline = this.scanlineCounterT;
         // bitpattern from data is either 4 or 8 pixels in raw graphics
@@ -518,16 +569,6 @@ export function Video6847(video) {
 
             // get bits in pairs or singles
             var j = Math.floor(i / pixelsPerBit);
-
-            // { 0,  0,  0  }, /*Black 0*/
-            // { 0,  63, 0  }, /*Green 1*/
-            // { 63, 63, 0  }, /*Yellow 2*/
-            // { 0,  0,  63 }, /*Blue 3 */
-            // { 63, 0,  0  }, /*Red 4 */
-            // { 63, 63, 63 }, /*Buff 5*/
-            // { 0,  63, 63 }, /*Cyan 6*/
-            // { 63, 0,  63 }, /*Magenta 7*/
-            // { 63, 32,  0  }, /*Orange 8 - actually red on the Atom*/
 
             // get just one bit
             // RG modes
@@ -560,10 +601,10 @@ export function Video6847(video) {
 
         // character set is just the pixel data
         // 0 - 63 is alphachars green  (0x00-0x3f) bits 0-5 for character
-        // 64-127 is alphagraphics green/yellow/blue/red (0x40-0x7f) bit 6,7  (0xC0)
+        // 64-127 is 16 alphagraphics in 4 colours green/yellow/blue/red (0x40-0x7f) bit 6,7  (0xC0)
         // bit 7 set is inverted and the alphagraphics again
         // 128 - 191 is alphachars inverted green (0x80-0xbf)
-        // 192-255 is alphagraphics again buff/cyan/magenta/orange (0xc0-0xff) bit 6,7 set (0xC0)
+        // 192-255 is alphagraphics in different colours buff/cyan/magenta/orange (0xc0-0xff) bit 6,7 set (0xC0)
 
         // in the data; bits 0-5 are the pixels
         // bit 7 and CSS give the colour
@@ -598,9 +639,9 @@ export function Video6847(video) {
         for (i = 0; i < numPixels; ++i) {
             var n = numPixels - 1 - i; // pixels in reverse order
             var j = i / pixelsPerBit;
-            // text is either green/black or orange/black - nothing else
+            // text is either green/black or buff/black - nothing else
             // css is 2 or 0 on input
-            var fgcol = this.collook[css ? 8 : 1];
+            var fgcol = this.collook[css ? 5 : 1];
 
             if (agmode) {
                 // alphagraphics 6
@@ -614,7 +655,7 @@ export function Video6847(video) {
             }
 
             var luminance = (chardef >>> j) & 0x1;
-            var colour = luminance ? fgcol : this.collook[0];
+            var colour = luminance ? fgcol : this.collook[css ? 10 : 9]; //dark orange or green
             fb32[destOffset + n] = fb32[destOffset + n + 1024] = // two lines
                 colour;
         }
